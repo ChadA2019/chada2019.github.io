@@ -1,0 +1,9 @@
+{
+  "name": "Chad's Finance Manager v4",
+  "short_name": "Finance v4",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f5f7fa",
+  "theme_color": "#17365d",
+  "description": "Personal finance manager with optional encrypted cloud sync."
+}

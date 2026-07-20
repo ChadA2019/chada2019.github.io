@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#17365d">
+  <title>Chad's Finance Manager v4</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="app-header">
+  <div>
+    <h1>Chad's Finance Manager</h1>
+    <p>Private CSV and PDF finance tracking with smarter review and reporting.</p>
+  </div>
+  <div class="header-actions">
+    <button id="themeBtn" class="secondary" title="Toggle dark mode">🌙</button>
+    <button id="installBtn" class="secondary hidden">Install</button>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button class="tab active" data-view="dashboard">Dashboard</button>
+  <button class="tab" data-view="transactions">Transactions</button>
+  <button class="tab" data-view="review">Review Queue</button>
+  <button class="tab" data-view="rules">Merchant Rules</button>
+  <button class="tab" data-view="reports">Reports</button>
+  <button class="tab" data-view="settings">Settings</button>
+</nav>
+
+<main>
+<section id="dashboard" class="view active">
+  <div class="toolbar">
+    <label class="file-btn">Import CSV<input id="csvInput" type="file" accept=".csv,text/csv"></label>
+    <label class="file-btn">Import PDF<input id="pdfInput" type="file" accept=".pdf,application/pdf"></label>
+    <button id="exportBtn" class="secondary">Export Backup</button>
+  </div>
+  <div id="importSummary" class="notice hidden"></div>
+
+  <div class="kpi-grid">
+    <article class="card income"><span>Total Income</span><strong id="kpiIncome">$0.00</strong></article>
+    <article class="card expense"><span>Total Expenses</span><strong id="kpiExpense">$0.00</strong></article>
+    <article class="card net"><span>Net Cash Flow</span><strong id="kpiNet">$0.00</strong></article>
+    <article class="card warning"><span>Needs Review</span><strong id="kpiReview">0</strong></article>
+  </div>
+
+  <div class="panel-grid">
+    <section class="panel">
+      <h2>Selected Period</h2>
+      <div class="period-picker">
+        <label>From<input id="dashFrom" type="date"></label>
+        <label>To<input id="dashTo" type="date"></label>
+      </div>
+      <div class="metric-list">
+        <div><span>Income</span><strong id="periodIncome">$0.00</strong></div>
+        <div><span>Expenses</span><strong id="periodExpense">$0.00</strong></div>
+        <div><span>Net</span><strong id="periodNet">$0.00</strong></div>
+      </div>
+    </section>
+    <section class="panel">
+      <h2>Import Status</h2>
+      <div class="metric-list">
+        <div><span>Transactions</span><strong id="transactionCount">0</strong></div>
+        <div><span>Categorised</span><strong id="autoRate">0%</strong></div>
+        <div><span>Merchant rules</span><strong id="ruleCount">0</strong></div>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel">
+    <h2>Top Spending Categories</h2>
+    <div id="categoryBars" class="bars"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Monthly Cash Flow</h2>
+    <canvas id="cashflowChart" width="900" height="320"></canvas>
+  </section>
+</section>
+
+<section id="transactions" class="view">
+  <div class="toolbar">
+    <input id="transactionSearch" type="search" placeholder="Search description, merchant, tag or note">
+    <select id="categoryFilter"><option value="">All categories</option></select>
+    <select id="assetFilter"><option value="">All assets</option></select>
+    <button id="addTransactionBtn">Add Transaction</button>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Category</th><th>Asset</th><th>Tax</th><th>Status</th><th></th></tr></thead>
+      <tbody id="transactionsBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<section id="review" class="view">
+  <div class="section-heading">
+    <div><h2>Review Queue</h2><p>Approve unfamiliar merchants and turn them into permanent rules.</p></div>
+    <button id="applyReviewsBtn">Learn Accepted Rules</button>
+  </div>
+  <div id="reviewList" class="review-list"></div>
+</section>
+
+<section id="rules" class="view">
+  <div class="section-heading">
+    <div><h2>Merchant Rules</h2><p>Rules match when a bank description contains the pattern.</p></div>
+    <button id="addRuleBtn">Add Rule</button>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Pattern</th><th>Category</th><th>Subcategory</th><th>Asset</th><th></th></tr></thead>
+      <tbody id="rulesBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<section id="reports" class="view">
+  <div class="section-heading">
+    <div><h2>Reports</h2><p>Filter, review and export your finance data.</p></div>
+    <button id="exportCsvBtn">Export Transactions CSV</button>
+  </div>
+  <div class="panel-grid">
+    <section class="panel">
+      <h2>Financial Year Summary</h2>
+      <label>Financial year ending
+        <select id="fySelect"></select>
+      </label>
+      <div class="metric-list">
+        <div><span>Income</span><strong id="fyIncome">$0.00</strong></div>
+        <div><span>Expenses</span><strong id="fyExpense">$0.00</strong></div>
+        <div><span>Tax-deductible expenses</span><strong id="fyTax">$0.00</strong></div>
+      </div>
+    </section>
+    <section class="panel">
+      <h2>Asset Summary</h2>
+      <div id="assetSummary" class="metric-list"></div>
+    </section>
+  </div>
+  <section class="panel">
+    <h2>Largest Expenses</h2>
+    <div id="largestExpenses" class="table-wrap"></div>
+  </section>
+</section>
+
+<section id="settings" class="view">
+  <section class="panel">
+    <h2>Data & Privacy</h2>
+    <p>All imported transactions stay in this browser unless you export a backup.</p>
+    <div class="settings-actions">
+      <label class="file-btn secondary">Restore Backup<input id="backupInput" type="file" accept=".json,application/json"></label>
+      <button id="clearBtn" class="danger">Clear All Data</button>
+    </div>
+  </section>
+  <section class="panel">
+    <h2>Known Assets</h2>
+    <p>Add assets such as Amarok, Home, Investment Property or Holiday Home.</p>
+    <div class="toolbar">
+      <input id="newAssetName" placeholder="New asset name">
+      <button id="addAssetBtn">Add Asset</button>
+    </div>
+    <div id="assetList" class="chips"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Encrypted Cloud Sync</h2>
+    <p>Optional backup and device sync using your own free Supabase project. Finance data is encrypted in this browser before upload.</p>
+    <div class="form-grid">
+      <label class="wide">Supabase project URL<input id="cloudUrl" placeholder="https://your-project.supabase.co"></label>
+      <label class="wide">Supabase anon key<input id="cloudAnonKey" type="password" placeholder="Paste the anon public key"></label>
+      <label>Email address<input id="cloudEmail" type="email" placeholder="you@example.com"></label>
+      <label>Encryption passphrase<input id="cloudPassphrase" type="password" placeholder="Do not forget this"></label>
+    </div>
+    <div class="settings-actions">
+      <button id="cloudSaveConfigBtn" class="secondary">Save Cloud Settings</button>
+      <button id="cloudSignInBtn">Email Sign-in Link</button>
+      <button id="cloudSyncBtn">Sync Now</button>
+      <button id="cloudSignOutBtn" class="secondary">Sign Out</button>
+    </div>
+    <div id="cloudStatus" class="notice">Cloud sync is not configured.</div>
+    <p class="small-note">The passphrase is never uploaded. If it is forgotten, the encrypted cloud data cannot be recovered.</p>
+  </section>
+
+  <section class="panel">
+    <h2>PDF Import</h2>
+    <p>Selectable-text PDF statements are processed on your device. Scanned image PDFs still require OCR and are not supported in this version.</p>
+  </section>
+</section>
+</main>
+
+<dialog id="previewDialog">
+<form method="dialog">
+  <h2>PDF Import Preview</h2>
+  <p id="previewMeta"></p>
+  <div class="table-wrap preview-table">
+    <table>
+      <thead><tr><th>Import</th><th>Date</th><th>Description</th><th>Amount</th><th>Confidence</th></tr></thead>
+      <tbody id="previewBody"></tbody>
+    </table>
+  </div>
+  <div class="dialog-actions"><button value="cancel" class="secondary">Cancel</button><button id="confirmPdfImportBtn" value="default">Import Selected</button></div>
+</form>
+</dialog>
+
+<dialog id="transactionDialog">
+<form method="dialog" id="transactionForm">
+  <h2 id="transactionDialogTitle">Edit Transaction</h2>
+  <input id="txIndex" type="hidden">
+  <div class="form-grid">
+    <label>Date<input id="txDate" type="date" required></label>
+    <label>Amount<input id="txAmount" type="number" step="0.01" required></label>
+    <label class="wide">Description<input id="txDescription" required></label>
+    <label>Category<input id="txCategory" list="categoryList" required></label>
+    <label>Subcategory<input id="txSubcategory"></label>
+    <label>Asset<input id="txAsset" list="assetListData"></label>
+    <label>Tax deductible<select id="txTax"><option value="false">No</option><option value="true">Yes</option></select></label>
+    <label>Tag<input id="txTag" placeholder="e.g. Work, Holiday"></label>
+    <label class="wide">Notes<textarea id="txNotes" rows="3"></textarea></label>
+  </div>
+  <div class="dialog-actions"><button value="cancel" class="secondary">Cancel</button><button id="saveTransactionBtn" value="default">Save</button></div>
+</form>
+</dialog>
+
+<dialog id="ruleDialog">
+<form method="dialog" id="ruleForm">
+  <h2>Add Merchant Rule</h2>
+  <label>Match pattern<input id="rulePattern" required></label>
+  <label>Category<input id="ruleCategory" list="categoryList" required></label>
+  <label>Subcategory<input id="ruleSubcategory"></label>
+  <label>Asset<input id="ruleAsset" list="assetListData"></label>
+  <div class="dialog-actions"><button value="cancel" class="secondary">Cancel</button><button id="saveRuleBtn" value="default">Save Rule</button></div>
+</form>
+</dialog>
+
+<datalist id="categoryList"></datalist>
+<datalist id="assetListData"></datalist>
+
+<script type="module" src="app.js"></script>
+<script type="module" src="cloud-sync.js"></script>
+</body>
+</html>
