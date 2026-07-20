@@ -1,0 +1,9 @@
+{
+  "name": "Chad's Finance Manager v3.1",
+  "short_name": "Finance v3.1",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f5f7fa",
+  "theme_color": "#17365d",
+  "description": "Private personal finance tracker with CSV and PDF importing."
+}
