@@ -1,4 +1,12 @@
-BALANCEIQ V5.2 — PROFESSIONAL POLISH RELEASE
+BALANCEIQ v5.2.1 STABILITY RELEASE
+
+Features:
+- Navigation/tab initialisation repaired.
+- Receipt, CSV and PDF navigation regression fixes.
+- Greeting uses local device time.
+- Stability and regression testing pass.
+
+BALANCEIQ V5.2.1 — PROFESSIONAL POLISH RELEASE
 
 WHAT'S NEW
 - Universal Category and Subcategory dropdowns in:
@@ -28,7 +36,7 @@ WHAT'S NEW
   * Optional Load Sample Data
   * About, version and build information
 - Empty-state guidance when no assets exist
-- Updated PWA cache to v5.2
+- Updated PWA cache to v5.2.1
 
 IMPORTANT FOR EXISTING USERS
 Existing browser data is preserved during the upgrade. The removed defaults affect clean/new installations.

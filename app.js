@@ -2,7 +2,7 @@ import * as pdfjsLib from "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168
 pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs";
 
 const STORAGE_KEY="balanceIQV5";
-const APP_VERSION="5.2";
+const APP_VERSION="5.2.1";
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 const defaultCategories=["Alcohol","Bills & Direct Debits","Cafes","Cash","Child Support","Dining Out","Education","Entertainment","Fuel","Groceries","Health & Fitness","Home & Maintenance","Income","Insurance","Loans & Finance","Loans & Mortgages","Medical","Personal Care","Pets","Refunds","Shopping","Subscriptions","Take Away","Transfers","Transport","Travel","Uncategorised","Vehicles"];
 const subcategoriesByCategory={
@@ -553,3 +553,19 @@ window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferredPro
 if("serviceWorker"in navigator&&location.protocol.startsWith("http"))navigator.serviceWorker.register("service-worker.js");
 renderAll();
 if(!state.onboardingComplete)setTimeout(()=>onboardingDialog.showModal(),250);
+
+
+document.addEventListener("DOMContentLoaded",()=>{
+  try{
+    document.querySelectorAll("[data-tab]").forEach(btn=>{
+      btn.onclick=(e)=>{
+        const id=btn.dataset.tab;
+        document.querySelectorAll("[data-tab]").forEach(b=>b.classList.remove("active"));
+        btn.classList.add("active");
+        document.querySelectorAll(".tab-panel").forEach(p=>p.hidden=true);
+        const panel=document.getElementById(id);
+        if(panel) panel.hidden=false;
+      };
+    });
+  }catch(e){console.error("Navigation initialisation failed",e);}
+});
