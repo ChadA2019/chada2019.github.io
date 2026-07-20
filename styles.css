@@ -1,0 +1,45 @@
+:root{
+  --navy:#17365d;--blue:#1f4e78;--light:#eaf2f8;--green:#e2f0d9;
+  --red:#fce4d6;--yellow:#fff2cc;--text:#1f2937;--muted:#64748b;
+  --border:#dbe3ea;--bg:#f5f7fa;--white:#fff;--danger:#b91c1c
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--text);background:var(--bg)}
+button,input,select{font:inherit}
+button,.file-btn{border:0;border-radius:10px;background:var(--blue);color:#fff;padding:.75rem 1rem;font-weight:700;cursor:pointer}
+button.secondary,.file-btn.secondary{background:#e2e8f0;color:var(--text)}
+button.danger{background:var(--danger)}
+.hidden{display:none!important}
+.app-header{display:flex;justify-content:space-between;gap:1rem;align-items:center;padding:1rem 1.25rem;background:var(--navy);color:#fff}
+.app-header h1{margin:0;font-size:1.45rem}.app-header p{margin:.25rem 0 0;opacity:.85}
+.tabs{display:flex;overflow:auto;background:#fff;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:3}
+.tab{border-radius:0;background:#fff;color:var(--muted);white-space:nowrap}.tab.active{color:var(--blue);border-bottom:3px solid var(--blue)}
+main{max-width:1200px;margin:auto;padding:1rem}.view{display:none}.view.active{display:block}
+.toolbar,.section-heading,.settings-actions{display:flex;gap:.75rem;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-bottom:1rem}
+.file-btn input{display:none}
+.notice{background:var(--light);border-left:4px solid var(--blue);padding:1rem;border-radius:8px;margin-bottom:1rem}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem}
+.card,.panel{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1rem;box-shadow:0 2px 10px rgba(15,23,42,.04)}
+.card span{display:block;color:var(--muted);font-weight:700}.card strong{display:block;margin-top:.4rem;font-size:1.6rem}
+.card.income{background:var(--green)}.card.expense{background:var(--red)}.card.net{background:var(--light)}.card.warning{background:var(--yellow)}
+.panel-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem}.panel{margin-top:1rem}
+.panel h2,.section-heading h2{margin:.1rem 0 .5rem}.section-heading p{margin:0;color:var(--muted)}
+.metric-list div{display:flex;justify-content:space-between;padding:.65rem 0;border-bottom:1px solid var(--border)}
+.bars{display:grid;gap:.6rem}.bar-row{display:grid;grid-template-columns:150px 1fr 110px;gap:.75rem;align-items:center}
+.bar-track{height:14px;background:#e2e8f0;border-radius:999px;overflow:hidden}.bar-fill{height:100%;background:var(--blue)}
+canvas{width:100%;height:auto}
+.table-wrap{overflow:auto;background:#fff;border:1px solid var(--border);border-radius:12px}
+.preview-table{max-height:55vh}
+table{width:100%;border-collapse:collapse;min-width:760px}th,td{text-align:left;padding:.75rem;border-bottom:1px solid var(--border);vertical-align:top}
+th{background:var(--navy);color:#fff;position:sticky;top:0;z-index:1}
+td.amount.expense{color:#b91c1c}td.amount.income{color:#15803d}
+.status{display:inline-block;border-radius:999px;padding:.2rem .55rem;font-size:.82rem;font-weight:700}.status.reviewed{background:var(--green)}.status.pending{background:var(--yellow)}
+.review-list{display:grid;gap:1rem}.review-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1rem}
+.review-card header{display:flex;justify-content:space-between;gap:1rem}.review-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-top:1rem}
+.review-card label,dialog label{display:grid;gap:.35rem;font-weight:700}
+input,select{width:100%;padding:.7rem;border:1px solid #cbd5e1;border-radius:8px;background:#fff}
+dialog{border:0;border-radius:14px;max-width:980px;width:calc(100% - 2rem);box-shadow:0 20px 60px rgba(0,0,0,.3)}
+dialog form{display:grid;gap:1rem}.dialog-actions{display:flex;justify-content:flex-end;gap:.75rem}
+.conf-high{color:#15803d;font-weight:700}.conf-med{color:#a16207;font-weight:700}.conf-low{color:#b91c1c;font-weight:700}
+@media(max-width:800px){.kpi-grid{grid-template-columns:1fr 1fr}.panel-grid{grid-template-columns:1fr}.review-grid{grid-template-columns:1fr 1fr}.bar-row{grid-template-columns:110px 1fr 90px}}
+@media(max-width:520px){.app-header{align-items:flex-start}.app-header p{font-size:.86rem}.kpi-grid{grid-template-columns:1fr}.review-grid{grid-template-columns:1fr}.bar-row{grid-template-columns:90px 1fr 80px}main{padding:.75rem}.card strong{font-size:1.35rem}}
