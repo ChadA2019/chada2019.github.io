@@ -1,9 +1,0 @@
-{
-  "name": "Chad's Finance Manager",
-  "short_name": "Finance",
-  "start_url": "./",
-  "display": "standalone",
-  "background_color": "#f5f7fa",
-  "theme_color": "#17365d",
-  "description": "Private finance tracker with CSV and PDF bank statement importing."
-}
