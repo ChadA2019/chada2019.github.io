@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#17365d">
-  <title>BalanceIQ v5.2</title>
+  <title>BalanceIQ v5.2.1</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -12,7 +12,7 @@
 <header class="app-header">
   <div class="brand-lockup">
     <div class="brand-mark" aria-hidden="true"><span></span></div>
-    <div class="brand-copy"><div class="brand-title-row"><h1>Balance<span>IQ</span></h1><small class="app-version">v5.2</small></div><p>Smarter money clarity, without losing control of your data.</p></div>
+    <div><div class="brand-title-row"><h1>Balance<span>IQ</span></h1><small class="app-version">v5.2.1</small></div><p>Smarter money clarity, without losing control of your data.</p></div>
   </div>
   <div class="header-actions">
     <button id="themeBtn" class="secondary" title="Toggle dark mode">🌙</button>
@@ -174,7 +174,7 @@
   </section>
   <section class="panel">
     <h2>Assets</h2>
-    <p>Add only the properties, vehicles, businesses or other assets you want to track.</p>
+    <p>Add the properties, vehicles, businesses or other assets you want to track.</p>
     <div class="toolbar">
       <input id="newAssetName" placeholder="New asset name">
       <button id="addAssetBtn">Add Asset</button>
@@ -202,17 +202,45 @@
   </section>
 
 
+  <section class="panel">
+    <h2>App Preferences</h2>
+    <div class="form-grid">
+      <label>How you use BalanceIQ
+        <select id="usageMode">
+          <option value="personal">Personal</option>
+          <option value="personal-business">Personal + Business</option>
+          <option value="business">Business only</option>
+        </select>
+      </label>
+      <label>Currency
+        <select id="currencySetting">
+          <option value="AUD">Australian dollar (AUD)</option>
+          <option value="NZD">New Zealand dollar (NZD)</option>
+          <option value="USD">US dollar (USD)</option>
+          <option value="GBP">British pound (GBP)</option>
+          <option value="EUR">Euro (EUR)</option>
+          <option value="CAD">Canadian dollar (CAD)</option>
+        </select>
+      </label>
+    </div>
+    <div class="settings-actions">
+      <button id="savePreferencesBtn">Save Preferences</button>
+      <button id="runSetupBtn" class="secondary">Run Setup Again</button>
+      <button id="loadSampleDataBtn" class="secondary">Load Sample Data</button>
+    </div>
+    <p class="small-note">Sample data is optional and is never loaded automatically.</p>
+  </section>
+
   <section class="panel about-panel">
     <h2>About BalanceIQ</h2>
     <div class="metric-list">
-      <div><span>Version</span><strong>5.2</strong></div>
-      <div><span>Build</span><strong>2026.07.21.002</strong></div>
+      <div><span>Version</span><strong>5.2.1</strong></div>
+      <div><span>Build</span><strong>2026.07.21.003</strong></div>
     </div>
     <details class="release-notes">
-      <summary>What’s new in 5.2</summary>
-      <p>Universal category selectors, clean commercial defaults, optional sample data, new-user setup, app preferences and receipt workflow refinements.</p>
+      <summary>What’s new</summary>
+      <p>Rebuilt from the verified v5.1 baseline with commercial defaults, universal category selectors, local-time greetings and setup preferences.</p>
     </details>
-    <p class="small-note">Private, intelligent personal finance and receipt reconciliation.</p>
   </section>
 
   <section class="panel">
@@ -306,7 +334,7 @@
     <div class="brand-mark" aria-hidden="true"><span></span></div>
     <div><span class="eyebrow">WELCOME TO</span><h2>Balance<span>IQ</span></h2></div>
   </div>
-  <p>Set up a clean workspace in under a minute. You can change these choices later in Settings.</p>
+  <p>Choose a few starting preferences. These can be changed later in Settings.</p>
   <div class="form-grid">
     <label>How will you use BalanceIQ?
       <select id="onboardingUsage">
@@ -331,16 +359,13 @@
         <option value="dark">Dark</option>
       </select>
     </label>
-    <label class="wide">First asset <span class="optional">(optional)</span>
+    <label class="wide">First asset (optional)
       <input id="onboardingAsset" placeholder="e.g. Home, Work vehicle or Rental property">
     </label>
   </div>
-  <div class="onboarding-choices">
-    <span>Start with:</span>
-    <label><input id="onboardingSample" type="checkbox"> Optional sample transactions</label>
-  </div>
+  <label class="scanner-option"><input id="onboardingSample" type="checkbox"> Load optional sample transactions</label>
   <div class="dialog-actions">
-    <button id="finishOnboardingBtn" value="default">Start using BalanceIQ</button>
+    <button id="finishOnboardingBtn" type="button">Start using BalanceIQ</button>
   </div>
 </form>
 </dialog>

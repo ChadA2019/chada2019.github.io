@@ -1,38 +1,31 @@
-BALANCEIQ V5.2 — PROFESSIONAL POLISH RELEASE
+BALANCEIQ v5.2.1 — REBUILT FROM VERIFIED v5.1
 
-WHAT'S NEW
-- Universal Category and Subcategory dropdowns in:
-  * Manual transaction entry
-  * Edit transaction
+This release was rebuilt directly from the user's last known working v5.1 package.
+
+CHANGES
+- Preserves the original v5.1 navigation and tab implementation.
+- Uses local device time for Good morning / afternoon / evening.
+- Uses local calendar dates for new manual transactions and receipts.
+- Adds reliable Category and Subcategory dropdowns to:
+  * Manual transaction entry and editing
   * Receipt entry
-  * Merchant rule entry
-  * Review Queue
-- Clean commercial defaults:
-  * No Audi TT
-  * No Holiday Home
-  * No Amarok
-  * No Ford Ranger
-  * No PPS
-  * No preloaded assets
-  * No preloaded merchant rules
-  * No automatic demo transactions
-- New-user setup:
-  * Personal, Personal + Business, or Business only
-  * Currency choice
-  * Light or dark appearance
-  * Optional first asset
-  * Optional sample data
-- Settings now includes:
-  * App preferences
-  * Run setup again
-  * Optional Load Sample Data
-  * About, version and build information
-- Empty-state guidance when no assets exist
-- Updated PWA cache to v5.2
+  * Merchant rules
+- Removes personal default assets:
+  * Audi TT
+  * Holiday Home
+  * Amarok
+  * Ford Ranger
+  * PPS
+- New installations have no preloaded assets, merchant rules or sample transactions.
+- Adds optional sample data in Settings.
+- Adds onboarding for usage mode, currency, appearance and optional first asset.
+- Adds About BalanceIQ with version and build number.
+- Displays v5.2.1 beside the logo.
+- Updates the service-worker cache.
 
-IMPORTANT FOR EXISTING USERS
-Existing browser data is preserved during the upgrade. The removed defaults affect clean/new installations.
-To start completely fresh, use Settings > Clear All Data after making a backup.
+UPGRADING
+Existing locally saved user data is preserved. Personal assets already saved in an existing browser are not deleted automatically.
 
-INSTALLATION
-Replace the previous hosted files with all files from this ZIP, then hard refresh the browser or reinstall the PWA.
+DEPLOYMENT
+Replace every hosted app file with the contents of this ZIP.
+Then hard-refresh the browser or remove and reinstall the PWA so the old service-worker cache is cleared.

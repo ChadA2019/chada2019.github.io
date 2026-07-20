@@ -2,7 +2,7 @@ import * as pdfjsLib from "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168
 pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs";
 
 const STORAGE_KEY="balanceIQV5";
-const APP_VERSION="5.2";
+const APP_VERSION="5.2.1";
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 const defaultCategories=["Alcohol","Bills & Direct Debits","Cafes","Cash","Child Support","Dining Out","Education","Entertainment","Fuel","Groceries","Health & Fitness","Home & Maintenance","Income","Insurance","Loans & Finance","Loans & Mortgages","Medical","Personal Care","Pets","Refunds","Shopping","Subscriptions","Take Away","Transfers","Transport","Travel","Uncategorised","Vehicles"];
 const subcategoriesByCategory={
@@ -40,42 +40,20 @@ function getSubcategories(category,current=""){
   if(current && !list.includes(current)) list.unshift(current);
   return list;
 }
-
-function getAllCategories(){
-  return [...new Set([
-    ...defaultCategories,
-    ...state.rules.map(r=>r.category),
-    ...Object.keys(subcategoriesByCategory)
-  ])].filter(Boolean).sort();
-}
-function populateReceiptSubcategories(selected=""){
-  const category=receiptCategory.value||"Uncategorised";
-  const options=getSubcategories(category,selected);
-  if(!options.length)options.push("Other");
-  receiptSubcategory.innerHTML=options
-    .map(s=>`<option value="${esc(s)}"${s===selected?" selected":""}>${esc(s)}</option>`)
-    .join("");
-}
-function populateReceiptCategories(selected="Uncategorised",subcategory=""){
-  const categories=getAllCategories();
-  if(selected && !categories.includes(selected))categories.unshift(selected);
-  receiptCategory.innerHTML=categories
-    .map(c=>`<option value="${esc(c)}"${c===selected?" selected":""}>${esc(c)}</option>`)
-    .join("");
-  receiptCategory.value=categories.includes(selected)?selected:"Uncategorised";
-  populateReceiptSubcategories(subcategory);
-}
-function fillCategorySelect(categoryEl,subcategoryEl,selected="Uncategorised",selectedSub=""){
-  const categories=getAllCategories();
-  if(selected&&!categories.includes(selected))categories.unshift(selected);
-  categoryEl.innerHTML=categories.map(c=>`<option value="${esc(c)}"${c===selected?" selected":""}>${esc(c)}</option>`).join("");
-  categoryEl.value=categories.includes(selected)?selected:"Uncategorised";
-  fillSubcategorySelect(categoryEl,subcategoryEl,selectedSub);
+function allCategories(){
+  return [...new Set([...defaultCategories,...state.rules.map(r=>r.category),...Object.keys(subcategoriesByCategory)])].filter(Boolean).sort();
 }
 function fillSubcategorySelect(categoryEl,subcategoryEl,selected=""){
   const options=getSubcategories(categoryEl.value||"Uncategorised",selected);
   if(!options.length)options.push("Other");
   subcategoryEl.innerHTML=options.map(s=>`<option value="${esc(s)}"${s===selected?" selected":""}>${esc(s)}</option>`).join("");
+}
+function fillCategorySelect(categoryEl,subcategoryEl,selected="Uncategorised",selectedSub=""){
+  const categories=allCategories();
+  if(selected&&!categories.includes(selected))categories.unshift(selected);
+  categoryEl.innerHTML=categories.map(c=>`<option value="${esc(c)}"${c===selected?" selected":""}>${esc(c)}</option>`).join("");
+  categoryEl.value=categories.includes(selected)?selected:"Uncategorised";
+  fillSubcategorySelect(categoryEl,subcategoryEl,selectedSub);
 }
 function fillAssetSelect(el,selected=""){
   const assets=[...state.assets];
@@ -83,17 +61,12 @@ function fillAssetSelect(el,selected=""){
   el.innerHTML=`<option value="">Unassigned</option>`+assets.map(a=>`<option value="${esc(a)}"${a===selected?" selected":""}>${esc(a)}</option>`).join("");
 }
 function sampleTransactions(){
-  const today=new Date(), iso=d=>d.toISOString().slice(0,10), day=n=>{const d=new Date(today);d.setDate(d.getDate()-n);return iso(d)};
-  return [
+  const day=n=>{const d=new Date();d.setDate(d.getDate()-n);return localDateValue(d)};
+  return[
     {date:day(1),description:"Sample Salary",amount:2500,category:"Income",subcategory:"Salary / Wages",asset:"",reviewed:true,auto:false,source:"Sample",taxDeductible:false,tag:"",notes:""},
     {date:day(2),description:"Sample Supermarket",amount:-142.35,category:"Groceries",subcategory:"Supermarket",asset:"",reviewed:true,auto:false,source:"Sample",taxDeductible:false,tag:"",notes:""},
     {date:day(4),description:"Sample Fuel",amount:-86.20,category:"Fuel",subcategory:"Fuel & Convenience",asset:"",reviewed:true,auto:false,source:"Sample",taxDeductible:false,tag:"",notes:""}
   ];
-}
-function addSampleData(){
-  if(state.transactions.some(t=>t.source==="Sample"))return alert("Sample data is already loaded.");
-  state.transactions.push(...sampleTransactions());
-  saveState();renderAll();showNotice("Optional sample data loaded. You can remove it from Transactions or clear all data.");
 }
 
 const defaultAssets=[];
@@ -130,6 +103,16 @@ function loadState(){
   };
 }
 function saveState(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}
+
+function localDateValue(date=new Date()){
+  const local=new Date(date.getTime()-date.getTimezoneOffset()*60000);
+  return local.toISOString().slice(0,10);
+}
+function updateGreeting(){
+  const hour=new Date().getHours();
+  greeting.textContent=hour<12?"Good morning":hour<18?"Good afternoon":"Good evening";
+}
+
 const money=n=>new Intl.NumberFormat(undefined,{style:"currency",currency:state.currency||"AUD"}).format(Number(n)||0);
 const pct=n=>`${Math.round((Number(n)||0)*100)}%`;const norm=s=>String(s||"").trim();const upper=s=>norm(s).toUpperCase();const idFor=t=>`${t.date}|${t.description}|${Number(t.amount).toFixed(2)}`;
 const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
@@ -312,16 +295,7 @@ function dateFiltered(){const f=document.querySelector("#dashFrom").value,t=docu
 function renderDashboard(){const all=state.transactions,inc=all.filter(x=>x.amount>0).reduce((s,x)=>s+x.amount,0),exp=all.filter(x=>x.amount<0).reduce((s,x)=>s+Math.abs(x.amount),0);kpiIncome.textContent=money(inc);kpiExpense.textContent=money(exp);kpiNet.textContent=money(inc-exp);kpiReview.textContent=state.reviewQueue.length; kpiReceiptMatch.textContent=state.receipts.filter(r=>r.status==="awaiting").length;transactionCount.textContent=all.length;ruleCount.textContent=state.rules.length;autoRate.textContent=all.length?pct(all.filter(x=>x.reviewed).length/all.length):"0%";const p=dateFiltered(),pi=p.filter(x=>x.amount>0).reduce((s,x)=>s+x.amount,0),pe=p.filter(x=>x.amount<0).reduce((s,x)=>s+Math.abs(x.amount),0);periodIncome.textContent=money(pi);periodExpense.textContent=money(pe);periodNet.textContent=money(pi-pe);const cats={};for(const x of p.filter(x=>x.amount<0))cats[x.category]=(cats[x.category]||0)+Math.abs(x.amount);const top=Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,10),max=top[0]?.[1]||1;categoryBars.innerHTML=top.length?top.map(([c,v])=>`<div class="bar-row"><span>${esc(c)}</span><div class="bar-track"><div class="bar-fill" style="width:${v/max*100}%"></div></div><strong>${money(v)}</strong></div>`).join(""):"<p>No transactions.</p>";drawCashflow()}
 function drawCashflow(){const c=cashflowChart,ctx=c.getContext("2d"),dpr=devicePixelRatio||1,w=c.clientWidth||900,h=320;c.width=w*dpr;c.height=h*dpr;ctx.scale(dpr,dpr);ctx.clearRect(0,0,w,h);const m={};for(const t of state.transactions){const k=t.date.slice(0,7);m[k]||={income:0,expense:0};t.amount>0?m[k].income+=t.amount:m[k].expense+=Math.abs(t.amount)}const labels=Object.keys(m).sort().slice(-12);if(!labels.length)return;const max=Math.max(...labels.flatMap(k=>[m[k].income,m[k].expense]),1),pad=40,step=(w-pad*2)/Math.max(labels.length-1,1),ch=h-pad*2;ctx.strokeStyle="#94a3b8";ctx.beginPath();ctx.moveTo(pad,pad);ctx.lineTo(pad,h-pad);ctx.lineTo(w-pad,h-pad);ctx.stroke();for(const [key,color] of [["income","#16a34a"],["expense","#dc2626"]]){ctx.strokeStyle=color;ctx.lineWidth=3;ctx.beginPath();labels.forEach((k,i)=>{const x=pad+i*step,y=h-pad-(m[k][key]/max)*ch;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke()}}
 function renderTransactions(){const q=upper(transactionSearch.value),cat=categoryFilter.value,asset=assetFilter.value,rows=state.transactions.map((t,i)=>({...t,_i:i})).filter(t=>(!q||upper(`${t.description} ${t.merchant} ${t.tag} ${t.notes}`).includes(q))&&(!cat||t.category===cat)&&(!asset||t.asset===asset)).sort((a,b)=>b.date.localeCompare(a.date));transactionsBody.innerHTML=rows.map(t=>`<tr><td>${esc(t.date)}</td><td>${esc(t.description)}</td><td>${money(t.amount)}</td><td>${esc(t.category)}</td><td>${esc(t.asset||"")}</td><td>${t.taxDeductible?"Yes":"No"}</td><td><span class="status ${t.reviewed?"reviewed":"pending"}">${t.reviewed?"Reviewed":"Review"}</span></td><td><button class="link-btn edit-tx" data-i="${t._i}">Edit</button></td></tr>`).join("");document.querySelectorAll(".edit-tx").forEach(b=>b.onclick=()=>openTransaction(+b.dataset.i))}
-function openTransaction(i=null){
-  const t=i===null?{date:new Date().toISOString().slice(0,10),amount:"",description:"",category:"Uncategorised",subcategory:"Review Required",asset:"",taxDeductible:false,tag:"",notes:""}:state.transactions[i];
-  txIndex.value=i===null?"":i;
-  transactionDialogTitle.textContent=i===null?"Add Transaction":"Edit Transaction";
-  txDate.value=t.date;txAmount.value=t.amount;txDescription.value=t.description;
-  fillCategorySelect(txCategory,txSubcategory,t.category,t.subcategory||"");
-  fillAssetSelect(txAsset,t.asset||"");
-  txTax.value=String(!!t.taxDeductible);txTag.value=t.tag||"";txNotes.value=t.notes||"";
-  transactionDialog.showModal();
-}:state.transactions[i];txIndex.value=i===null?"":i;transactionDialogTitle.textContent=i===null?"Add Transaction":"Edit Transaction";txDate.value=t.date;txAmount.value=t.amount;txDescription.value=t.description;txCategory.value=t.category;txSubcategory.value=t.subcategory||"";txAsset.value=t.asset||"";txTax.value=String(!!t.taxDeductible);txTag.value=t.tag||"";txNotes.value=t.notes||"";transactionDialog.showModal()}
+function openTransaction(i=null){const t=i===null?{date:localDateValue(),amount:"",description:"",category:"Uncategorised",subcategory:"Review Required",asset:"",taxDeductible:false,tag:"",notes:""}:state.transactions[i];txIndex.value=i===null?"":i;transactionDialogTitle.textContent=i===null?"Add Transaction":"Edit Transaction";txDate.value=t.date;txAmount.value=t.amount;txDescription.value=t.description;fillCategorySelect(txCategory,txSubcategory,t.category,t.subcategory||"");fillAssetSelect(txAsset,t.asset||"");txTax.value=String(!!t.taxDeductible);txTag.value=t.tag||"";txNotes.value=t.notes||"";transactionDialog.showModal()}
 function renderReceipts(){
   receiptAwaiting.textContent=state.receipts.filter(r=>r.status==="awaiting").length;
   receiptMatched.textContent=state.receipts.filter(r=>r.status==="matched").length;
@@ -414,24 +388,8 @@ function renderReview(){
 }
 function renderRules(){rulesBody.innerHTML=state.rules.map((r,i)=>`<tr><td>${esc(r.pattern)}</td><td>${esc(r.category)}</td><td>${esc(r.subcategory||"")}</td><td>${esc(r.asset||"")}</td><td><button class="link-btn danger-link del-rule" data-i="${i}">Delete</button></td></tr>`).join("");document.querySelectorAll(".del-rule").forEach(b=>b.onclick=()=>{state.rules.splice(+b.dataset.i,1);saveState();renderAll()})}
 function renderReports(){const years=[...new Set(state.transactions.map(t=>+t.date.slice(0,4)+(+(t.date.slice(5,7))>=7?1:0)))].sort((a,b)=>b-a);if(!years.length)years.push(new Date().getFullYear());const current=+fySelect.value||years[0];fySelect.innerHTML=years.map(y=>`<option value="${y}"${y===current?" selected":""}>${y-1}/${String(y).slice(-2)}</option>`).join("");const start=`${current-1}-07-01`,end=`${current}-06-30`,tx=state.transactions.filter(t=>t.date>=start&&t.date<=end),inc=tx.filter(t=>t.amount>0).reduce((s,t)=>s+t.amount,0),exp=tx.filter(t=>t.amount<0).reduce((s,t)=>s+Math.abs(t.amount),0),tax=tx.filter(t=>t.amount<0&&t.taxDeductible).reduce((s,t)=>s+Math.abs(t.amount),0);fyIncome.textContent=money(inc);fyExpense.textContent=money(exp);fyTax.textContent=money(tax);const assets={};for(const t of tx.filter(x=>x.amount<0)){const a=t.asset||"Unassigned";assets[a]=(assets[a]||0)+Math.abs(t.amount)}assetSummary.innerHTML=Object.entries(assets).sort((a,b)=>b[1]-a[1]).map(([a,v])=>`<div><span>${esc(a)}</span><strong>${money(v)}</strong></div>`).join("")||"<p>No asset data.</p>";const large=tx.filter(t=>t.amount<0).sort((a,b)=>a.amount-b.amount).slice(0,10);largestExpenses.innerHTML=`<table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Amount</th></tr></thead><tbody>${large.map(t=>`<tr><td>${t.date}</td><td>${esc(t.description)}</td><td>${esc(t.category)}</td><td>${money(Math.abs(t.amount))}</td></tr>`).join("")}</tbody></table>`}
-function renderCategoriesAssets(){
-  const cats=getAllCategories();
-  categoryList.innerHTML=cats.map(c=>`<option value="${esc(c)}">`).join("");
-  const cv=categoryFilter.value;
-  categoryFilter.innerHTML=`<option value="">All categories</option>`+cats.map(c=>`<option value="${esc(c)}"${c===cv?" selected":""}>${esc(c)}</option>`).join("");
-  assetListData.innerHTML=state.assets.map(a=>`<option value="${esc(a)}">`).join("");
-  const av=assetFilter.value;
-  assetFilter.innerHTML=`<option value="">All assets</option>`+state.assets.map(a=>`<option value="${esc(a)}"${a===av?" selected":""}>${esc(a)}</option>`).join("");
-  if(document.getElementById("receiptCategory")){
-    populateReceiptCategories(receiptCategory.value||"Uncategorised",receiptSubcategory.value||"");
-  }
-}
-function renderAssetSettings(){
-  assetList.innerHTML=state.assets.length
-    ?state.assets.map((a,i)=>`<span class="chip">${esc(a)} <button class="link-btn danger-link del-asset" data-i="${i}">×</button></span>`).join("")
-    :`<div class="empty-state"><strong>No assets yet</strong><span>Add a property, vehicle, business or other asset when you are ready.</span></div>`;
-  document.querySelectorAll(".del-asset").forEach(b=>b.onclick=()=>{state.assets.splice(+b.dataset.i,1);saveState();renderAll()});
-} <button class="link-btn danger-link del-asset" data-i="${i}">×</button></span>`).join("");document.querySelectorAll(".del-asset").forEach(b=>b.onclick=()=>{state.assets.splice(+b.dataset.i,1);saveState();renderAll()})}
+function renderCategoriesAssets(){const cats=allCategories();categoryList.innerHTML=cats.map(c=>`<option value="${esc(c)}">`).join("");const cv=categoryFilter.value;categoryFilter.innerHTML=`<option value="">All categories</option>`+cats.map(c=>`<option value="${esc(c)}"${c===cv?" selected":""}>${esc(c)}</option>`).join("");assetListData.innerHTML=state.assets.map(a=>`<option value="${esc(a)}">`).join("");const av=assetFilter.value;assetFilter.innerHTML=`<option value="">All assets</option>`+state.assets.map(a=>`<option value="${esc(a)}"${a===av?" selected":""}>${esc(a)}</option>`).join("")}
+function renderAssetSettings(){assetList.innerHTML=state.assets.length?state.assets.map((a,i)=>`<span class="chip">${esc(a)} <button class="link-btn danger-link del-asset" data-i="${i}">×</button></span>`).join(""):`<div class="empty-assets"><strong>No assets yet</strong><span>Add one when you are ready.</span></div>`;document.querySelectorAll(".del-asset").forEach(b=>b.onclick=()=>{state.assets.splice(+b.dataset.i,1);saveState();renderAll()})} <button class="link-btn danger-link del-asset" data-i="${i}">×</button></span>`).join("");document.querySelectorAll(".del-asset").forEach(b=>b.onclick=()=>{state.assets.splice(+b.dataset.i,1);saveState();renderAll()})}
 function showNotice(t){importSummary.textContent=t;importSummary.classList.remove("hidden");setTimeout(()=>importSummary.classList.add("hidden"),9000)}
 
 document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tab,.view").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.querySelector(`#${b.dataset.view}`).classList.add("active");if(b.dataset.view==="dashboard")drawCashflow()});
@@ -470,14 +428,14 @@ async function addReceiptFiles(files,reset=false){
 async function openReceiptCapture(fileOrFiles){
   const files=fileOrFiles instanceof FileList||Array.isArray(fileOrFiles)?fileOrFiles:[fileOrFiles];
   await addReceiptFiles(files,true);
-  receiptDate.value=new Date().toISOString().slice(0,10);receiptMerchant.value="";receiptAmount.value="";populateReceiptCategories("Uncategorised","Review Required");receiptAccount.value="";receiptPaymentMethod.value="Card";receiptNumber.value="";receiptGst.value="";receiptNotes.value="";ocrStatus.textContent=`${pendingReceiptPages.length} section${pendingReceiptPages.length===1?'':'s'} ready`;receiptDialog.showModal();
+  receiptDate.value=localDateValue();receiptMerchant.value="";receiptAmount.value="";fillCategorySelect(receiptCategory,receiptSubcategory,"Uncategorised","Review Required");receiptAccount.value="";receiptPaymentMethod.value="Card";receiptNumber.value="";receiptGst.value="";receiptNotes.value="";ocrStatus.textContent=`${pendingReceiptPages.length} section${pendingReceiptPages.length===1?'':'s'} ready`;receiptDialog.showModal();
 }
 receiptImageInput.onchange=e=>{if(e.target.files.length)openReceiptCapture(e.target.files);e.target.value=""};heroScanBtn.onclick=()=>receiptImageInput.click();
 receiptMoreInput.onchange=async e=>{if(e.target.files.length){await addReceiptFiles(e.target.files);ocrStatus.textContent=`${pendingReceiptPages.length} sections ready`}e.target.value=''};
 rotateScanBtn.onclick=async()=>{if(!pendingReceiptPages.length)return;const p=pendingReceiptPages.at(-1);p.rotation=((p.rotation||0)+90)%360;await rebuildReceiptPreview()};
 removeScanBtn.onclick=async()=>{pendingReceiptPages.pop();await rebuildReceiptPreview();ocrStatus.textContent=pendingReceiptPages.length?`${pendingReceiptPages.length} sections ready`:'Add a receipt section'};
 enhanceScan.onchange=rebuildReceiptPreview;
-receiptCategory.onchange=()=>populateReceiptSubcategories("");
+receiptCategory.onchange=()=>fillSubcategorySelect(receiptCategory,receiptSubcategory,"");
 txCategory.onchange=()=>fillSubcategorySelect(txCategory,txSubcategory,"");
 ruleCategory.onchange=()=>fillSubcategorySelect(ruleCategory,ruleSubcategory,"");
 runOcrBtn.onclick=async()=>{
@@ -505,51 +463,22 @@ runOcrBtn.onclick=async()=>{
 };
 saveReceiptBtn.onclick=e=>{e.preventDefault();const receipt={id:crypto.randomUUID?crypto.randomUUID():`r-${Date.now()}`,merchant:norm(receiptMerchant.value),date:receiptDate.value,amount:Number(receiptAmount.value),category:receiptCategory.value||'Uncategorised',subcategory:receiptSubcategory.value,account:norm(receiptAccount.value),paymentMethod:receiptPaymentMethod.value,receiptNumber:norm(receiptNumber.value),gst:Number(receiptGst.value)||0,notes:receiptNotes.value,image:pendingReceiptImage,createdAt:new Date().toISOString(),status:receiptPaymentMethod.value==='Cash'?'cash':'awaiting'};if(!receipt.merchant||!receipt.date||!receipt.amount)return;const fingerprint=receiptFingerprint(receipt);if(state.receipts.some(r=>receiptFingerprint(r)===fingerprint))return alert('This receipt appears to have already been saved.');state.receipts.unshift(receipt);state.transactions.push(applyRule({date:receipt.date,description:receipt.merchant,merchant:receipt.merchant,amount:-Math.abs(receipt.amount),source:'Receipt',receiptId:receipt.id,reconciliationStatus:receipt.status,account:receipt.account,category:receipt.category,subcategory:receipt.subcategory,notes:receipt.notes,taxDeductible:false}));saveState();receiptDialog.close();pendingReceiptImage='';pendingReceiptPages=[];rebuildReviewQueue();renderAll();showNotice('Receipt saved. BalanceIQ will look for the matching bank transaction on future imports.')};
 addTransactionBtn.onclick=()=>openTransaction();saveTransactionBtn.onclick=e=>{e.preventDefault();const t={date:txDate.value,amount:+txAmount.value,description:txDescription.value,category:txCategory.value,subcategory:txSubcategory.value,asset:txAsset.value,taxDeductible:txTax.value==="true",tag:txTag.value,notes:txNotes.value,reviewed:true,auto:false,source:"Manual"};const i=txIndex.value;if(i==="")state.transactions.push(t);else state.transactions[+i]={...state.transactions[+i],...t};rebuildReviewQueue();saveState();transactionDialog.close();renderAll()};
-addRuleBtn.onclick=()=>{
-  ruleForm.reset();
-  fillCategorySelect(ruleCategory,ruleSubcategory,"Uncategorised","Review Required");
-  fillAssetSelect(ruleAsset,"");
-  ruleDialog.showModal();
-};saveRuleBtn.onclick=e=>{e.preventDefault();state.rules.unshift({pattern:upper(rulePattern.value),category:ruleCategory.value,subcategory:ruleSubcategory.value,asset:ruleAsset.value});ruleForm.reset();ruleDialog.close();saveState();renderAll()};
+addRuleBtn.onclick=()=>{ruleForm.reset();fillCategorySelect(ruleCategory,ruleSubcategory,"Uncategorised","Review Required");fillAssetSelect(ruleAsset,"");ruleDialog.showModal()};saveRuleBtn.onclick=e=>{e.preventDefault();state.rules.unshift({pattern:upper(rulePattern.value),category:ruleCategory.value,subcategory:ruleSubcategory.value,asset:ruleAsset.value});ruleForm.reset();ruleDialog.close();saveState();renderAll()};
 addAssetBtn.onclick=()=>{const a=norm(newAssetName.value);if(a&&!state.assets.includes(a))state.assets.push(a);newAssetName.value="";saveState();renderAll()};
-exportBtn.onclick=()=>{const a=document.createElement("a"),blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});a.href=URL.createObjectURL(blob);a.download=`balanceiq-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(a.href)};
+exportBtn.onclick=()=>{const a=document.createElement("a"),blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});a.href=URL.createObjectURL(blob);a.download=`balanceiq-backup-${localDateValue()}.json`;a.click();URL.revokeObjectURL(a.href)};
 exportCsvBtn.onclick=()=>{const cols=["date","description","amount","category","subcategory","asset","taxDeductible","tag","notes"],lines=[cols.join(",")];for(const t of state.transactions)lines.push(cols.map(c=>`"${String(t[c]??"").replaceAll('"','""')}"`).join(","));const a=document.createElement("a"),blob=new Blob([lines.join("\n")],{type:"text/csv"});a.href=URL.createObjectURL(blob);a.download="finance-transactions.csv";a.click();URL.revokeObjectURL(a.href)};
 backupInput.onchange=async e=>{const f=e.target.files[0];if(!f)return;try{state=JSON.parse(await f.text());saveState();renderAll();showNotice("Backup restored.")}catch{alert("Could not read backup.")}e.target.value=""};
 clearBtn.onclick=()=>{if(confirm("Delete all local finance data?")){state={transactions:[],receipts:[],rules:[],reviewQueue:[],assets:[],theme:state.theme,currency:state.currency||"AUD",usageMode:state.usageMode||"personal",onboardingComplete:true};saveState();renderAll()}};
 usageMode.value=state.usageMode||"personal";
 currencySetting.value=state.currency||"AUD";
-savePreferencesBtn.onclick=()=>{
-  state.usageMode=usageMode.value;
-  state.currency=currencySetting.value;
-  saveState();renderAll();showNotice("Preferences saved.");
-};
-loadSampleDataBtn.onclick=addSampleData;
-restartOnboardingBtn.onclick=()=>{
-  onboardingUsage.value=state.usageMode||"personal";
-  onboardingCurrency.value=state.currency||"AUD";
-  onboardingTheme.value=state.theme||"light";
-  onboardingAsset.value="";
-  onboardingSample.checked=false;
-  onboardingDialog.showModal();
-};
-finishOnboardingBtn.onclick=e=>{
-  e.preventDefault();
-  state.usageMode=onboardingUsage.value;
-  state.currency=onboardingCurrency.value;
-  state.theme=onboardingTheme.value;
-  const firstAsset=norm(onboardingAsset.value);
-  if(firstAsset&&!state.assets.includes(firstAsset))state.assets.push(firstAsset);
-  if(onboardingSample.checked&&!state.transactions.some(t=>t.source==="Sample"))state.transactions.push(...sampleTransactions());
-  state.onboardingComplete=true;
-  document.body.classList.toggle("dark",state.theme==="dark");
-  themeBtn.textContent=state.theme==="dark"?"☀️":"🌙";
-  usageMode.value=state.usageMode;
-  currencySetting.value=state.currency;
-  saveState();onboardingDialog.close();renderAll();
-};
-themeBtn.onclick=()=>{state.theme=state.theme==="dark"?"light":"dark";document.body.classList.toggle("dark",state.theme==="dark");themeBtn.textContent=state.theme==="dark"?"☀️":"🌙";saveState();drawCashflow()};
-document.body.classList.toggle("dark",state.theme==="dark");themeBtn.textContent=state.theme==="dark"?"☀️":"🌙";
+savePreferencesBtn.onclick=()=>{state.usageMode=usageMode.value;state.currency=currencySetting.value;saveState();renderAll();showNotice("Preferences saved.")};
+loadSampleDataBtn.onclick=()=>{if(state.transactions.some(t=>t.source==="Sample"))return alert("Sample data is already loaded.");state.transactions.push(...sampleTransactions());saveState();renderAll();showNotice("Optional sample data loaded.")};
+function openSetup(){onboardingUsage.value=state.usageMode||"personal";onboardingCurrency.value=state.currency||"AUD";onboardingTheme.value=state.theme||"light";onboardingAsset.value="";onboardingSample.checked=false;onboardingDialog.showModal()}
+runSetupBtn.onclick=openSetup;
+finishOnboardingBtn.onclick=()=>{state.usageMode=onboardingUsage.value;state.currency=onboardingCurrency.value;state.theme=onboardingTheme.value;const asset=norm(onboardingAsset.value);if(asset&&!state.assets.includes(asset))state.assets.push(asset);if(onboardingSample.checked&&!state.transactions.some(t=>t.source==="Sample"))state.transactions.push(...sampleTransactions());state.onboardingComplete=true;document.body.classList.toggle("dark",state.theme==="dark");themeBtn.textContent=state.theme==="dark"?"☀️":"🌙";updateGreeting();setInterval(updateGreeting,60000);usageMode.value=state.usageMode;currencySetting.value=state.currency;saveState();onboardingDialog.close();renderAll()};
+themeBtn.onclick=()=>{state.theme=state.theme==="dark"?"light":"dark";document.body.classList.toggle("dark",state.theme==="dark");themeBtn.textContent=state.theme==="dark"?"☀️":"🌙";updateGreeting();setInterval(updateGreeting,60000);saveState();drawCashflow()};
+document.body.classList.toggle("dark",state.theme==="dark");themeBtn.textContent=state.theme==="dark"?"☀️":"🌙";updateGreeting();setInterval(updateGreeting,60000);
 window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferredPrompt=e;installBtn.classList.remove("hidden")});installBtn.onclick=async()=>{if(deferredPrompt){deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null}};
 if("serviceWorker"in navigator&&location.protocol.startsWith("http"))navigator.serviceWorker.register("service-worker.js");
 renderAll();
-if(!state.onboardingComplete)setTimeout(()=>onboardingDialog.showModal(),250);
+if(!state.onboardingComplete)setTimeout(openSetup,250);
