@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#17365d">
-  <title>BalanceIQ v5.2.1</title>
+  <title>BalanceIQ v5.1</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -12,7 +12,7 @@
 <header class="app-header">
   <div class="brand-lockup">
     <div class="brand-mark" aria-hidden="true"><span></span></div>
-    <div class="brand-copy"><div class="brand-title-row"><h1>Balance<span>IQ</span></h1><small class="app-version">v5.2.1</small></div><p>Smarter money clarity, without losing control of your data.</p></div>
+    <div><h1>Balance<span>IQ</span></h1><p>Smarter money clarity, without losing control of your data.</p></div>
   </div>
   <div class="header-actions">
     <button id="themeBtn" class="secondary" title="Toggle dark mode">🌙</button>
@@ -173,8 +173,8 @@
     </div>
   </section>
   <section class="panel">
-    <h2>Assets</h2>
-    <p>Add only the properties, vehicles, businesses or other assets you want to track.</p>
+    <h2>Known Assets</h2>
+    <p>Add assets such as Amarok, Home, Investment Property or Holiday Home.</p>
     <div class="toolbar">
       <input id="newAssetName" placeholder="New asset name">
       <button id="addAssetBtn">Add Asset</button>
@@ -199,20 +199,6 @@
     </div>
     <div id="cloudStatus" class="notice">Cloud sync is not configured.</div>
     <p class="small-note">The passphrase is never uploaded. If it is forgotten, the encrypted cloud data cannot be recovered.</p>
-  </section>
-
-
-  <section class="panel about-panel">
-    <h2>About BalanceIQ</h2>
-    <div class="metric-list">
-      <div><span>Version</span><strong>5.2.1</strong></div>
-      <div><span>Build</span><strong>2026.07.21.002</strong></div>
-    </div>
-    <details class="release-notes">
-      <summary>What’s new in 5.2.1</summary>
-      <p>Universal category selectors, clean commercial defaults, optional sample data, new-user setup, app preferences and receipt workflow refinements.</p>
-    </details>
-    <p class="small-note">Private, intelligent personal finance and receipt reconciliation.</p>
   </section>
 
   <section class="panel">
@@ -244,9 +230,9 @@
     <label>Date<input id="txDate" type="date" required></label>
     <label>Amount<input id="txAmount" type="number" step="0.01" required></label>
     <label class="wide">Description<input id="txDescription" required></label>
-    <label>Category<select id="txCategory" required></select></label>
-    <label>Subcategory<select id="txSubcategory"></select></label>
-    <label>Asset<select id="txAsset"></select></label>
+    <label>Category<input id="txCategory" list="categoryList" required></label>
+    <label>Subcategory<input id="txSubcategory"></label>
+    <label>Asset<input id="txAsset" list="assetListData"></label>
     <label>Tax deductible<select id="txTax"><option value="false">No</option><option value="true">Yes</option></select></label>
     <label>Tag<input id="txTag" placeholder="e.g. Work, Holiday"></label>
     <label class="wide">Notes<textarea id="txNotes" rows="3"></textarea></label>
@@ -259,9 +245,9 @@
 <form method="dialog" id="ruleForm">
   <h2>Add Merchant Rule</h2>
   <label>Match pattern<input id="rulePattern" required></label>
-  <label>Category<select id="ruleCategory" required></select></label>
-  <label>Subcategory<select id="ruleSubcategory"></select></label>
-  <label>Asset<select id="ruleAsset"></select></label>
+  <label>Category<input id="ruleCategory" list="categoryList" required></label>
+  <label>Subcategory<input id="ruleSubcategory"></label>
+  <label>Asset<input id="ruleAsset" list="assetListData"></label>
   <div class="dialog-actions"><button value="cancel" class="secondary">Cancel</button><button id="saveRuleBtn" value="default">Save Rule</button></div>
 </form>
 </dialog>
@@ -286,8 +272,8 @@
       <label class="wide">Merchant<input id="receiptMerchant" required placeholder="e.g. Bunnings Belmont"></label>
       <label>Receipt date<input id="receiptDate" type="date" required></label>
       <label>Total paid<input id="receiptAmount" type="number" step="0.01" min="0" required></label>
-      <label>Category<select id="receiptCategory"></select></label>
-      <label>Subcategory<select id="receiptSubcategory"></select></label>
+      <label>Category<input id="receiptCategory" list="categoryList" value="Uncategorised"></label>
+      <label>Subcategory<input id="receiptSubcategory"></label>
       <label>Paid from<input id="receiptAccount" placeholder="e.g. Suncorp Everyday"></label>
       <label>Payment method<select id="receiptPaymentMethod"><option>Card</option><option>Cash</option><option>Bank transfer</option><option>Other</option></select></label>
       <label>Receipt number<input id="receiptNumber"></label>
@@ -296,52 +282,6 @@
     </div>
   </div>
   <div class="dialog-actions"><button value="cancel" class="secondary">Cancel</button><button id="runOcrBtn" type="button" class="secondary">Read scanned receipt</button><button id="saveReceiptBtn" value="default">Save expense</button></div>
-</form>
-</dialog>
-
-
-<dialog id="onboardingDialog" class="onboarding-dialog">
-<form method="dialog" id="onboardingForm">
-  <div class="onboarding-brand">
-    <div class="brand-mark" aria-hidden="true"><span></span></div>
-    <div><span class="eyebrow">WELCOME TO</span><h2>Balance<span>IQ</span></h2></div>
-  </div>
-  <p>Set up a clean workspace in under a minute. You can change these choices later in Settings.</p>
-  <div class="form-grid">
-    <label>How will you use BalanceIQ?
-      <select id="onboardingUsage">
-        <option value="personal">Personal</option>
-        <option value="personal-business">Personal + Business</option>
-        <option value="business">Business only</option>
-      </select>
-    </label>
-    <label>Currency
-      <select id="onboardingCurrency">
-        <option value="AUD">Australian dollar (AUD)</option>
-        <option value="NZD">New Zealand dollar (NZD)</option>
-        <option value="USD">US dollar (USD)</option>
-        <option value="GBP">British pound (GBP)</option>
-        <option value="EUR">Euro (EUR)</option>
-        <option value="CAD">Canadian dollar (CAD)</option>
-      </select>
-    </label>
-    <label>Appearance
-      <select id="onboardingTheme">
-        <option value="light">Light</option>
-        <option value="dark">Dark</option>
-      </select>
-    </label>
-    <label class="wide">First asset <span class="optional">(optional)</span>
-      <input id="onboardingAsset" placeholder="e.g. Home, Work vehicle or Rental property">
-    </label>
-  </div>
-  <div class="onboarding-choices">
-    <span>Start with:</span>
-    <label><input id="onboardingSample" type="checkbox"> Optional sample transactions</label>
-  </div>
-  <div class="dialog-actions">
-    <button id="finishOnboardingBtn" value="default">Start using BalanceIQ</button>
-  </div>
 </form>
 </dialog>
 

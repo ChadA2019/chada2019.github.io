@@ -1,7 +1,7 @@
 {
-  "name": "BalanceIQ",
+  "name": "BalanceIQ v5.1",
   "short_name": "BalanceIQ",
-  "description": "Private personal and business finance, smart receipts and bank reconciliation.",
+  "description": "Private, intelligent personal finance and receipt reconciliation.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#071d3b",

@@ -1,46 +1,16 @@
-BALANCEIQ v5.2.1 STABILITY RELEASE
+BALANCEIQ V5.1 — SMART DOCUMENT SCANNER
 
-Features:
-- Navigation/tab initialisation repaired.
-- Receipt, CSV and PDF navigation regression fixes.
-- Greeting uses local device time.
-- Stability and regression testing pass.
+NEW IN 5.1
+- Multi-section receipt scanning for long receipts.
+- Add overlapping photos from top to bottom and join them into one record.
+- Scanner-style grayscale and contrast enhancement before OCR.
+- Rotate or remove the last section before reading.
+- OCR reads each section separately for greater accuracy.
+- Improved merchant, total, date, GST and receipt-number extraction.
+- Receipt-created expenses still reconcile against later bank CSV/PDF imports without duplication.
 
-BALANCEIQ V5.2.1 — PROFESSIONAL POLISH RELEASE
+INSTALL
+Replace all files in the GitHub Pages repository, commit, then hard refresh or reinstall the PWA to clear the old service-worker cache.
 
-WHAT'S NEW
-- Universal Category and Subcategory dropdowns in:
-  * Manual transaction entry
-  * Edit transaction
-  * Receipt entry
-  * Merchant rule entry
-  * Review Queue
-- Clean commercial defaults:
-  * No Audi TT
-  * No Holiday Home
-  * No Amarok
-  * No Ford Ranger
-  * No PPS
-  * No preloaded assets
-  * No preloaded merchant rules
-  * No automatic demo transactions
-- New-user setup:
-  * Personal, Personal + Business, or Business only
-  * Currency choice
-  * Light or dark appearance
-  * Optional first asset
-  * Optional sample data
-- Settings now includes:
-  * App preferences
-  * Run setup again
-  * Optional Load Sample Data
-  * About, version and build information
-- Empty-state guidance when no assets exist
-- Updated PWA cache to v5.2.1
-
-IMPORTANT FOR EXISTING USERS
-Existing browser data is preserved during the upgrade. The removed defaults affect clean/new installations.
-To start completely fresh, use Settings > Clear All Data after making a backup.
-
-INSTALLATION
-Replace the previous hosted files with all files from this ZIP, then hard refresh the browser or reinstall the PWA.
+SCANNING TIPS
+Use bright, even lighting. Keep the receipt flat. For long receipts, overlap each section by about 20 percent and capture from top to bottom. Review extracted values before saving.
