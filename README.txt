@@ -1,31 +1,24 @@
-BALANCEIQ v5.2.1 — REBUILT FROM VERIFIED v5.1
+BALANCEIQ v5.2.2 — NAVIGATION STABILITY RELEASE
 
-This release was rebuilt directly from the user's last known working v5.1 package.
+ROOT CAUSE FOUND
+The uploaded v5.2.1 app.js contained duplicated raw HTML after renderAssetSettings().
+That made app.js invalid JavaScript, so the browser could not parse it. As a result,
+navigation handlers, greeting updates and most buttons never initialized.
 
-CHANGES
-- Preserves the original v5.1 navigation and tab implementation.
-- Uses local device time for Good morning / afternoon / evening.
-- Uses local calendar dates for new manual transactions and receipts.
-- Adds reliable Category and Subcategory dropdowns to:
-  * Manual transaction entry and editing
-  * Receipt entry
-  * Merchant rules
-- Removes personal default assets:
-  * Audi TT
-  * Holiday Home
-  * Amarok
-  * Ford Ranger
-  * PPS
-- New installations have no preloaded assets, merchant rules or sample transactions.
-- Adds optional sample data in Settings.
-- Adds onboarding for usage mode, currency, appearance and optional first asset.
-- Adds About BalanceIQ with version and build number.
-- Displays v5.2.1 beside the logo.
-- Updates the service-worker cache.
+FIXES
+- Repaired the malformed renderAssetSettings function.
+- Added explicit document.getElementById bindings for app controls.
+- Added validated navigation event listeners.
+- Changed PDF.js from a startup import to an on-demand import.
+- Updated version/build and the service-worker cache.
 
-UPGRADING
-Existing locally saved user data is preserved. Personal assets already saved in an existing browser are not deleted automatically.
+VALIDATION
+- JavaScript syntax validated with Node.
+- Every navigation button was checked against a matching view ID.
+- All required HTML element IDs were checked before packaging.
 
 DEPLOYMENT
-Replace every hosted app file with the contents of this ZIP.
-Then hard-refresh the browser or remove and reinstall the PWA so the old service-worker cache is cleared.
+Replace every hosted file with this ZIP's contents.
+Then clear the site's cache and unregister the old service worker, or uninstall the old PWA.
+Reopen the site and hard-refresh before reinstalling. Otherwise the browser may keep serving
+the broken v5.2.1 app.js.

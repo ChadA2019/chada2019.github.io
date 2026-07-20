@@ -1,8 +1,155 @@
-import * as pdfjsLib from "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs";
-pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs";
+let pdfjsLib=null;
+async function getPdfJs(){
+  if(pdfjsLib)return pdfjsLib;
+  try{
+    pdfjsLib=await import("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs");
+    pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs";
+    return pdfjsLib;
+  }catch(error){
+    console.error("PDF library could not be loaded.",error);
+    throw new Error("PDF import is unavailable. Check your internet connection and try again.");
+  }
+}
+
+const byId=id=>{
+  const element=document.getElementById(id);
+  if(!element)throw new Error(`BalanceIQ startup error: missing #${id}`);
+  return element;
+};
+const {
+  addAssetBtn,
+  addRuleBtn,
+  addTransactionBtn,
+  applyReviewsBtn,
+  assetFilter,
+  assetList,
+  assetListData,
+  assetSummary,
+  autoRate,
+  backupInput,
+  cashflowChart,
+  categoryBars,
+  categoryFilter,
+  categoryList,
+  clearBtn,
+  cloudAnonKey,
+  cloudEmail,
+  cloudPassphrase,
+  cloudSaveConfigBtn,
+  cloudSignInBtn,
+  cloudSignOutBtn,
+  cloudStatus,
+  cloudSyncBtn,
+  cloudUrl,
+  confirmPdfImportBtn,
+  csvInput,
+  currencySetting,
+  dashFrom,
+  dashTo,
+  dashboard,
+  enhanceScan,
+  exportBtn,
+  exportCsvBtn,
+  finishOnboardingBtn,
+  fyExpense,
+  fyIncome,
+  fySelect,
+  fyTax,
+  greeting,
+  heroScanBtn,
+  importSummary,
+  installBtn,
+  kpiExpense,
+  kpiIncome,
+  kpiNet,
+  kpiReceiptMatch,
+  kpiReview,
+  largestExpenses,
+  loadSampleDataBtn,
+  newAssetName,
+  ocrStatus,
+  onboardingAsset,
+  onboardingCurrency,
+  onboardingDialog,
+  onboardingForm,
+  onboardingSample,
+  onboardingTheme,
+  onboardingUsage,
+  pdfInput,
+  periodExpense,
+  periodIncome,
+  periodNet,
+  previewBody,
+  previewDialog,
+  previewMeta,
+  receiptAccount,
+  receiptAmount,
+  receiptAwaiting,
+  receiptCategory,
+  receiptDate,
+  receiptDialog,
+  receiptForm,
+  receiptGst,
+  receiptImageInput,
+  receiptList,
+  receiptMatched,
+  receiptMerchant,
+  receiptMoreInput,
+  receiptNotes,
+  receiptNumber,
+  receiptPaymentMethod,
+  receiptPreview,
+  receiptPreviewEmpty,
+  receiptSubcategory,
+  receiptSuggested,
+  receipts,
+  removeScanBtn,
+  reports,
+  review,
+  reviewList,
+  rotateScanBtn,
+  ruleAsset,
+  ruleCategory,
+  ruleCount,
+  ruleDialog,
+  ruleForm,
+  rulePattern,
+  ruleSubcategory,
+  rules,
+  rulesBody,
+  runOcrBtn,
+  runSetupBtn,
+  savePreferencesBtn,
+  saveReceiptBtn,
+  saveRuleBtn,
+  saveTransactionBtn,
+  scanPageStrip,
+  settings,
+  themeBtn,
+  transactionCount,
+  transactionDialog,
+  transactionDialogTitle,
+  transactionForm,
+  transactionSearch,
+  transactions,
+  transactionsBody,
+  txAmount,
+  txAsset,
+  txCategory,
+  txDate,
+  txDescription,
+  txIndex,
+  txNotes,
+  txSubcategory,
+  txTag,
+  txTax,
+  usageMode
+}=Object.fromEntries(
+  ["addAssetBtn","addRuleBtn","addTransactionBtn","applyReviewsBtn","assetFilter","assetList","assetListData","assetSummary","autoRate","backupInput","cashflowChart","categoryBars","categoryFilter","categoryList","clearBtn","cloudAnonKey","cloudEmail","cloudPassphrase","cloudSaveConfigBtn","cloudSignInBtn","cloudSignOutBtn","cloudStatus","cloudSyncBtn","cloudUrl","confirmPdfImportBtn","csvInput","currencySetting","dashFrom","dashTo","dashboard","enhanceScan","exportBtn","exportCsvBtn","finishOnboardingBtn","fyExpense","fyIncome","fySelect","fyTax","greeting","heroScanBtn","importSummary","installBtn","kpiExpense","kpiIncome","kpiNet","kpiReceiptMatch","kpiReview","largestExpenses","loadSampleDataBtn","newAssetName","ocrStatus","onboardingAsset","onboardingCurrency","onboardingDialog","onboardingForm","onboardingSample","onboardingTheme","onboardingUsage","pdfInput","periodExpense","periodIncome","periodNet","previewBody","previewDialog","previewMeta","receiptAccount","receiptAmount","receiptAwaiting","receiptCategory","receiptDate","receiptDialog","receiptForm","receiptGst","receiptImageInput","receiptList","receiptMatched","receiptMerchant","receiptMoreInput","receiptNotes","receiptNumber","receiptPaymentMethod","receiptPreview","receiptPreviewEmpty","receiptSubcategory","receiptSuggested","receipts","removeScanBtn","reports","review","reviewList","rotateScanBtn","ruleAsset","ruleCategory","ruleCount","ruleDialog","ruleForm","rulePattern","ruleSubcategory","rules","rulesBody","runOcrBtn","runSetupBtn","savePreferencesBtn","saveReceiptBtn","saveRuleBtn","saveTransactionBtn","scanPageStrip","settings","themeBtn","transactionCount","transactionDialog","transactionDialogTitle","transactionForm","transactionSearch","transactions","transactionsBody","txAmount","txAsset","txCategory","txDate","txDescription","txIndex","txNotes","txSubcategory","txTag","txTax","usageMode"].map(id=>[id,byId(id)])
+);
 
 const STORAGE_KEY="balanceIQV5";
-const APP_VERSION="5.2.1";
+const APP_VERSION="5.2.2";
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 const defaultCategories=["Alcohol","Bills & Direct Debits","Cafes","Cash","Child Support","Dining Out","Education","Entertainment","Fuel","Groceries","Health & Fitness","Home & Maintenance","Income","Insurance","Loans & Finance","Loans & Mortgages","Medical","Personal Care","Pets","Refunds","Shopping","Subscriptions","Take Away","Transfers","Transport","Travel","Uncategorised","Vehicles"];
 const subcategoriesByCategory={
@@ -125,7 +272,7 @@ function suggest(t){t=upper(t);const rules=[
 for(const [w,c,s,confidence] of rules)if(w.some(x=>t.includes(x)))return{category:c,subcategory:s,confidence};return{category:"Uncategorised",subcategory:"Review Required",confidence:.35}}
 function applyRule(tx){const text=upper(`${tx.description} ${tx.merchant||""}`),r=state.rules.find(x=>text.includes(upper(x.pattern)));if(r)return{...tx,category:r.category,subcategory:r.subcategory,asset:r.asset||tx.asset||"",reviewed:true,auto:true,taxDeductible:!!tx.taxDeductible,tag:tx.tag||"",notes:tx.notes||""};const s=suggest(text);return{...tx,category:s.category,subcategory:s.subcategory,reviewed:s.confidence>=.85,auto:s.confidence>=.85,suggestion:s,taxDeductible:!!tx.taxDeductible,tag:tx.tag||"",notes:tx.notes||"",asset:tx.asset||""}}
 async function importCSV(file){const rows=parseCSV(await file.text());if(rows.length<2)throw Error("No transaction rows found.");const h=rows[0],di=findHeader(h,["DATE","TRANSACTION DATE","POSTED DATE"]),de=findHeader(h,["DESCRIPTION","DETAILS","TRANSACTION DESCRIPTION","NARRATIVE"]),db=findHeader(h,["DEBIT","WITHDRAWAL"]),cr=findHeader(h,["CREDIT","DEPOSIT"]),am=findHeader(h,["AMOUNT"]),me=findHeader(h,["MERCHANT","PAYEE"]);if(di<0||de<0)throw Error("Could not detect Date and Description columns.");const txs=[];for(const r of rows.slice(1)){const date=parseDate(r[di]),description=norm(r[de]);if(!date||!description)continue;const amount=am>=0?parseNumber(r[am]):parseNumber(r[cr])-Math.abs(parseNumber(r[db]));txs.push({date,description,merchant:me>=0?norm(r[me]):"",amount,source:"CSV"})}commitTransactions(txs,"CSV")}
-async function extractPdfText(file){const pdf=await pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise,pages=[];for(let p=1;p<=pdf.numPages;p++){const page=await pdf.getPage(p),content=await page.getTextContent(),items=content.items.map(x=>({str:x.str,x:x.transform[4],y:x.transform[5]})).filter(x=>x.str.trim()).sort((a,b)=>Math.abs(b.y-a.y)>2?b.y-a.y:a.x-b.x),lines=[];let cur=[],y=null;for(const item of items){if(y===null||Math.abs(item.y-y)<=2)cur.push(item);else{lines.push(cur.sort((a,b)=>a.x-b.x).map(x=>x.str).join(" ").replace(/\s+/g," ").trim());cur=[item]}y=item.y}if(cur.length)lines.push(cur.sort((a,b)=>a.x-b.x).map(x=>x.str).join(" ").replace(/\s+/g," ").trim());pages.push(lines)}return pages}
+async function extractPdfText(file){const pdfjsLib=await getPdfJs();const pdf=await pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise,pages=[];for(let p=1;p<=pdf.numPages;p++){const page=await pdf.getPage(p),content=await page.getTextContent(),items=content.items.map(x=>({str:x.str,x:x.transform[4],y:x.transform[5]})).filter(x=>x.str.trim()).sort((a,b)=>Math.abs(b.y-a.y)>2?b.y-a.y:a.x-b.x),lines=[];let cur=[],y=null;for(const item of items){if(y===null||Math.abs(item.y-y)<=2)cur.push(item);else{lines.push(cur.sort((a,b)=>a.x-b.x).map(x=>x.str).join(" ").replace(/\s+/g," ").trim());cur=[item]}y=item.y}if(cur.length)lines.push(cur.sort((a,b)=>a.x-b.x).map(x=>x.str).join(" ").replace(/\s+/g," ").trim());pages.push(lines)}return pages}
 function parsePdfPages(pages){
   const rows=[];
   const seen=new Set();
@@ -389,10 +536,38 @@ function renderReview(){
 function renderRules(){rulesBody.innerHTML=state.rules.map((r,i)=>`<tr><td>${esc(r.pattern)}</td><td>${esc(r.category)}</td><td>${esc(r.subcategory||"")}</td><td>${esc(r.asset||"")}</td><td><button class="link-btn danger-link del-rule" data-i="${i}">Delete</button></td></tr>`).join("");document.querySelectorAll(".del-rule").forEach(b=>b.onclick=()=>{state.rules.splice(+b.dataset.i,1);saveState();renderAll()})}
 function renderReports(){const years=[...new Set(state.transactions.map(t=>+t.date.slice(0,4)+(+(t.date.slice(5,7))>=7?1:0)))].sort((a,b)=>b-a);if(!years.length)years.push(new Date().getFullYear());const current=+fySelect.value||years[0];fySelect.innerHTML=years.map(y=>`<option value="${y}"${y===current?" selected":""}>${y-1}/${String(y).slice(-2)}</option>`).join("");const start=`${current-1}-07-01`,end=`${current}-06-30`,tx=state.transactions.filter(t=>t.date>=start&&t.date<=end),inc=tx.filter(t=>t.amount>0).reduce((s,t)=>s+t.amount,0),exp=tx.filter(t=>t.amount<0).reduce((s,t)=>s+Math.abs(t.amount),0),tax=tx.filter(t=>t.amount<0&&t.taxDeductible).reduce((s,t)=>s+Math.abs(t.amount),0);fyIncome.textContent=money(inc);fyExpense.textContent=money(exp);fyTax.textContent=money(tax);const assets={};for(const t of tx.filter(x=>x.amount<0)){const a=t.asset||"Unassigned";assets[a]=(assets[a]||0)+Math.abs(t.amount)}assetSummary.innerHTML=Object.entries(assets).sort((a,b)=>b[1]-a[1]).map(([a,v])=>`<div><span>${esc(a)}</span><strong>${money(v)}</strong></div>`).join("")||"<p>No asset data.</p>";const large=tx.filter(t=>t.amount<0).sort((a,b)=>a.amount-b.amount).slice(0,10);largestExpenses.innerHTML=`<table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Amount</th></tr></thead><tbody>${large.map(t=>`<tr><td>${t.date}</td><td>${esc(t.description)}</td><td>${esc(t.category)}</td><td>${money(Math.abs(t.amount))}</td></tr>`).join("")}</tbody></table>`}
 function renderCategoriesAssets(){const cats=allCategories();categoryList.innerHTML=cats.map(c=>`<option value="${esc(c)}">`).join("");const cv=categoryFilter.value;categoryFilter.innerHTML=`<option value="">All categories</option>`+cats.map(c=>`<option value="${esc(c)}"${c===cv?" selected":""}>${esc(c)}</option>`).join("");assetListData.innerHTML=state.assets.map(a=>`<option value="${esc(a)}">`).join("");const av=assetFilter.value;assetFilter.innerHTML=`<option value="">All assets</option>`+state.assets.map(a=>`<option value="${esc(a)}"${a===av?" selected":""}>${esc(a)}</option>`).join("")}
-function renderAssetSettings(){assetList.innerHTML=state.assets.length?state.assets.map((a,i)=>`<span class="chip">${esc(a)} <button class="link-btn danger-link del-asset" data-i="${i}">×</button></span>`).join(""):`<div class="empty-assets"><strong>No assets yet</strong><span>Add one when you are ready.</span></div>`;document.querySelectorAll(".del-asset").forEach(b=>b.onclick=()=>{state.assets.splice(+b.dataset.i,1);saveState();renderAll()})} <button class="link-btn danger-link del-asset" data-i="${i}">×</button></span>`).join("");document.querySelectorAll(".del-asset").forEach(b=>b.onclick=()=>{state.assets.splice(+b.dataset.i,1);saveState();renderAll()})}
+function renderAssetSettings(){
+  assetList.innerHTML=state.assets.length
+    ? state.assets.map((a,i)=>`<span class="chip">${esc(a)} <button class="link-btn danger-link del-asset" data-i="${i}">×</button></span>`).join("")
+    : `<div class="empty-assets"><strong>No assets yet</strong><span>Add one when you are ready.</span></div>`;
+  document.querySelectorAll(".del-asset").forEach(button=>{
+    button.onclick=()=>{
+      state.assets.splice(+button.dataset.i,1);
+      saveState();
+      renderAll();
+    };
+  });
+}
 function showNotice(t){importSummary.textContent=t;importSummary.classList.remove("hidden");setTimeout(()=>importSummary.classList.add("hidden"),9000)}
 
-document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tab,.view").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.querySelector(`#${b.dataset.view}`).classList.add("active");if(b.dataset.view==="dashboard")drawCashflow()});
+document.querySelectorAll(".tab").forEach(button=>{
+  button.addEventListener("click",()=>{
+    const target=document.getElementById(button.dataset.view);
+    if(!target){
+      console.error(`Navigation target not found: ${button.dataset.view}`);
+      return;
+    }
+    document.querySelectorAll(".tab").forEach(item=>{
+      item.classList.remove("active");
+      item.setAttribute("aria-selected","false");
+    });
+    document.querySelectorAll(".view").forEach(view=>view.classList.remove("active"));
+    button.classList.add("active");
+    button.setAttribute("aria-selected","true");
+    target.classList.add("active");
+    if(button.dataset.view==="dashboard")drawCashflow();
+  });
+});
 csvInput.onchange=e=>{const f=e.target.files[0];if(f)importCSV(f).catch(x=>alert(x.message));e.target.value=""};
 pdfInput.onchange=e=>{const f=e.target.files[0];if(f)handlePdf(f).catch(x=>alert(x.message));e.target.value=""};
 confirmPdfImportBtn.onclick=e=>{e.preventDefault();const rows=pendingPdfRows.filter(r=>r.selected).map(({selected,confidence,...r})=>r);previewDialog.close();commitTransactions(rows,"PDF");pendingPdfRows=[]};
@@ -475,8 +650,8 @@ savePreferencesBtn.onclick=()=>{state.usageMode=usageMode.value;state.currency=c
 loadSampleDataBtn.onclick=()=>{if(state.transactions.some(t=>t.source==="Sample"))return alert("Sample data is already loaded.");state.transactions.push(...sampleTransactions());saveState();renderAll();showNotice("Optional sample data loaded.")};
 function openSetup(){onboardingUsage.value=state.usageMode||"personal";onboardingCurrency.value=state.currency||"AUD";onboardingTheme.value=state.theme||"light";onboardingAsset.value="";onboardingSample.checked=false;onboardingDialog.showModal()}
 runSetupBtn.onclick=openSetup;
-finishOnboardingBtn.onclick=()=>{state.usageMode=onboardingUsage.value;state.currency=onboardingCurrency.value;state.theme=onboardingTheme.value;const asset=norm(onboardingAsset.value);if(asset&&!state.assets.includes(asset))state.assets.push(asset);if(onboardingSample.checked&&!state.transactions.some(t=>t.source==="Sample"))state.transactions.push(...sampleTransactions());state.onboardingComplete=true;document.body.classList.toggle("dark",state.theme==="dark");themeBtn.textContent=state.theme==="dark"?"☀️":"🌙";updateGreeting();setInterval(updateGreeting,60000);usageMode.value=state.usageMode;currencySetting.value=state.currency;saveState();onboardingDialog.close();renderAll()};
-themeBtn.onclick=()=>{state.theme=state.theme==="dark"?"light":"dark";document.body.classList.toggle("dark",state.theme==="dark");themeBtn.textContent=state.theme==="dark"?"☀️":"🌙";updateGreeting();setInterval(updateGreeting,60000);saveState();drawCashflow()};
+finishOnboardingBtn.onclick=()=>{state.usageMode=onboardingUsage.value;state.currency=onboardingCurrency.value;state.theme=onboardingTheme.value;const asset=norm(onboardingAsset.value);if(asset&&!state.assets.includes(asset))state.assets.push(asset);if(onboardingSample.checked&&!state.transactions.some(t=>t.source==="Sample"))state.transactions.push(...sampleTransactions());state.onboardingComplete=true;document.body.classList.toggle("dark",state.theme==="dark");themeBtn.textContent=state.theme==="dark"?"☀️":"🌙";updateGreeting();usageMode.value=state.usageMode;currencySetting.value=state.currency;saveState();onboardingDialog.close();renderAll()};
+themeBtn.onclick=()=>{state.theme=state.theme==="dark"?"light":"dark";document.body.classList.toggle("dark",state.theme==="dark");themeBtn.textContent=state.theme==="dark"?"☀️":"🌙";updateGreeting();saveState();drawCashflow()};
 document.body.classList.toggle("dark",state.theme==="dark");themeBtn.textContent=state.theme==="dark"?"☀️":"🌙";updateGreeting();setInterval(updateGreeting,60000);
 window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferredPrompt=e;installBtn.classList.remove("hidden")});installBtn.onclick=async()=>{if(deferredPrompt){deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null}};
 if("serviceWorker"in navigator&&location.protocol.startsWith("http"))navigator.serviceWorker.register("service-worker.js");
