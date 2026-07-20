@@ -1,20 +1,16 @@
-BALANCEIQ VERSION 5 — COMMERCIAL PREVIEW
+BALANCEIQ V5.1 — SMART DOCUMENT SCANNER
 
-WHAT IS NEW
-- Complete BalanceIQ rebrand with a cleaner commercial interface.
-- Smart receipt camera capture for phones.
-- Optional on-device receipt OCR through Tesseract.js when online.
-- Immediate expense creation from a saved receipt.
-- Automatic receipt-to-bank reconciliation during later CSV/PDF imports.
-- Confidence scoring using amount, date, merchant similarity and account.
-- Review workflow for uncertain receipt matches.
-- Duplicate protection for bank imports and repeat receipt scans.
-- Preserves receipt image, GST, account, payment method and bank details.
-- Version 4 encrypted Supabase cloud sync remains included.
-- Installable PWA and ready to become a Capacitor Android project.
+NEW IN 5.1
+- Multi-section receipt scanning for long receipts.
+- Add overlapping photos from top to bottom and join them into one record.
+- Scanner-style grayscale and contrast enhancement before OCR.
+- Rotate or remove the last section before reading.
+- OCR reads each section separately for greater accuracy.
+- Improved merchant, total, date, GST and receipt-number extraction.
+- Receipt-created expenses still reconcile against later bank CSV/PDF imports without duplication.
 
-DEPLOYMENT
-Replace the files in your GitHub Pages repository with all files in this package. After deployment, hard refresh or remove/reinstall the existing PWA so the BalanceIQ v5 service worker is loaded.
+INSTALL
+Replace all files in the GitHub Pages repository, commit, then hard refresh or reinstall the PWA to clear the old service-worker cache.
 
-IMPORTANT
-This is a working commercial-preview build, not yet a Play Store production release. Receipt OCR quality depends on image quality and internet access to load Tesseract.js. Manual entry remains available.
+SCANNING TIPS
+Use bright, even lighting. Keep the receipt flat. For long receipts, overlap each section by about 20 percent and capture from top to bottom. Review extracted values before saving.

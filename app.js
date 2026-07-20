@@ -336,14 +336,68 @@ csvInput.onchange=e=>{const f=e.target.files[0];if(f)importCSV(f).catch(x=>alert
 pdfInput.onchange=e=>{const f=e.target.files[0];if(f)handlePdf(f).catch(x=>alert(x.message));e.target.value=""};
 confirmPdfImportBtn.onclick=e=>{e.preventDefault();const rows=pendingPdfRows.filter(r=>r.selected).map(({selected,confidence,...r})=>r);previewDialog.close();commitTransactions(rows,"PDF");pendingPdfRows=[]};
 applyReviewsBtn.onclick=learnAccepted;transactionSearch.oninput=renderTransactions;categoryFilter.onchange=renderTransactions;assetFilter.onchange=renderTransactions;dashFrom.onchange=renderDashboard;dashTo.onchange=renderDashboard;fySelect.onchange=renderReports;
-async function openReceiptCapture(file){
-  pendingReceiptImage=file?await readFileDataUrl(file):"";
-  receiptPreview.src=pendingReceiptImage;receiptPreview.style.display=pendingReceiptImage?"block":"none";receiptPreviewEmpty.style.display=pendingReceiptImage?"none":"grid";
-  receiptDate.value=new Date().toISOString().slice(0,10);receiptMerchant.value="";receiptAmount.value="";receiptCategory.value="Uncategorised";receiptSubcategory.value="";receiptAccount.value="";receiptPaymentMethod.value="Card";receiptNumber.value="";receiptGst.value="";receiptNotes.value="";ocrStatus.textContent="Ready";receiptDialog.showModal();
+let pendingReceiptPages=[];
+async function loadImage(dataUrl){return new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=reject;img.src=dataUrl})}
+async function processScanPage(dataUrl,rotation=0){
+  const img=await loadImage(dataUrl),maxW=1500,scale=Math.min(1,maxW/(rotation%180?img.height:img.width));
+  const cw=Math.round((rotation%180?img.height:img.width)*scale),ch=Math.round((rotation%180?img.width:img.height)*scale);
+  const canvas=document.createElement('canvas');canvas.width=cw;canvas.height=ch;const ctx=canvas.getContext('2d',{willReadFrequently:true});
+  ctx.save();ctx.translate(cw/2,ch/2);ctx.rotate(rotation*Math.PI/180);ctx.drawImage(img,-img.width*scale/2,-img.height*scale/2,img.width*scale,img.height*scale);ctx.restore();
+  if(enhanceScan.checked){
+    const im=ctx.getImageData(0,0,cw,ch),d=im.data;
+    for(let i=0;i<d.length;i+=4){const g=.299*d[i]+.587*d[i+1]+.114*d[i+2];const v=Math.max(0,Math.min(255,(g-128)*1.55+148));d[i]=d[i+1]=d[i+2]=v;}
+    ctx.putImageData(im,0,0);
+  }
+  return canvas.toDataURL('image/jpeg',.88);
 }
-receiptImageInput.onchange=e=>{const f=e.target.files[0];if(f)openReceiptCapture(f);e.target.value=""};heroScanBtn.onclick=()=>receiptImageInput.click();
-runOcrBtn.onclick=async()=>{if(!pendingReceiptImage)return alert('Choose or photograph a receipt first.');if(!window.Tesseract)return alert('Receipt reader is unavailable while offline. You can still enter the details manually.');try{ocrStatus.textContent='Reading…';const result=await Tesseract.recognize(pendingReceiptImage,'eng',{logger:m=>{if(m.status==='recognizing text')ocrStatus.textContent=`Reading ${Math.round(m.progress*100)}%`}});const text=result.data.text||'';const lines=text.split(/\n/).map(x=>x.trim()).filter(Boolean);if(!receiptMerchant.value)receiptMerchant.value=lines.find(x=>/[A-Za-z]{3}/.test(x)&&!/^tax invoice/i.test(x))||'';const amounts=[...text.matchAll(/\$?\s*(\d{1,5}[.,]\d{2})/g)].map(m=>Number(m[1].replace(',','.'))).filter(n=>n>0&&n<100000);if(amounts.length)receiptAmount.value=Math.max(...amounts).toFixed(2);const date=text.match(/\b(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})\b/);if(date)receiptDate.value=parseDate(date[1]);const gst=text.match(/(?:GST|TAX)\s*\$?\s*(\d+[.,]\d{2})/i);if(gst)receiptGst.value=Number(gst[1].replace(',','.')).toFixed(2);ocrStatus.textContent='Details extracted';}catch(err){ocrStatus.textContent='Manual entry';alert('The receipt could not be read clearly. Please enter the details manually.')}};
-saveReceiptBtn.onclick=e=>{e.preventDefault();const receipt={id:crypto.randomUUID?crypto.randomUUID():`r-${Date.now()}`,merchant:norm(receiptMerchant.value),date:receiptDate.value,amount:Number(receiptAmount.value),category:receiptCategory.value||'Uncategorised',subcategory:receiptSubcategory.value,account:norm(receiptAccount.value),paymentMethod:receiptPaymentMethod.value,receiptNumber:norm(receiptNumber.value),gst:Number(receiptGst.value)||0,notes:receiptNotes.value,image:pendingReceiptImage,createdAt:new Date().toISOString(),status:receiptPaymentMethod.value==='Cash'?'cash':'awaiting'};if(!receipt.merchant||!receipt.date||!receipt.amount)return;const fingerprint=receiptFingerprint(receipt);if(state.receipts.some(r=>receiptFingerprint(r)===fingerprint))return alert('This receipt appears to have already been saved.');state.receipts.unshift(receipt);state.transactions.push(applyRule({date:receipt.date,description:receipt.merchant,merchant:receipt.merchant,amount:-Math.abs(receipt.amount),source:'Receipt',receiptId:receipt.id,reconciliationStatus:receipt.status,account:receipt.account,category:receipt.category,subcategory:receipt.subcategory,notes:receipt.notes,taxDeductible:false}));saveState();receiptDialog.close();pendingReceiptImage='';rebuildReviewQueue();renderAll();showNotice('Receipt saved. BalanceIQ will look for the matching bank transaction on future imports.')};
+async function rebuildReceiptPreview(){
+  if(!pendingReceiptPages.length){pendingReceiptImage='';receiptPreview.style.display='none';receiptPreviewEmpty.style.display='grid';scanPageStrip.innerHTML='';return}
+  const pages=[];for(const p of pendingReceiptPages)pages.push(await processScanPage(p.original,p.rotation||0));
+  const imgs=await Promise.all(pages.map(loadImage)),width=Math.max(...imgs.map(i=>i.width)),gap=12;
+  const heights=imgs.map(i=>Math.round(i.height*width/i.width)),canvas=document.createElement('canvas');canvas.width=width;canvas.height=heights.reduce((x,y)=>x+y,0)+gap*(imgs.length-1);
+  const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);let y=0;imgs.forEach((im,i)=>{ctx.drawImage(im,0,y,width,heights[i]);y+=heights[i]+gap});
+  pendingReceiptImage=canvas.toDataURL('image/jpeg',.88);receiptPreview.src=pendingReceiptImage;receiptPreview.style.display='block';receiptPreviewEmpty.style.display='none';
+  scanPageStrip.innerHTML=pages.map((p,i)=>`<div class="scan-page"><img src="${p}" alt="Receipt section ${i+1}"><span>${i+1}</span></div>`).join('');
+}
+async function addReceiptFiles(files,reset=false){
+  if(reset)pendingReceiptPages=[];
+  for(const f of [...files])pendingReceiptPages.push({original:await readFileDataUrl(f),rotation:0});
+  await rebuildReceiptPreview();
+}
+async function openReceiptCapture(fileOrFiles){
+  const files=fileOrFiles instanceof FileList||Array.isArray(fileOrFiles)?fileOrFiles:[fileOrFiles];
+  await addReceiptFiles(files,true);
+  receiptDate.value=new Date().toISOString().slice(0,10);receiptMerchant.value="";receiptAmount.value="";receiptCategory.value="Uncategorised";receiptSubcategory.value="";receiptAccount.value="";receiptPaymentMethod.value="Card";receiptNumber.value="";receiptGst.value="";receiptNotes.value="";ocrStatus.textContent=`${pendingReceiptPages.length} section${pendingReceiptPages.length===1?'':'s'} ready`;receiptDialog.showModal();
+}
+receiptImageInput.onchange=e=>{if(e.target.files.length)openReceiptCapture(e.target.files);e.target.value=""};heroScanBtn.onclick=()=>receiptImageInput.click();
+receiptMoreInput.onchange=async e=>{if(e.target.files.length){await addReceiptFiles(e.target.files);ocrStatus.textContent=`${pendingReceiptPages.length} sections ready`}e.target.value=''};
+rotateScanBtn.onclick=async()=>{if(!pendingReceiptPages.length)return;const p=pendingReceiptPages.at(-1);p.rotation=((p.rotation||0)+90)%360;await rebuildReceiptPreview()};
+removeScanBtn.onclick=async()=>{pendingReceiptPages.pop();await rebuildReceiptPreview();ocrStatus.textContent=pendingReceiptPages.length?`${pendingReceiptPages.length} sections ready`:'Add a receipt section'};
+enhanceScan.onchange=rebuildReceiptPreview;
+runOcrBtn.onclick=async()=>{
+  if(!pendingReceiptPages.length)return alert('Scan or import at least one receipt section first.');
+  if(!window.Tesseract)return alert('Receipt reader is unavailable while offline. You can still enter the details manually.');
+  try{
+    receiptPreview.parentElement.classList.add('scanning');let combined='';
+    for(let i=0;i<pendingReceiptPages.length;i++){
+      ocrStatus.textContent=`Reading section ${i+1} of ${pendingReceiptPages.length}…`;
+      const image=await processScanPage(pendingReceiptPages[i].original,pendingReceiptPages[i].rotation||0);
+      const result=await Tesseract.recognize(image,'eng',{logger:m=>{if(m.status==='recognizing text')ocrStatus.textContent=`Section ${i+1}: ${Math.round(m.progress*100)}%`}});combined+='\n'+(result.data.text||'');
+    }
+    const text=combined,lines=text.split(/\n/).map(x=>x.trim()).filter(Boolean);
+    const ignore=/^(tax invoice|receipt|invoice|welcome|thank you|abn\b)/i;
+    if(!receiptMerchant.value)receiptMerchant.value=lines.find(x=>/[A-Za-z]{3}/.test(x)&&!ignore.test(x)&&x.length<70)||'';
+    const totalPatterns=[/(?:grand\s*total|amount\s*paid|total\s*(?:aud)?|balance\s*due)\s*[:$ ]+([0-9,]+\.\d{2})/ig,/\$\s*([0-9,]+\.\d{2})/g];
+    let totals=[];for(const rx of totalPatterns)totals.push(...[...text.matchAll(rx)].map(m=>Number(m[1].replace(/,/g,''))));totals=totals.filter(n=>n>0&&n<100000);
+    if(totals.length)receiptAmount.value=Math.max(...totals).toFixed(2);
+    const date=text.match(/\b(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})\b|\b(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{2,4})\b/i);if(date)receiptDate.value=parseDate(date[1]||date[2]);
+    const gst=text.match(/(?:GST|TAX)(?:\s+INCLUDED)?\s*[:$ ]+([0-9,]+\.\d{2})/i);if(gst)receiptGst.value=Number(gst[1].replace(/,/g,'')).toFixed(2);
+    const rn=text.match(/(?:receipt|invoice|trans(?:action)?|order)\s*(?:no|number|#)?\s*[:#]?\s*([A-Z0-9-]{4,})/i);if(rn)receiptNumber.value=rn[1];
+    receiptNotes.value=(receiptNotes.value?receiptNotes.value+'\n':'')+`Scanned from ${pendingReceiptPages.length} section${pendingReceiptPages.length===1?'':'s'}.`;
+    ocrStatus.textContent='Details extracted — please check';
+  }catch(err){console.error(err);ocrStatus.textContent='Manual check needed';alert('The scanned receipt could not be read reliably. Please check the image and enter any missing details manually.')}finally{receiptPreview.parentElement.classList.remove('scanning')}
+};
+saveReceiptBtn.onclick=e=>{e.preventDefault();const receipt={id:crypto.randomUUID?crypto.randomUUID():`r-${Date.now()}`,merchant:norm(receiptMerchant.value),date:receiptDate.value,amount:Number(receiptAmount.value),category:receiptCategory.value||'Uncategorised',subcategory:receiptSubcategory.value,account:norm(receiptAccount.value),paymentMethod:receiptPaymentMethod.value,receiptNumber:norm(receiptNumber.value),gst:Number(receiptGst.value)||0,notes:receiptNotes.value,image:pendingReceiptImage,createdAt:new Date().toISOString(),status:receiptPaymentMethod.value==='Cash'?'cash':'awaiting'};if(!receipt.merchant||!receipt.date||!receipt.amount)return;const fingerprint=receiptFingerprint(receipt);if(state.receipts.some(r=>receiptFingerprint(r)===fingerprint))return alert('This receipt appears to have already been saved.');state.receipts.unshift(receipt);state.transactions.push(applyRule({date:receipt.date,description:receipt.merchant,merchant:receipt.merchant,amount:-Math.abs(receipt.amount),source:'Receipt',receiptId:receipt.id,reconciliationStatus:receipt.status,account:receipt.account,category:receipt.category,subcategory:receipt.subcategory,notes:receipt.notes,taxDeductible:false}));saveState();receiptDialog.close();pendingReceiptImage='';pendingReceiptPages=[];rebuildReviewQueue();renderAll();showNotice('Receipt saved. BalanceIQ will look for the matching bank transaction on future imports.')};
 addTransactionBtn.onclick=()=>openTransaction();saveTransactionBtn.onclick=e=>{e.preventDefault();const t={date:txDate.value,amount:+txAmount.value,description:txDescription.value,category:txCategory.value,subcategory:txSubcategory.value,asset:txAsset.value,taxDeductible:txTax.value==="true",tag:txTag.value,notes:txNotes.value,reviewed:true,auto:false,source:"Manual"};const i=txIndex.value;if(i==="")state.transactions.push(t);else state.transactions[+i]={...state.transactions[+i],...t};rebuildReviewQueue();saveState();transactionDialog.close();renderAll()};
 addRuleBtn.onclick=()=>ruleDialog.showModal();saveRuleBtn.onclick=e=>{e.preventDefault();state.rules.unshift({pattern:upper(rulePattern.value),category:ruleCategory.value,subcategory:ruleSubcategory.value,asset:ruleAsset.value});ruleForm.reset();ruleDialog.close();saveState();renderAll()};
 addAssetBtn.onclick=()=>{const a=norm(newAssetName.value);if(a&&!state.assets.includes(a))state.assets.push(a);newAssetName.value="";saveState();renderAll()};

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#17365d">
-  <title>BalanceIQ v5</title>
+  <title>BalanceIQ v5.1</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -104,7 +104,7 @@
 <section id="receipts" class="view">
   <div class="section-heading">
     <div><h2>Smart Receipts</h2><p>Capture an expense now. BalanceIQ will reconcile it when the bank transaction arrives.</p></div>
-    <label class="file-btn scan-cta">▧ Scan receipt<input id="receiptImageInput" type="file" accept="image/*" capture="environment"></label>
+    <label class="file-btn scan-cta">▧ Scan receipt<input id="receiptImageInput" type="file" accept="image/*" capture="environment" multiple></label>
   </div>
   <div class="receipt-stats">
     <article><span>Awaiting match</span><strong id="receiptAwaiting">0</strong></article>
@@ -257,7 +257,17 @@
 <form method="dialog" id="receiptForm">
   <div class="dialog-title-row"><div><span class="eyebrow">SMART CAPTURE</span><h2>New receipt</h2></div><span id="ocrStatus" class="status pending">Ready</span></div>
   <div class="receipt-capture-grid">
-    <div class="receipt-preview-wrap"><img id="receiptPreview" alt="Receipt preview"><div id="receiptPreviewEmpty">Receipt image preview</div></div>
+    <div class="scanner-pane">
+      <div class="receipt-preview-wrap"><img id="receiptPreview" alt="Scanned receipt preview"><div id="receiptPreviewEmpty">Scan the receipt in one or more sections</div></div>
+      <div id="scanPageStrip" class="scan-page-strip"></div>
+      <div class="scanner-tools">
+        <label class="file-btn secondary">＋ Add another section<input id="receiptMoreInput" type="file" accept="image/*" capture="environment" multiple></label>
+        <button id="rotateScanBtn" type="button" class="secondary">↻ Rotate last</button>
+        <button id="removeScanBtn" type="button" class="secondary">Remove last</button>
+      </div>
+      <label class="scanner-option"><input id="enhanceScan" type="checkbox" checked> Enhance like a document scanner</label>
+      <p class="small-note">For long receipts, photograph overlapping sections from top to bottom. BalanceIQ enhances and joins them before reading.</p>
+    </div>
     <div class="form-grid">
       <label class="wide">Merchant<input id="receiptMerchant" required placeholder="e.g. Bunnings Belmont"></label>
       <label>Receipt date<input id="receiptDate" type="date" required></label>
@@ -271,7 +281,7 @@
       <label class="wide">Notes<textarea id="receiptNotes" rows="2"></textarea></label>
     </div>
   </div>
-  <div class="dialog-actions"><button value="cancel" class="secondary">Cancel</button><button id="runOcrBtn" type="button" class="secondary">Read receipt</button><button id="saveReceiptBtn" value="default">Save expense</button></div>
+  <div class="dialog-actions"><button value="cancel" class="secondary">Cancel</button><button id="runOcrBtn" type="button" class="secondary">Read scanned receipt</button><button id="saveReceiptBtn" value="default">Save expense</button></div>
 </form>
 </dialog>
 
