@@ -1,7 +1,7 @@
 {
   "name": "BalanceIQ",
   "short_name": "BalanceIQ",
-  "description": "BalanceIQ 6.9 \u2014 whole-sequence currency reconstruction and footer-validated receipt identification.",
+  "description": "BalanceIQ 7.0 \u2014 reference-number protection, weekday date correction and dedicated footer/GST OCR.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#071d3b",

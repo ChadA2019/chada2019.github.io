@@ -149,7 +149,7 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_VERSION="6.9";
+const APP_VERSION="7.0";
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 const defaultCategories=["Alcohol","Bills & Direct Debits","Cafes","Cash","Child Support","Dining Out","Education","Entertainment","Fuel","Groceries","Health & Fitness","Home & Maintenance","Income","Insurance","Loans & Finance","Loans & Mortgages","Medical","Personal Care","Pets","Refunds","Shopping","Subscriptions","Take Away","Transfers","Transport","Travel","Uncategorised","Vehicles"];
 const subcategoriesByCategory={
@@ -1347,7 +1347,9 @@ function buildReceiptChannels(input){
       header:cleanOcrPassText(input.header||""),
       totals:cleanOcrPassText(input.totals||""),
       full:cleanOcrPassText(input.full||""),
-      date:cleanOcrPassText(input.date||"")
+      date:cleanOcrPassText(input.date||""),
+      footer:cleanOcrPassText(input.footer||""),
+      gst:cleanOcrPassText(input.gst||"")
     };
   }
   const split=splitOcrPasses(String(input||""));
@@ -1355,11 +1357,13 @@ function buildReceiptChannels(input){
     header:cleanOcrPassText(split.header),
     totals:cleanOcrPassText(split.totals),
     full:cleanOcrPassText(split.full||String(input||"")),
-    date:""
+    date:"",
+    footer:"",
+    gst:""
   };
 }
 function combinedReceiptText(channels){
-  return [channels.full,channels.date,channels.header,channels.totals].filter(Boolean).join("\n");
+  return [channels.full,channels.date,channels.footer,channels.gst,channels.header,channels.totals].filter(Boolean).join("\n");
 }
 function bunningsEvidenceScore(text){
   const upperText=upper(text);
@@ -1495,6 +1499,31 @@ function labelledMoneyValues(line){
   const labelled=/\b(?:TOTAL|FOTAL|FOOTED|SUBTOTAL|SUBTOTAR|SUBLOTAI|POWERPASS|EFTPOS|EFT|VISA|MASTERCARD|CARD|GST|TAX)\b/i.test(line);
   return currencyCandidates(line,{labelled});
 }
+
+function isReferenceOnlyLine(line){
+  const text=upper(line);
+  return (
+    /\bCARD\s*(?:NO|NUMBER|HO|WO|NG|KO)\b/.test(text) ||
+    /\bACCOUNT\s*(?:NO|NUMBER)\b/.test(text) ||
+    /\bABN\b/.test(text) ||
+    /\bPHONE\b|\bPH\s*:/.test(text) ||
+    /\bORDER\s*(?:NO|NUMBER)\b/.test(text) ||
+    /\bJOB\s*(?:NO|NUMBER)\b/.test(text) ||
+    /\bAUTH(?:ORISATION|ORIZATION)?\s*(?:NO|CODE|NUMBER)?\b/.test(text) ||
+    /\bINVOICE\s*(?:NO|NUMBER)\b/.test(text) ||
+    /\bRECEIPT\s*(?:NO|NUMBER)\b/.test(text) ||
+    /\b\d{6}[-\s]\d{3,6}\b/.test(text)
+  );
+}
+function isCardPaymentLine(line){
+  const text=upper(line);
+  if(isReferenceOnlyLine(line))return false;
+  return (
+    /\b(?:EFT|EFTPOS|VISA|MASTERCARD|POWERPASS)\b/.test(text) ||
+    /\bCARD\b.*(?:PAID|PAYMENT|PURCHASE|DEBIT|CREDIT)\b/.test(text)
+  );
+}
+
 function safeReceiptTotal(channels,merchant=""){
   const scored=new Map();
   const add=(candidate,score,source,role)=>{
@@ -1519,11 +1548,12 @@ function safeReceiptTotal(channels,merchant=""){
   for(const [source,text,baseWeight] of sources){
     const lines=ocrLines(text);
     for(const line of lines){
+      if(isReferenceOnlyLine(line))continue;
       const candidates=labelledMoneyValues(line);
       if(!candidates.length)continue;
 
       const isTotal=/^\s*(?:TOTAL|FOTAL|FOOTED)\b|\bAMOUNT\s+PAID\b/i.test(line);
-      const isPayment=/\bPOWERPASS\b|\bPOVERPASE\b|\bPOUSR?PASS\b|\bEFTPOS\b|\bEFT\b|\bVISA\b|\bMASTERCARD\b|\bCARD\b/i.test(line);
+      const isPayment=isCardPaymentLine(line)||/\bPOWERPASS\b|\bPOVERPASE\b|\bPOUSR?PASS\b/i.test(line);
       const isSubtotal=/\bSUB\s*TOTAL\b|\bSUBTOTAL\b|\bSUBTOTAR\b|\bSUBLOTAI\b/i.test(line);
       const isGst=/\bGST\b|\bBST\b|\bTAX\s*AMOUNT\b/i.test(line);
       const isIncludedTotal=fuzzyIncludedTotalEvidence(line);
@@ -1660,6 +1690,15 @@ function invoiceCandidatesFromText(text,source,weight){
 function footerInvoiceHints(text){
   const hints=[];
 
+  for(const match of text.matchAll(/\bR\d+\b[\s\S]{0,45}?([0-9]{3})[-\s]([0-9]{5})[-\s]([0-9]{4})[-\s](20\d{2})[-\s][0-9A-Z]{2}[-\s][0-9A-Z]{2}/gi)){
+    hints.push({
+      suffix:`${match[1]}${match[2]}`,
+      store:match[3],
+      invoice:`${match[3]}/${match[1]}${match[2]}`,
+      confidence:96
+    });
+  }
+
   // Standard footer: #019-78347-2052-2026-07-07
   for(const match of text.matchAll(/[#H]?\s*([0-9]{3})[-\s]([0-9]{5})[-\s]([0-9]{4})[-\s](20\d{2})[-\s][0-9]{2}[-\s][0-9]{2}/gi)){
     hints.push({
@@ -1689,7 +1728,9 @@ function chooseReceiptNumber(text,merchant=""){
   }
 
   const passes=splitOcrPasses(text);
+  const isolated=buildReceiptChannels(text);
   const candidates=[
+    ...invoiceCandidatesFromText(isolated.footer||"","footer-pass",170),
     ...invoiceCandidatesFromText(passes.full,"full",100),
     ...invoiceCandidatesFromText(passes.header,"header",55),
     ...invoiceCandidatesFromText(passes.totals,"totals",15),
@@ -1851,6 +1892,34 @@ function recoverDateCandidates(channels){
 
   return out;
 }
+
+const weekdayMap={SUN:0,MON:1,TUE:2,WED:3,THU:4,FRI:5,SAT:6};
+function weekdayFromContext(text,raw){
+  const index=String(text||"").indexOf(raw||"");
+  const context=String(text||"").slice(Math.max(0,index-12),index+String(raw||"").length+4).toUpperCase();
+  const match=context.match(/\b(SUN|MON|TUE|WED|THU|FRI|SAT)\b/);
+  return match?weekdayMap[match[1]]:null;
+}
+function dateMatchesWeekday(iso,weekday){
+  if(weekday===null||weekday===undefined)return true;
+  const [year,month,day]=iso.split("-").map(Number);
+  return new Date(Date.UTC(year,month-1,day)).getUTCDay()===weekday;
+}
+function repairDateYearByWeekday(candidate,channels){
+  const weekday=weekdayFromContext(combinedReceiptText(channels),candidate.raw);
+  if(weekday===null||dateMatchesWeekday(candidate.value,weekday))return candidate.value;
+  const [year,month,day]=candidate.value.split("-").map(Number);
+  const currentYear=new Date().getFullYear();
+  const possible=[];
+  for(let y=Math.max(2000,currentYear-3);y<=currentYear;y++){
+    const iso=`${y}-${String(month).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+    if(dateMatchesWeekday(iso,weekday))possible.push(iso);
+  }
+  if(possible.length===1)return possible[0];
+  const sameEnding=possible.find(iso=>iso.slice(2,4)===String(year).slice(-2));
+  return sameEnding||candidate.value;
+}
+
 function chooseRecoveredDate(channels){
   const candidates=recoverDateCandidates(channels);
   const scores=new Map();
@@ -1859,13 +1928,19 @@ function chooseRecoveredDate(channels){
   const todayIso=`${currentYear}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
 
   for(const candidate of candidates){
-    const year=Number(candidate.value.slice(0,4));
+    const repairedValue=repairDateYearByWeekday(candidate,channels);
+    const year=Number(repairedValue.slice(0,4));
     let weight=candidate.weight;
+    const weekday=weekdayFromContext(combinedReceiptText(channels),candidate.raw);
+    if(weekday!==null&&!dateMatchesWeekday(candidate.value,weekday)){
+      weight-=80;
+      if(repairedValue!==candidate.value)weight+=145;
+    }
 
     // Reject impossible future years. Same-year future dates are allowed only within 7 days.
     if(year>currentYear)continue;
-    if(candidate.value>todayIso){
-      const candidateDate=new Date(`${candidate.value}T00:00:00`);
+    if(repairedValue>todayIso){
+      const candidateDate=new Date(`${repairedValue}T00:00:00`);
       const todayDate=new Date(`${todayIso}T00:00:00`);
       const days=(candidateDate-todayDate)/86400000;
       if(days>7)continue;
@@ -1881,7 +1956,7 @@ function chooseRecoveredDate(channels){
     if(candidate.source==="full")weight+=35;
     if(candidate.source==="date"&&year<currentYear-2)weight-=35;
 
-    scores.set(candidate.value,(scores.get(candidate.value)||0)+Math.max(1,weight));
+    scores.set(repairedValue,(scores.get(repairedValue)||0)+Math.max(1,weight));
   }
 
   const groups={};
@@ -2220,9 +2295,11 @@ runOcrBtn.onclick=async()=>{
       const full=geometry.source;
       const header=await cropReceiptRegion(full,0,.42,{threshold:true,scale:1.9});
       const totals=await cropReceiptRegion(full,.40,.80,{threshold:true,scale:1.9});
+      const footer=await cropReceiptRegion(full,.72,.97,{threshold:true,scale:2.2});
+      const gst=await cropReceiptRegion(full,.60,.79,{threshold:true,scale:2.5});
       const dateVariants=await makeDateStripVariants(full);
 
-      for(const [label,image] of [["full",full],["header",header],["totals",totals]]){
+      for(const [label,image] of [["full",full],["header",header],["totals",totals],["footer",footer],["gst",gst]]){
         const report=await recogniseScanPass(image,label,section,m=>{
           if(m.status==="recognizing text")ocrStatus.textContent=`Section ${section} ${label}: ${Math.round(m.progress*100)}%`;
         });
@@ -2254,7 +2331,9 @@ runOcrBtn.onclick=async()=>{
       header:sectionReports.filter(r=>r.pass==="header").map(r=>r.text).join("\n"),
       totals:sectionReports.filter(r=>r.pass==="totals").map(r=>r.text).join("\n"),
       full:sectionReports.filter(r=>r.pass==="full").map(r=>r.text).join("\n"),
-      date:sectionReports.filter(r=>r.pass.startsWith("date-")).map(r=>r.text).join("\n")
+      date:sectionReports.filter(r=>r.pass.startsWith("date-")).map(r=>r.text).join("\n"),
+      footer:sectionReports.filter(r=>r.pass==="footer").map(r=>r.text).join("\n"),
+      gst:sectionReports.filter(r=>r.pass==="gst").map(r=>r.text).join("\n")
     };
     const parsed=parseReceiptChannels(channels);
     const ocrAverage=Math.round(sectionReports.reduce((s,r)=>s+r.confidence,0)/Math.max(1,sectionReports.length));

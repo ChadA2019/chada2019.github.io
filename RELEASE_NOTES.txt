@@ -1,15 +1,9 @@
-BALANCEIQ v6.9
-Build 2026.07.21.017
+BALANCEIQ v7.0
+Build 2026.07.21.018
 
-Fixed from the supplied Belmont retest:
-- $236 . 9. 3 and $236 93 resolve to $236.93.
-- $2.36 cannot be created from a substring inside the full amount.
-- poverPase is recognised as PowerPass/payment evidence.
-- Footer reference H019-T8347-2052-2026-07-07 validates invoice 2052/01978347.
-- $21.5) can be recovered as GST $21.55.
-
-Retained:
-- Receipt geometry
-- Date validation
-- Subtotal conflict rejection
-- GST plausibility limits
+Fixed from the supplied Belmont v6.9 test:
+- CARD NO: 903601-369 cannot produce $3.69.
+- Exact Total $236.93 wins.
+- Tuesday 07/07/2006 is corrected to 07/07/2026 using weekday validation.
+- Dedicated footer OCR supports invoice 2052/01978347.
+- Dedicated GST OCR improves distinction between $21.55 and nearby OCR variants.
