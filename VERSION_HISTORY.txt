@@ -23,3 +23,6 @@ Last known-good navigation baseline and smart receipt scanner.
 
 7.7 — Separated Total Consensus Release
 Semantic field labels now outrank crop repetition; improved Bunnings footer receipt-number recovery.
+
+7.8 — 2026-07-21
+Bunnings degraded payment-label total consensus and focused-pass invoice voting.

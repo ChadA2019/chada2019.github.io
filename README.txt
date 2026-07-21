@@ -1,3 +1,3 @@
-BalanceIQ v7.7 — Separated Total Consensus Release
+BalanceIQ v7.8 — Bunnings Degraded-Label Consensus Release
 
-Deploy every file in this folder to replace the existing website files.
+Deploy all files in this folder together.

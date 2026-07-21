@@ -149,7 +149,7 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_VERSION="7.7";
+const APP_VERSION="7.8";
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 const defaultCategories=["Alcohol","Bills & Direct Debits","Cafes","Cash","Child Support","Dining Out","Education","Entertainment","Fuel","Groceries","Health & Fitness","Home & Maintenance","Income","Insurance","Loans & Finance","Loans & Mortgages","Medical","Personal Care","Pets","Refunds","Shopping","Subscriptions","Take Away","Transfers","Transport","Travel","Uncategorised","Vehicles"];
 const subcategoriesByCategory={
@@ -1603,7 +1603,7 @@ function isCardPaymentLine(line){
   if(isReferenceOnlyLine(line))return false;
   const hasAmount=currencyCandidates(line,{labelled:true}).some(candidate=>candidate.value>0);
   return (
-    (/\b(?:EFT|EFTPOS|VISA|MASTERCARD)\b/.test(text)&&hasAmount) ||
+    (/\b(?:EFT|EFTPOS|ET|FT|VISA|MASTERCARD)\b/.test(text)&&hasAmount) ||
     (/\bPOWERPASS\b/.test(text)&&(hasAmount||/\b(?:PAID|PAYMENT|PURCHASE|DEBIT|CREDIT)\b/.test(text))) ||
     (/\bCARD\b/.test(text)&&/\b(?:PAID|PAYMENT|PURCHASE|DEBIT|CREDIT)\b/.test(text))
   );
@@ -1768,6 +1768,25 @@ function safeReceiptTotal(channels,merchant=""){
     return {value:roleConsensusTotal.value,candidates:ranked.slice(0,10),trusted:true};
   }
 
+  // v7.8: degraded Bunnings payment labels are often read as "ET", "FT",
+  // "vA" or are lost entirely. When a separated Total label exists, a clear
+  // SubTotal value repeated independently at least three times in the totals
+  // area is accepted as the total. This is deliberately restricted to Bunnings
+  // and requires both semantic subtotal evidence and repeated exact money OCR.
+  const bunningsSubtotalConsensus=merchant==="Bunnings Warehouse"&&ranked.find(item=>{
+    const clearMoney=item.repairs.some(repair=>[
+      "exact-decimal","spaced-both-sides-decimal","fragmented-decimal-sequence","spaced-cents"
+    ].includes(repair));
+    const totalsAreaHits=item.sources.filter(source=>/^(?:totals-right|totals|full):/i.test(source)).length;
+    return hasSeparatedTotalLabel&&item.value>0&&item.value<=5000&&clearMoney&&
+      item.roles.includes("subtotal")&&item.count>=3&&totalsAreaHits>=3;
+  });
+  if(bunningsSubtotalConsensus){
+    bunningsSubtotalConsensus.score+=1400;
+    ranked=ranked.sort((a,b)=>b.score-a.score||b.count-a.count||a.value-b.value);
+    return {value:bunningsSubtotalConsensus.value,candidates:ranked.slice(0,10),trusted:true};
+  }
+
   const best=ranked[0];
   const second=ranked[1];
   const trusted=!!best &&
@@ -1916,7 +1935,7 @@ function footerInvoiceHints(text){
 
   return hints;
 }
-function chooseReceiptNumber(text,merchant=""){
+function chooseReceiptNumber(text,merchant="",channels={}){
   if(merchant!=="Bunnings Warehouse"){
     return {value:extractReceiptNumber(text,merchant),candidates:[]};
   }
@@ -1924,7 +1943,10 @@ function chooseReceiptNumber(text,merchant=""){
   const passes=splitOcrPasses(text);
   const isolated=buildReceiptChannels(text);
   const candidates=[
-    ...invoiceCandidatesFromText(isolated.footer||"","footer-pass",170),
+    ...invoiceCandidatesFromText(channels.footer||isolated.footer||"","footer-pass",190),
+    ...invoiceCandidatesFromText(channels.date||"","focused-date",150),
+    ...invoiceCandidatesFromText(channels.header||"","focused-header",110),
+    ...invoiceCandidatesFromText(channels.full||"","focused-full",100),
     ...invoiceCandidatesFromText(passes.full,"full",100),
     ...invoiceCandidatesFromText(passes.header,"header",55),
     ...invoiceCandidatesFromText(passes.totals,"totals",15),
@@ -2303,7 +2325,7 @@ function parseReceiptChannels(input){
   const dateTime=extractReceiptDateTime(text);
 
   const totalChoice=safeReceiptTotal(channels,merchantInfo.merchant);
-  const receiptChoice=chooseReceiptNumber(text,merchantInfo.merchant);
+  const receiptChoice=chooseReceiptNumber(text,merchantInfo.merchant,channels);
   if(!receiptChoice.value&&merchantInfo.merchant==="Bunnings Warehouse"){
     const reconstructed=reconstructBunningsInvoice(text);
     if(reconstructed){

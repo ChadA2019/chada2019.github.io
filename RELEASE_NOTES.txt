@@ -1,21 +1,14 @@
-BalanceIQ v7.7 — GST Plausibility and Digit Repair
+BalanceIQ v7.8 — Bunnings Degraded-Label Consensus
+Build 2026.07.21.025
 
-- Repairs OCR GST strings with one inserted digit, such as $211.55 or $214.55, back to $21.55 when consistent with Total/11.
-- Prevents damaged printed GST values such as $21.70 from overriding a strongly supported expected GST.
-- Retains v7.6 receipt-number recovery and all prior total/date improvements.
+Changes
+- Recovers a separated Bunnings total when the word Total is present, the same clear amount is identified as SubTotal, and that amount is independently repeated across at least three totals-area OCR readings.
+- Recognises damaged EFT payment labels such as ET and FT when followed by a currency amount.
+- Gives focused date/header OCR passes greater weight when selecting a Bunnings invoice number, preventing a single damaged full-page reading from beating repeated correct readings.
+- Retains v7.7 GST plausibility validation and all prior date, total and footer invoice protections.
 
-BalanceIQ v7.7 — Bunnings Footer Invoice Recovery
-
-- Recovers Bunnings receipt numbers from partial barcode/footer references such as #019-78347-2052 even when the following year/date is merged or corrupted.
-- Prevents product barcodes from being reconstructed as receipt numbers.
-- Restricts digit-based invoice reconstruction to text immediately associated with an Invoice Number label.
-- Retains all v7.5 total, GST and date improvements.
-
-BalanceIQ v7.7
-Build 2026.07.21.024
-
-- A printed two-decimal amount on an explicitly labelled Total line is now authoritative.
-- Repeated item prices from overlapping OCR crops can no longer outrank the labelled receipt total.
-- GST can again fall back to Total / 11 when the receipt states GST is included but the printed GST digits are unreadable.
-- Bunnings receipt numbers now strongly prefer the encoded footer reference over repeated damaged header OCR.
-- Retains v7.3 focused date recovery and v7.2 compact-currency protections.
+Expected result for the supplied Busselton receipt
+Date: 01/01/2026
+Total: $91.06
+GST: $8.28
+Receipt number: 2063/01184341
