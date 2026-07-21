@@ -1,26 +1,24 @@
-BALANCEIQ v6.7 VALIDATION
+BALANCEIQ v6.8 VALIDATION
 
 JavaScript syntax: PASS
-Future-date rejection: PASS
-Full-pass date arbitration: PASS
-EFT/payment total arbitration: PASS
-Subtotal conflict penalty: PASS
-GST percentage validation: PASS
-Busselton supplied-case regression: PASS
-Mirrabooka baseline regression: PASS
+Compact currency reconstruction: PASS
+Payment-total consensus: PASS
+Subtotal conflict rejection: PASS
+Belmont supplied-case regression: PASS
+Busselton baseline regression: PASS
 
-Busselton candidate validation {"merchant":"Bunnings Warehouse","branch":"","category":"Home & Maintenance","subcategory":"Hardware","date":"2026-01-01","time":"12:29:18 ","total":91.06,"gst":8.28,"receiptNumber":"2063/01184341","paymentMethod":"Card","parser":"Bunnings","merchantProfile":"bunnings","amountCandidates":[{"value":91.06,"score":1235,"count":3,"sources":["full:GST INCLUCED JH THE TOTAL $91.06","full:EFT $91.06","totals:EFT $91.06"],"roles":["included-total","payment","payment"]},{"value":391.06,"score":70,"count":2,"sources":["full:18 subTotar 391.06","totals:1a SubTotal: Co 391.06"],"roles":["subtotal","subtotal"]}],"dateCandidates":[{"value":"2026-01-01","score":130},{"value":"2020-01-01","score":25}],"rawDateCandidates":[{"value":"2028-01-01","source":"date","weight":130,"raw":"01/01/2028"},{"value":"2020-01-01","source":"date","weight":130,"raw":"01/01/20"},{"value":"2026-01-01","source":"full","weight":95,"raw":"01/01/2026"}],"receiptNumberCandidates":[{"value":"2063/01184341","score":50}],"gstCandidates":[{"value":8.28,"score":380}],"expectedGst":8.28,"totalTrusted":true,"confidence":{"overall":94,"fields":{"merchant":98,"date":92,"total":98,"gst":92,"receiptNumber":98,"paymentMethod":88}},"imageQuality":95}
-Mirrabooka baseline {"merchant":"Bunnings Warehouse","branch":"","category":"Home & Maintenance","subcategory":"Hardware","date":"2026-07-10","time":"11:02:15 AM","total":77.26,"gst":7.02,"receiptNumber":"2163/00737706","paymentMethod":"Card","parser":"Bunnings","merchantProfile":"bunnings","amountCandidates":[{"value":77.26,"score":855,"count":2,"sources":["totals:Total $77.26","totals:PowerPass $77.26"],"roles":["total","payment"]}],"dateCandidates":[{"value":"2026-07-10","score":130}],"rawDateCandidates":[{"value":"2026-07-10","source":"date","weight":130,"raw":"10/07/2026"}],"receiptNumberCandidates":[{"value":"2163/00737706","score":25}],"gstCandidates":[{"value":7.02,"score":380}],"expectedGst":7.02,"totalTrusted":true,"confidence":{"overall":94,"fields":{"merchant":98,"date":92,"total":98,"gst":92,"receiptNumber":98,"paymentMethod":88}},"imageQuality":30}
+Belmont compact currency {"merchant":"Bunnings Warehouse","branch":"","category":"Home & Maintenance","subcategory":"Hardware","date":"2026-07-07","time":"08:11:01 AM","total":236.93,"gst":21.54,"receiptNumber":"2052/01978347","paymentMethod":"Card","parser":"Bunnings","merchantProfile":"bunnings","amountCandidates":[{"value":236.93,"score":1094,"count":2,"sources":["full:PowerPass 23693","totals:PowerPass 23693"],"roles":["payment","payment"],"repairs":["compact-currency","compact-currency"]},{"value":2.36,"score":654,"count":2,"sources":["full:Total 236.9","totals:GST INCLUDED IN THE TOTAL $236 oi"],"roles":["total","included-total"],"repairs":["compact-currency","compact-currency"]},{"value":3.69,"score":547,"count":1,"sources":["full:CARD NO: 903601-369"],"roles":["payment"],"repairs":["compact-currency"]},{"value":3.89,"score":527,"count":1,"sources":["totals:CARD NO: 903601-389"],"roles":["payment"],"repairs":["compact-currency"]},{"value":236.9,"score":277,"count":1,"sources":["full:Total 236.9"],"roles":["total"],"repairs":["one-decimal-pad"]},{"value":36.9,"score":77,"count":1,"sources":["totals:Total 36.9"],"roles":["total"],"repairs":["one-decimal-pad"]},{"value":736.93,"score":-318,"count":1,"sources":["full:8 @ SubTotal: $736.93"],"roles":["subtotal"],"repairs":["exact-decimal"]},{"value":7.36,"score":-516,"count":1,"sources":["full:8 @ SubTotal: $736.93"],"roles":["subtotal"],"repairs":["compact-currency"]}],"dateCandidates":[{"value":"2026-07-07","score":260}],"rawDateCandidates":[{"value":"2026-07-07","source":"date","weight":130,"raw":"07/07/2026"},{"value":"2026-07-07","source":"full","weight":95,"raw":"07/07/2026"}],"receiptNumberCandidates":[{"value":"2052/01978347","score":50}],"gstCandidates":[{"value":21.54,"score":220}],"expectedGst":21.54,"totalTrusted":true,"confidence":{"overall":94,"fields":{"merchant":98,"date":92,"total":98,"gst":92,"receiptNumber":98,"paymentMethod":88}},"imageQuality":95}
+Busselton baseline {"merchant":"Bunnings Warehouse","branch":"","category":"Home & Maintenance","subcategory":"Hardware","date":"2026-01-01","time":"12:29:18 PM","total":91.06,"gst":8.28,"receiptNumber":"2063/01184341","paymentMethod":"Card","parser":"Bunnings","merchantProfile":"bunnings","amountCandidates":[{"value":91.06,"score":1180,"count":2,"sources":["full:Total $91.06","totals:EFT $91.06"],"roles":["total","payment"],"repairs":["exact-decimal","exact-decimal"]},{"value":7.02,"score":547,"count":1,"sources":["full:CARD NO: 433204-702"],"roles":["payment"],"repairs":["compact-currency"]},{"value":4332.04,"score":307,"count":1,"sources":["full:CARD NO: 433204-702"],"roles":["payment"],"repairs":["compact-currency"]},{"value":391.06,"score":-148,"count":1,"sources":["totals:Subtotal 391.06"],"roles":["subtotal"],"repairs":["exact-decimal"]},{"value":3.91,"score":-346,"count":1,"sources":["totals:Subtotal 391.06"],"roles":["subtotal"],"repairs":["compact-currency"]}],"dateCandidates":[{"value":"2026-01-01","score":130}],"rawDateCandidates":[{"value":"2026-01-01","source":"date","weight":130,"raw":"01/01/2026"}],"receiptNumberCandidates":[{"value":"2063/01184341","score":25}],"gstCandidates":[{"value":8.28,"score":220}],"expectedGst":8.28,"totalTrusted":true,"confidence":{"overall":94,"fields":{"merchant":98,"date":92,"total":98,"gst":92,"receiptNumber":98,"paymentMethod":88}},"imageQuality":70}
 
 SHA-256
-a2e6597481888789b72c816d403b04660a2646d86f98a23857d6e0ba84fe9e56  README.txt
-c5980c682e359a7e15c618dfd93255e26bc6fcdf7608c72b62762df5a1b6ec38  RELEASE_NOTES.txt
+789491d8b29873130a449c33000a7d3f2bd1de4ff3d5bdf90f96c76d92472587  README.txt
+608da0dd5ded5a95769b42080361be5e2866775cc1b41e498e7f684a49b1ab70  RELEASE_NOTES.txt
 2a4306ec9e7ea225280588c90a6066657848c5249a16ecf0ff0bfa2e239a824f  VERSION_HISTORY.txt
-b3a7101e34afb34a5478cdcb1d69ff522192447a242195c8a4e1c28619c51471  app.js
+e953aebda549a8a12ca9f7d4984adad02ed6596971e2e25d9ad4b6c7c55b735d  app.js
 73a13cb30f08fd802651a6e6bf841c565e1eb516d2e1685a8fec49fda20f5fc7  cloud-sync.js
 4fbd70da51025b02abb500d21a8220b103fa590ba09c5260f2c78c7dbc3d8c9f  icon.svg
-823dbc9df52a90c08352d377c653747862a23b7e09e4ae53119dc3636e373329  index.html
-d6382e0555af10da7a4ea3c540b422ced75d9dc054b0e238bca81246d8c9b2f7  manifest.webmanifest
-6c1e181281518ef16ba006fb29706e87437155b6fc33cf11dc10269eb8262a8a  service-worker.js
-2d1300df56e5db2d13820ed80d1a9c82bb1238af0aa28a4c25a5affbb4417588  styles.css
+d9e578db06d53a2e02de33134bd4e83a05a135f875a7ce2970ec23d0499ccb19  index.html
+b261de6d62acdf21b981a3bab8784a57c32c204bbace4c2d8b5d10c569384202  manifest.webmanifest
+740229dd8b4ff3fa82d5e0478802a12a8f603e0a27468820c5139b632774c10c  service-worker.js
+1a98a20b7142012fb127a2c31dfc9f936676e8d6960ed604e6f4921bc60452f3  styles.css
 b98d03e0b916aac8ab1004bb8d5ccee343d142b39d7785cf2c5f0ed4f37035c2  supabase_setup.sql

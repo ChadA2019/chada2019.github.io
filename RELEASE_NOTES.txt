@@ -1,14 +1,14 @@
-BALANCEIQ v6.7
-Build 2026.07.21.015
+BALANCEIQ v6.8
+Build 2026.07.21.016
 
-Fixed from the supplied Busselton receipt:
-- 01/01/2026 is selected instead of 01/01/2028.
-- $91.06 EFT/payment value is selected instead of corrupted $391.06 subtotal.
-- GST is recovered as $8.28 rather than $91.06.
-- Invoice 2063/01184341 remains correctly extracted.
+Fixed from the supplied Belmont receipt:
+- PowerPass 23693 is reconstructed as $236.93.
+- $2.36 is no longer selected as the total.
+- Corrupted subtotal $736.93 cannot override the payment amount.
+- Date 07/07/2026 and invoice 2052/01978347 remain correct.
 
 Added:
-- Future-date rejection.
-- Full-pass date preference.
-- Payment-versus-subtotal arbitration.
-- GST percentage plausibility checks.
+- Compact currency reconstruction.
+- One-decimal-loss candidates.
+- Repair-quality scoring.
+- Stronger financial-role consensus.

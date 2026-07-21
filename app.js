@@ -149,7 +149,7 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_VERSION="6.7";
+const APP_VERSION="6.8";
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 const defaultCategories=["Alcohol","Bills & Direct Debits","Cafes","Cash","Child Support","Dining Out","Education","Entertainment","Fuel","Groceries","Health & Fitness","Home & Maintenance","Income","Insurance","Loans & Finance","Loans & Mortgages","Medical","Personal Care","Pets","Refunds","Shopping","Subscriptions","Take Away","Transfers","Transport","Travel","Uncategorised","Vehicles"];
 const subcategoriesByCategory={
@@ -876,7 +876,9 @@ function normaliseOcrText(text){
     .replace(/\bBUNNTNGS\b/gi,"BUNNINGS")
     .replace(/\bAUNNINGS\b/gi,"BUNNINGS")
     .replace(/\bBUN\s+ING\b/gi,"BUNNINGS")
-    .replace(/\bP(?:U|O)VERP(?:ASS|AGS)\b/gi,"PowerPass")
+    .replace(/\bP(?:U|O|OY)S?R?PASS\b/gi,"PowerPass")
+    .replace(/\bPOYSRPASS\b/gi,"PowerPass")
+    .replace(/\bPOUSRPass\b/gi,"PowerPass")
     .replace(/\bFOOTED\b/gi,"Total")
     .trim();
 }
@@ -1399,20 +1401,74 @@ function isItemOrNoiseLine(line){
     /(?:\bMM\b|\bCM\b|\bKG\b|\bGRAM\b|\bG\b\s*(?:CLEAR|WHITE|BLACK|RED)\b)/.test(text)
   );
 }
+function currencyCandidates(line,{labelled=false}={}){
+  const text=String(line||"");
+  const candidates=[];
+  const add=(value,quality,reason,raw)=>{
+    value=Number(value);
+    if(!(value>0&&value<5000))return;
+    candidates.push({
+      value:Number(value.toFixed(2)),
+      quality,
+      reason,
+      raw:String(raw||"")
+    });
+  };
+
+  // Clear two-decimal values are strongest.
+  for(const match of text.matchAll(/\$?\s*([0-9]{1,5}(?:,[0-9]{3})*\.\d{2})\b/g)){
+    add(parseMoneyToken(match[1]),100,"exact-decimal",match[0]);
+  }
+
+  if(labelled){
+    // One decimal digit: likely lost final cents digit. Keep x.y0 as a weaker candidate.
+    for(const match of text.matchAll(/\$?\s*([0-9]{1,4})\.(\d)\b/g)){
+      add(Number(`${match[1]}.${match[2]}0`),52,"one-decimal-pad",match[0]);
+    }
+
+    // Compact values on labelled financial lines: 23693 -> 236.93.
+    // Accept with or without a dollar sign only when the line has a financial role.
+    for(const match of text.matchAll(/(?:\$|\b)([0-9]{3,6})\b/g)){
+      const digits=match[1];
+      if(/^\d{4}$/.test(digits)&&/^\d{1,2}(?:00|05|10|15|20|25|30|35|40|45|50|55)$/.test(digits)){
+        // Ambiguous round quantities receive lower quality.
+        add(Number(`${digits.slice(0,-2)}.${digits.slice(-2)}`),46,"compact-ambiguous",match[0]);
+      }else{
+        add(Number(`${digits.slice(0,-2)}.${digits.slice(-2)}`),82,"compact-currency",match[0]);
+      }
+    }
+
+    // Spaced cents: "$91. 06" -> 91.06.
+    for(const match of text.matchAll(/\$?\s*(\d{1,4})\.\s+(\d{2})\b/g)){
+      add(Number(`${match[1]}.${match[2]}`),88,"spaced-decimal",match[0]);
+    }
+  }
+
+  // Deduplicate, retaining the highest-quality interpretation for each value.
+  const best=new Map();
+  for(const candidate of candidates){
+    const key=candidate.value.toFixed(2);
+    const existing=best.get(key);
+    if(!existing||candidate.quality>existing.quality)best.set(key,candidate);
+  }
+  return [...best.values()];
+}
 function labelledMoneyValues(line){
-  const labelled=/\b(?:TOTAL|SUBTOTAL|POWERPASS|EFTPOS|VISA|MASTERCARD|CARD|GST|TAX)\b/i.test(line);
-  return moneyValues(line,{labelled});
+  const labelled=/\b(?:TOTAL|FOTAL|FOOTED|SUBTOTAL|SUBTOTAR|SUBLOTAI|POWERPASS|EFTPOS|EFT|VISA|MASTERCARD|CARD|GST|TAX)\b/i.test(line);
+  return currencyCandidates(line,{labelled});
 }
 function safeReceiptTotal(channels,merchant=""){
   const scored=new Map();
-  const add=(value,score,source,role)=>{
+  const add=(candidate,score,source,role)=>{
+    const value=candidate.value;
     if(!(value>0&&value<=5000))return;
     const key=value.toFixed(2);
-    const current=scored.get(key)||{value,score:0,count:0,sources:[],roles:[]};
-    current.score+=score;
+    const current=scored.get(key)||{value,score:0,count:0,sources:[],roles:[],repairs:[]};
+    current.score+=score+candidate.quality;
     current.count++;
     current.sources.push(source);
     current.roles.push(role);
+    current.repairs.push(candidate.reason);
     scored.set(key,current);
   };
 
@@ -1424,10 +1480,9 @@ function safeReceiptTotal(channels,merchant=""){
 
   for(const [source,text,baseWeight] of sources){
     const lines=ocrLines(text);
-    for(let i=0;i<lines.length;i++){
-      const line=lines[i];
-      const values=labelledMoneyValues(line);
-      if(!values.length)continue;
+    for(const line of lines){
+      const candidates=labelledMoneyValues(line);
+      if(!candidates.length)continue;
 
       const isTotal=/^\s*(?:TOTAL|FOTAL|FOOTED)\b|\bAMOUNT\s+PAID\b/i.test(line);
       const isPayment=/\bPOWERPASS\b|\bEFTPOS\b|\bEFT\b|\bVISA\b|\bMASTERCARD\b|\bCARD\b/i.test(line);
@@ -1442,43 +1497,49 @@ function safeReceiptTotal(channels,merchant=""){
       else if(isSubtotal)role="subtotal";
       else if(isGst)role="gst";
 
-      for(const value of values){
+      for(const candidate of candidates){
         let score=baseWeight;
-        if(role==="payment")score+=160;
-        else if(role==="total")score+=145;
-        else if(role==="included-total")score+=120;
-        else if(role==="subtotal")score+=20;
-        else score-=65;
+        if(role==="payment")score+=185;
+        else if(role==="total")score+=155;
+        else if(role==="included-total")score+=105;
+        else if(role==="subtotal")score+=12;
+        else score-=75;
 
-        if(role==="gst")score-=220;
-        if(isItemOrNoiseLine(line)&&!["total","payment","included-total"].includes(role))score-=180;
-        if(value>1000)score-=220;
-        add(value,score,`${source}:${line.trim()}`,role);
+        if(role==="gst")score-=240;
+        if(isItemOrNoiseLine(line)&&!["total","payment","included-total"].includes(role))score-=190;
+        if(candidate.reason==="one-decimal-pad")score-=30;
+        if(candidate.reason==="compact-currency"&&role==="payment")score+=80;
+        if(candidate.reason==="compact-currency"&&role==="total")score+=55;
+        if(candidate.value>1000)score-=240;
+
+        add(candidate,score,`${source}:${line.trim()}`,role);
       }
     }
   }
 
   for(const item of scored.values()){
-    const uniqueRoles=new Set(item.roles);
-    if(item.count>=2)item.score+=item.count*55;
-    if(item.count>=3)item.score+=70;
-    if(uniqueRoles.has("payment")&&
-       (uniqueRoles.has("total")||uniqueRoles.has("included-total")))item.score+=150;
-    if(uniqueRoles.has("payment"))item.score+=85;
-    if(uniqueRoles.size>=2)item.score+=45;
+    const roles=new Set(item.roles);
+    if(item.count>=2)item.score+=item.count*60;
+    if(item.count>=3)item.score+=80;
+    if(roles.has("payment")&&(roles.has("total")||roles.has("included-total")))item.score+=185;
+    if(roles.has("payment"))item.score+=100;
+    if(roles.size>=2)item.score+=55;
   }
 
   let ranked=[...scored.values()]
     .filter(item=>item.score>0)
     .sort((a,b)=>b.score-a.score||b.count-a.count||a.value-b.value);
 
-  // A subtotal cannot beat a plausible payment/total candidate when they differ materially.
   const paymentCandidate=ranked.find(item=>item.roles.includes("payment"));
   if(paymentCandidate){
     for(const item of ranked){
       if(item.roles.every(role=>role==="subtotal")&&
-         item.value>paymentCandidate.value*1.20){
-        item.score-=260;
+         Math.abs(item.value-paymentCandidate.value)>Math.max(1,paymentCandidate.value*.08)){
+        item.score-=340;
+      }
+      // A tiny value created from the first digits of a much larger payment is implausible.
+      if(item.value<paymentCandidate.value*.20&&!item.roles.includes("payment")){
+        item.score-=180;
       }
     }
     ranked=ranked.sort((a,b)=>b.score-a.score||b.count-a.count||a.value-b.value);
@@ -1487,15 +1548,15 @@ function safeReceiptTotal(channels,merchant=""){
   const best=ranked[0];
   const second=ranked[1];
   const trusted=!!best &&
-    best.score>=180 &&
+    best.score>=210 &&
     (
       best.roles.includes("payment") ||
       best.roles.includes("total") ||
       best.roles.includes("included-total")
     ) &&
-    (!second||best.score>=second.score*1.06||best.count>=2);
+    (!second||best.score>=second.score*1.04||best.count>=2);
 
-  return {value:trusted?best.value:0,candidates:ranked.slice(0,8),trusted};
+  return {value:trusted?best.value:0,candidates:ranked.slice(0,10),trusted};
 }
 
 function splitOcrPasses(text){
@@ -1625,16 +1686,18 @@ function chooseGst(text,total){
   for(const c of candidates){
     let score=c.weight;
     const diff=Math.abs(c.value-expected);
-    if(diff<=.01)score+=150;
-    else if(diff<=.03)score+=90;
-    else if(diff<=.08)score+=25;
-    else score-=80;
+    if(diff<=.02)score+=155;
+    else if(diff<=.05)score+=95;
+    else if(diff<=.12)score+=30;
+    else score-=90;
     const key=c.value.toFixed(2);
     scores.set(key,(scores.get(key)||0)+score);
   }
 
   if(total>0&&fuzzyIncludedTotalEvidence(text)){
-    scores.set(expected.toFixed(2),(scores.get(expected.toFixed(2))||0)+380);
+    // Use arithmetic only as a fallback. Receipts can contain non-taxable items,
+    // so a clear printed GST value should remain stronger evidence.
+    scores.set(expected.toFixed(2),(scores.get(expected.toFixed(2))||0)+220);
   }
 
   const ranked=[...scores.entries()]

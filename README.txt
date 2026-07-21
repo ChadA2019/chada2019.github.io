@@ -1,25 +1,23 @@
-BALANCEIQ v6.7 — CANDIDATE VALIDATION RELEASE
+BALANCEIQ v6.8 — CURRENCY RECONSTRUCTION RELEASE
 
-DATE VALIDATION
-- Future receipt years are rejected.
-- A clear full-receipt date receives more weight than a conflicting date-strip result.
-- Two-digit or truncated years receive a strong penalty.
-- Same-year dates more than seven days in the future are rejected.
-- Year disagreement lowers trust instead of selecting the largest year.
+CURRENCY REPAIR
+- Compact payment values such as 23693 are reconstructed as $236.93.
+- Spaced decimals such as $91. 06 are reconstructed as $91.06.
+- One-decimal OCR such as 236.9 is retained as a weaker $236.90 candidate.
+- Every repaired value records the repair method in OCR diagnostics.
 
-TOTAL VALIDATION
-- EFT is recognised as a payment label.
-- Payment values receive stronger evidence than subtotals.
-- A payment value matching a Total or GST-inclusive total line receives a consensus bonus.
-- Subtotals that differ materially from the payment amount are penalised.
-- A candidate must have a trusted financial role before it can populate Total Paid.
+FINANCIAL-ROLE CONSENSUS
+- Payment lines (PowerPass, EFT, EFTPOS, Card, Visa, Mastercard) have the strongest weight.
+- Payment values that agree with Total or GST-inclusive total evidence receive a large bonus.
+- Corrupted subtotals are penalised when they conflict with payment evidence.
+- Tiny values caused by incorrect decimal insertion are rejected when a larger payment candidate exists.
+- Item prices, discounts, savings, change and barcodes remain excluded.
 
-GST VALIDATION
-- GST values equal to the total are rejected.
-- GST candidates above 20% of the total are rejected.
-- On GST-inclusive receipts, Total ÷ 11 is preferred when OCR GST values are implausible.
-- Additional damaged GST-included wording is recognised.
+GST
+- Plausible printed GST remains preferred.
+- Total ÷ 11 is retained as a fallback for GST-inclusive receipts.
+- GST must remain below 20% of the selected total.
 
 INSTALLATION
 Replace every hosted file, unregister the previous service worker or uninstall the PWA,
-clear cached files, hard-refresh, and reinstall if required.
+clear cached files, hard-refresh, and reinstall if needed.
