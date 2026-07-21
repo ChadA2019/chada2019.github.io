@@ -21,5 +21,5 @@ Last known-good navigation baseline and smart receipt scanner.
 - Focused amount-column OCR for damaged cents.
 - Bunnings PowerPass false-payment correction.
 
-7.4 — Authoritative Total Release
+7.5 — Separated Total Consensus Release
 Semantic field labels now outrank crop repetition; improved Bunnings footer receipt-number recovery.

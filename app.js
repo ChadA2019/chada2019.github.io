@@ -149,7 +149,7 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_VERSION="7.4";
+const APP_VERSION="7.5";
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 const defaultCategories=["Alcohol","Bills & Direct Debits","Cafes","Cash","Child Support","Dining Out","Education","Entertainment","Fuel","Groceries","Health & Fitness","Home & Maintenance","Income","Insurance","Loans & Finance","Loans & Mortgages","Medical","Personal Care","Pets","Refunds","Shopping","Subscriptions","Take Away","Transfers","Transport","Travel","Uncategorised","Vehicles"];
 const subcategoriesByCategory={
@@ -1601,10 +1601,11 @@ function isReferenceOnlyLine(line){
 function isCardPaymentLine(line){
   const text=upper(line);
   if(isReferenceOnlyLine(line))return false;
+  const hasAmount=currencyCandidates(line,{labelled:true}).some(candidate=>candidate.value>0);
   return (
-    /\b(?:EFT|EFTPOS|VISA|MASTERCARD)\b.*(?:\$\s*\d|PAID|PAYMENT|PURCHASE|DEBIT|CREDIT)\b/.test(text) ||
-    /\bPOWERPASS\b.*(?:PAID|PAYMENT|PURCHASE|DEBIT|CREDIT|\$\s*\d+[.,]\s*\d{2})\b/.test(text) ||
-    /\bCARD\b.*(?:PAID|PAYMENT|PURCHASE|DEBIT|CREDIT)\b/.test(text)
+    (/\b(?:EFT|EFTPOS|VISA|MASTERCARD)\b/.test(text)&&hasAmount) ||
+    (/\bPOWERPASS\b/.test(text)&&(hasAmount||/\b(?:PAID|PAYMENT|PURCHASE|DEBIT|CREDIT)\b/.test(text))) ||
+    (/\bCARD\b/.test(text)&&/\b(?:PAID|PAYMENT|PURCHASE|DEBIT|CREDIT)\b/.test(text))
   );
 }
 
@@ -1742,6 +1743,29 @@ function safeReceiptTotal(channels,merchant=""){
     authoritativeTotal.score+=1200;
     ranked=ranked.sort((a,b)=>b.score-a.score||b.count-a.count||a.value-b.value);
     return {value:authoritativeTotal.value,candidates:ranked.slice(0,10),trusted:true};
+  }
+
+  // v7.5: some Bunnings layouts print the word "Total" on the left and the
+  // amount in a separate right-hand column. OCR can therefore preserve the
+  // label but lose its amount association. When the same clear two-decimal
+  // value is independently read as both SubTotal and card/EFT payment, and a
+  // Total label is present anywhere in the totals area, that value is the
+  // transaction total. Repeated OCR crops do not create this authority by
+  // themselves; the distinct semantic roles do.
+  const hasSeparatedTotalLabel=[channels.full,channels.totals,channels.totalsRight]
+    .some(body=>ocrLines(body||"").some(line=>/^\s*(?:TOTAL|FOTAL|FOOTED)\s*[:.-]?\s*$/i.test(line)||/^\s*(?:TOTAL|FOTAL|FOOTED)\b/i.test(line)));
+  const roleConsensusTotal=ranked.find(item=>{
+    const roles=new Set(item.roles);
+    const clearMoney=item.repairs.some(repair=>[
+      "exact-decimal","spaced-both-sides-decimal","fragmented-decimal-sequence","spaced-cents"
+    ].includes(repair));
+    return hasSeparatedTotalLabel&&item.value>0&&item.value<=5000&&clearMoney&&
+      roles.has("subtotal")&&roles.has("payment");
+  });
+  if(roleConsensusTotal){
+    roleConsensusTotal.score+=1500;
+    ranked=ranked.sort((a,b)=>b.score-a.score||b.count-a.count||a.value-b.value);
+    return {value:roleConsensusTotal.value,candidates:ranked.slice(0,10),trusted:true};
   }
 
   const best=ranked[0];

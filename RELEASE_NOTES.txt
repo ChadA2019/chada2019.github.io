@@ -1,5 +1,5 @@
-BalanceIQ v7.4
-Build 2026.07.21.022
+BalanceIQ v7.5
+Build 2026.07.21.023
 
 - A printed two-decimal amount on an explicitly labelled Total line is now authoritative.
 - Repeated item prices from overlapping OCR crops can no longer outrank the labelled receipt total.
