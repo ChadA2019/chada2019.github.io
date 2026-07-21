@@ -149,7 +149,7 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_VERSION="7.3";
+const APP_VERSION="7.4";
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 const defaultCategories=["Alcohol","Bills & Direct Debits","Cafes","Cash","Child Support","Dining Out","Education","Entertainment","Fuel","Groceries","Health & Fitness","Home & Maintenance","Income","Insurance","Loans & Finance","Loans & Mortgages","Medical","Personal Care","Pets","Refunds","Shopping","Subscriptions","Take Away","Transfers","Transport","Travel","Uncategorised","Vehicles"];
 const subcategoriesByCategory={
@@ -1720,6 +1720,30 @@ function safeReceiptTotal(channels,merchant=""){
   }
 
   ranked=ranked.sort((a,b)=>b.score-a.score||b.count-a.count||a.value-b.value);
+
+  // v7.4: semantic authority beats repetition. OCR often reads an item price
+  // several times in overlapping crops, while the actual labelled Total may
+  // appear only once. A plausible printed two-decimal value on a line explicitly
+  // labelled Total is therefore authoritative and must not lose to repeated
+  // unlabelled item amounts or savings values.
+  const authoritativeTotal=ranked.find(item=>
+    item.roles.includes("total") &&
+    item.value>0 &&
+    item.value<=5000 &&
+    item.repairs.some(repair=>[
+      "exact-decimal",
+      "spaced-both-sides-decimal",
+      "fragmented-decimal-sequence",
+      "spaced-cents"
+    ].includes(repair))
+  );
+
+  if(authoritativeTotal){
+    authoritativeTotal.score+=1200;
+    ranked=ranked.sort((a,b)=>b.score-a.score||b.count-a.count||a.value-b.value);
+    return {value:authoritativeTotal.value,candidates:ranked.slice(0,10),trusted:true};
+  }
+
   const best=ranked[0];
   const second=ranked[1];
   const trusted=!!best &&
@@ -1870,7 +1894,9 @@ function chooseReceiptNumber(text,merchant=""){
     const [store,number]=candidate.value.split("/");
 
     for(const hint of hints){
-      if(candidate.value===hint.invoice)score+=220;
+      // v7.4: the encoded footer reference is more reliable than repeated
+      // damaged readings of the small Invoice Number line.
+      if(candidate.value===hint.invoice)score+=hint.confidence>=90?1800:900;
       if(store===hint.store)score+=45;
 
       const tail=number.slice(-hint.suffix.length);

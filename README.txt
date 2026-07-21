@@ -1,3 +1,3 @@
-BalanceIQ v7.3
+BalanceIQ v7.4 — Authoritative Total Release
 
-Deploy all files in this folder to the GitHub Pages site, replacing the existing files. Clear the site cache or reload twice after deployment so the v7.3 service worker becomes active.
+Deploy every file in this folder to replace the existing website files.

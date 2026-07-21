@@ -1,6 +1,5 @@
-BalanceIQ v7.3 validation
-- JavaScript syntax checked with Node.js.
-- Deployment ZIP integrity checked.
-- Version/build references updated.
-- Focused date OCR and tolerant date parsing added.
-- v7.2 total-ranking protections retained.
+Validation completed:
+- JavaScript syntax: passed (node --check)
+- Authoritative labelled-total override installed
+- Footer receipt-number authority installed
+- Version and service-worker cache updated

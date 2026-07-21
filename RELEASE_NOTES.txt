@@ -1,10 +1,8 @@
-BalanceIQ v7.3 — Focused Date Recovery Release
-Build 2026.07.21.021
+BalanceIQ v7.4
+Build 2026.07.21.022
 
-Changes
-- Preserves the corrected v7.2 labelled-total ranking.
-- Adds four tightly focused date-line OCR passes at higher resolution.
-- Uses single-line OCR mode for focused receipt date bands.
-- Accepts OCR-spaced and dotted date separators such as 07 / 07 / 2026.
-- Repairs the common 2026-to-2006 OCR year error when safely supported by the current year.
-- Keeps date autofill blank when no plausible date evidence exists.
+- A printed two-decimal amount on an explicitly labelled Total line is now authoritative.
+- Repeated item prices from overlapping OCR crops can no longer outrank the labelled receipt total.
+- GST can again fall back to Total / 11 when the receipt states GST is included but the printed GST digits are unreadable.
+- Bunnings receipt numbers now strongly prefer the encoded footer reference over repeated damaged header OCR.
+- Retains v7.3 focused date recovery and v7.2 compact-currency protections.
