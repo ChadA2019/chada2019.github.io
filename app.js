@@ -149,7 +149,7 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_VERSION="6.1-diagnostic";
+const APP_VERSION="6.2";
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 const defaultCategories=["Alcohol","Bills & Direct Debits","Cafes","Cash","Child Support","Dining Out","Education","Entertainment","Fuel","Groceries","Health & Fitness","Home & Maintenance","Income","Insurance","Loans & Finance","Loans & Mortgages","Medical","Personal Care","Pets","Refunds","Shopping","Subscriptions","Take Away","Transfers","Transport","Travel","Uncategorised","Vehicles"];
 const subcategoriesByCategory={
@@ -586,6 +586,40 @@ async function processScanPage(dataUrl,rotation=0){
   }
   return canvas.toDataURL('image/jpeg',.88);
 }
+
+async function cropScanRegion(dataUrl,startRatio,endRatio,{threshold=false}={}){
+  const img=await loadImage(dataUrl);
+  const y=Math.floor(img.height*startRatio);
+  const h=Math.max(1,Math.floor(img.height*(endRatio-startRatio)));
+  const canvas=document.createElement("canvas");
+  canvas.width=img.width;canvas.height=h;
+  const ctx=canvas.getContext("2d",{willReadFrequently:true});
+  ctx.drawImage(img,0,y,img.width,h,0,0,img.width,h);
+  const image=ctx.getImageData(0,0,canvas.width,canvas.height),data=image.data;
+  let sum=0;
+  for(let i=0;i<data.length;i+=4)sum+=.299*data[i]+.587*data[i+1]+.114*data[i+2];
+  const mean=sum/(data.length/4);
+  for(let i=0;i<data.length;i+=4){
+    const gray=.299*data[i]+.587*data[i+1]+.114*data[i+2];
+    let value=(gray-mean)*1.9+158;
+    if(threshold)value=value>Math.max(138,mean*.9)?255:0;
+    value=Math.max(0,Math.min(255,value));
+    data[i]=data[i+1]=data[i+2]=value;
+  }
+  ctx.putImageData(image,0,0);
+  return canvas.toDataURL("image/png");
+}
+async function recogniseScanPass(image,label,section,logger){
+  const result=await Tesseract.recognize(image,"eng",{logger});
+  return {
+    section,pass:label,
+    confidence:Math.round(Number(result.data.confidence)||0),
+    characters:(result.data.text||"").length,
+    text:result.data.text||"",
+    image
+  };
+}
+
 async function rebuildReceiptPreview(){
   if(!pendingReceiptPages.length){pendingReceiptImage='';receiptPreview.style.display='none';receiptPreviewEmpty.style.display='grid';scanPageStrip.innerHTML='';return}
   const pages=[];for(const p of pendingReceiptPages)pages.push(await processScanPage(p.original,p.rotation||0));
@@ -603,7 +637,7 @@ async function addReceiptFiles(files,reset=false){
 async function openReceiptCapture(fileOrFiles){
   const files=fileOrFiles instanceof FileList||Array.isArray(fileOrFiles)?fileOrFiles:[fileOrFiles];
   await addReceiptFiles(files,true);
-  clearOcrDiagnostic();receiptDate.value=localDateValue();receiptMerchant.value="";receiptAmount.value="";fillCategorySelect(receiptCategory,receiptSubcategory,"Uncategorised","Review Required");receiptAccount.value="";receiptPaymentMethod.value="Card";receiptNumber.value="";receiptGst.value="";receiptNotes.value="";ocrStatus.textContent=`${pendingReceiptPages.length} section${pendingReceiptPages.length===1?'':'s'} ready`;receiptDialog.showModal();
+  clearOcrDiagnostic();receiptDate.value="";receiptMerchant.value="";receiptAmount.value="";fillCategorySelect(receiptCategory,receiptSubcategory,"Uncategorised","Review Required");receiptAccount.value="";receiptPaymentMethod.value="Card";receiptNumber.value="";receiptGst.value="";receiptNotes.value="";ocrStatus.textContent=`${pendingReceiptPages.length} section${pendingReceiptPages.length===1?'':'s'} ready`;receiptDialog.showModal();
 }
 receiptImageInput.onchange=e=>{if(e.target.files.length)openReceiptCapture(e.target.files);e.target.value=""};heroScanBtn.onclick=()=>receiptImageInput.click();
 receiptMoreInput.onchange=async e=>{if(e.target.files.length){await addReceiptFiles(e.target.files);ocrStatus.textContent=`${pendingReceiptPages.length} sections ready`}e.target.value=''};
@@ -617,8 +651,15 @@ ruleCategory.onchange=()=>fillSubcategorySelect(ruleCategory,ruleSubcategory,"")
 function normaliseOcrText(text){
   return String(text||"")
     .replace(/[|]/g,"I")
-    .replace(/[ \t]+/g," ")
     .replace(/\r/g,"")
+    .replace(/[ \t]+/g," ")
+    .replace(/\b(?:PUVERFASS|POYERPASS|POWERTASS|PWERPASS)\b/gi,"PowerPass")
+    .replace(/\bFOTAL\b/gi,"Total")
+    .replace(/\bTHCLUDED\b/gi,"INCLUDED")
+    .replace(/\bDETADLS\b/gi,"Details")
+    .replace(/\bDGT[E]?ILE\b/gi,"Details")
+    .replace(/\bNUNBER\b/gi,"Number")
+    .replace(/\bBUNNTNGS\b/gi,"BUNNINGS")
     .trim();
 }
 function ocrLines(text){
@@ -652,7 +693,7 @@ const merchantProfiles=[
   {
     id:"bunnings",
     merchant:"Bunnings Warehouse",
-    tests:[/BUNNINGS/,/WAREHOUSE/],
+    tests:[/BUNNINGS/,/BUNNINGS\s+GROUP/,/BUNNTNGS/,/\bON\s+NING\b/,/WAREHOUSE/],
     category:"Home & Maintenance",
     subcategory:"Hardware",
     parser:"bunnings"
@@ -776,43 +817,85 @@ function detectKnownMerchant(text,lines){
   );
   return {merchant:candidate||"",parser:"generic",category:"",subcategory:""};
 }
-function identifierAfterLabel(lines,labelPattern){
+function validReceiptIdentifier(value,{bunnings=false}={}){
+  const cleaned=cleanReceiptIdentifier(value);
+  if(!cleaned||!/\d/.test(cleaned))return "";
+  if(/^(?:DETAILS?|NUMBER|NO|INVOICE|RECEIPT|TRANSACTION)$/i.test(cleaned))return "";
+  if(bunnings){
+    const exact=cleaned.match(/\b\d{4}\/\d{7,8}\b/);
+    return exact?exact[0]:"";
+  }
+  return cleaned.length>=4?cleaned:"";
+}
+function identifierAfterLabel(lines,labelPattern,{bunnings=false}={}){
   for(let i=0;i<lines.length;i++){
-    const line=lines[i];
-    if(!labelPattern.test(line))continue;
-    const sameLine=line.replace(labelPattern,"").replace(/^[\s:#-]+/,"").trim();
-    const sameMatch=sameLine.match(/([A-Z0-9][A-Z0-9\/.-]{3,})/i);
-    if(sameMatch&&!/^(DETAILS?|NUMBER|NO)$/i.test(sameMatch[1]))return cleanReceiptIdentifier(sameMatch[1]);
-    const next=lines[i+1]||"";
-    const nextMatch=next.match(/^\s*([A-Z0-9][A-Z0-9\/.-]{3,})\s*$/i);
-    if(nextMatch)return cleanReceiptIdentifier(nextMatch[1]);
+    if(!labelPattern.test(lines[i]))continue;
+    const candidates=[];
+    candidates.push(...((lines[i].replace(labelPattern,"").match(/[A-Z0-9][A-Z0-9\/.-]{3,}/ig))||[]));
+    candidates.push(...(((lines[i+1]||"").match(/[A-Z0-9][A-Z0-9\/.-]{3,}/ig))||[]));
+    candidates.push(...(((lines[i+2]||"").match(/[A-Z0-9][A-Z0-9\/.-]{3,}/ig))||[]));
+    for(const candidate of candidates){
+      const valid=validReceiptIdentifier(candidate,{bunnings});
+      if(valid)return valid;
+    }
   }
   return "";
 }
-function extractReceiptNumber(text){
+function extractReceiptNumber(text,merchant=""){
   const lines=ocrLines(text);
-  const priorities=[
+  const bunnings=merchant==="Bunnings Warehouse";
+  if(bunnings){
+    const near=text.match(/invoice\s*(?:number|no\.?|#)?\s*(?:details)?[\s:#;-]*([0-9]{4}\/[0-9]{7,8})/i);
+    if(near)return near[1];
+    const anywhere=text.match(/\b[0-9]{4}\/[0-9]{7,8}\b/);
+    if(anywhere)return anywhere[0];
+  }
+  const labels=[
     /invoice\s*(?:number|no\.?|#)\s*(?:details)?/i,
     /tax\s*invoice\s*(?:number|no\.?|#)?\s*(?:details)?/i,
     /receipt\s*(?:number|no\.?|#)/i,
     /docket\s*(?:number|no\.?|#)/i,
-    /transaction\s*(?:id|number|no\.?|#)/i,
-    /order\s*(?:number|no\.?|#)/i,
-    /job\s*(?:number|no\.?|#)/i
+    /transaction\s*(?:id|number|no\.?|#)/i
   ];
-  for(const label of priorities){
-    const value=identifierAfterLabel(lines,label);
+  for(const label of labels){
+    const value=identifierAfterLabel(lines,label,{bunnings});
     if(value)return value;
   }
   return "";
 }
+function isoAustralianDate(day,month,year){
+  day=Number(day);month=Number(month);year=Number(year);
+  if(year<100)year+=2000;
+  if(day<1||day>31||month<1||month>12||year<2000||year>2099)return "";
+  return `${year}-${String(month).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+}
+function extractFooterDate(text){
+  const matches=[...text.matchAll(/\b(20\d{2})[-\/](0?[1-9]|1[0-2])[-\/](0?[1-9]|[12]\d|3[01])\b/g)];
+  if(!matches.length)return "";
+  const m=matches[matches.length-1];
+  return `${m[1]}-${String(m[2]).padStart(2,"0")}-${String(m[3]).padStart(2,"0")}`;
+}
 function extractReceiptDateTime(text){
-  const dateMatch=text.match(/\b(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})\b|\b(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{2,4})\b/i);
-  const timeMatch=text.match(/\b(\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM)?)\b/i);
-  return {
-    date:dateMatch?parseDate(dateMatch[1]||dateMatch[2]):"",
-    time:timeMatch?timeMatch[1].replace(/\s+/g," ").toUpperCase():""
-  };
+  const numeric=[...text.matchAll(/\b([0-3]?\d)[\/-]([01]?\d)[\/-](20\d{2}|\d{2})\b/g)];
+  const footer=extractFooterDate(text);
+  let date="";
+  if(numeric.length){
+    const header=numeric.find(m=>{
+      const context=text.slice(Math.max(0,m.index-14),m.index+m[0].length+14);
+      return /\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun|Hed)\b/i.test(context);
+    })||numeric[0];
+    date=isoAustralianDate(header[1],header[2],header[3]);
+    if(footer&&date){
+      const [fy,fm,fd]=footer.split("-").map(Number);
+      const [dy,dm,dd]=date.split("-").map(Number);
+      if(fm===dm&&fd===dd&&Math.abs(fy-dy)>=10)date=footer;
+    }
+  }
+  if(!date&&footer)date=footer;
+  const timeMatch=text.match(/\b(\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM|PH)?)\b/i);
+  let time=timeMatch?timeMatch[1].replace(/\s+/g," ").toUpperCase():"";
+  time=time.replace(/\bPH\b/,"PM");
+  return {date,time,footerDate:footer};
 }
 function amountConsensus(lines,{merchant=""}={}){
   const scores=new Map();
@@ -837,8 +920,8 @@ function amountConsensus(lines,{merchant=""}={}){
       let score=1;
       if(/\bGRAND\s*TOTAL\b|\bAMOUNT\s*PAID\b|\bTOTAL\s*PAID\b|\bBALANCE\s*DUE\b/.test(upperLine))score+=100;
       else if(/^\s*TOTAL\b/.test(upperLine)||/\bTOTAL\s*\$/.test(upperLine))score+=85;
-      else if(/\bSUB\s*TOTAL\b|\bSUBTOTAL\b/.test(upperLine))score+=52;
-      else if(/\bPOWERPASS\b|\bEFTPOS\b|\bVISA\b|\bMASTERCARD\b|\bCARD\b/.test(upperLine))score+=45;
+      else if(/\bSUB\s*TOTAL\b|\bSUBTOTAL\b/.test(upperLine))score+=48;
+      else if(/\bPOWERPASS\b|\bEFTPOS\b|\bVISA\b|\bMASTERCARD\b|\bCARD\b/.test(upperLine))score+=82;
 
       if(/\bGST\b|\bTAX\s*AMOUNT\b/.test(upperLine))score-=80;
       if(/\bSAVINGS?\b|\bDISCOUNT\b|\bDISC\b|\bCHANGE\b|\bROUNDING\b/.test(upperLine))score-=70;
@@ -906,7 +989,7 @@ function parseBunningsReceipt(text,base){
     branch,
     total:consensus.value,
     gst:extractReceiptGst(text,consensus.value),
-    receiptNumber:extractReceiptNumber(text),
+    receiptNumber:extractReceiptNumber(text,base.merchant),
     paymentMethod:detectReceiptPaymentMethod(text),
     parser:"Bunnings",
     amountCandidates:consensus.candidates
@@ -918,7 +1001,7 @@ function parseGenericReceipt(text,base){
     ...base,
     total,
     gst:extractReceiptGst(text,total),
-    receiptNumber:extractReceiptNumber(text),
+    receiptNumber:extractReceiptNumber(text,base.merchant),
     paymentMethod:detectReceiptPaymentMethod(text),
     parser:"Generic"
   };
@@ -931,7 +1014,10 @@ function receiptFieldConfidence(parsed,rawText){
     date:parsed.date?92:0,
     total:parsed.total?(repeatedTop?98:88):0,
     gst:parsed.gst?92:0,
-    receiptNumber:parsed.receiptNumber?(/invoice\s*(?:number|no\.?|#)/i.test(text)?97:80):0,
+    receiptNumber:parsed.receiptNumber
+      ? (/^\d{4}\/\d{7,8}$/.test(parsed.receiptNumber)?98:
+         /invoice\s*(?:number|no\.?|#)/i.test(text)?88:68)
+      : 0,
     paymentMethod:parsed.paymentMethod?88:0
   };
   const present=Object.values(scores).filter(Boolean);
@@ -957,7 +1043,7 @@ function parseSupermarketReceipt(text,base){
     ...base,
     total,
     gst:extractReceiptGst(text,total),
-    receiptNumber:extractReceiptNumber(text),
+    receiptNumber:extractReceiptNumber(text,base.merchant),
     paymentMethod:detectReceiptPaymentMethod(text),
     parser:"Supermarket"
   };
@@ -968,7 +1054,7 @@ function parseRetailReceipt(text,base){
     ...base,
     total,
     gst:extractReceiptGst(text,total),
-    receiptNumber:extractReceiptNumber(text),
+    receiptNumber:extractReceiptNumber(text,base.merchant),
     paymentMethod:detectReceiptPaymentMethod(text),
     parser:"Retail"
   };
@@ -979,7 +1065,7 @@ function parseAutomotiveReceipt(text,base){
     ...base,
     total,
     gst:extractReceiptGst(text,total),
-    receiptNumber:extractReceiptNumber(text),
+    receiptNumber:extractReceiptNumber(text,base.merchant),
     paymentMethod:detectReceiptPaymentMethod(text),
     parser:"Automotive"
   };
@@ -990,7 +1076,7 @@ function parseFuelReceipt(text,base){
     ...base,
     total,
     gst:extractReceiptGst(text,total),
-    receiptNumber:extractReceiptNumber(text),
+    receiptNumber:extractReceiptNumber(text,base.merchant),
     paymentMethod:detectReceiptPaymentMethod(text),
     parser:"Fuel"
   };
@@ -1081,7 +1167,7 @@ function renderOcrDiagnostic(report){
 
   ocrRawText.value=report.rawText||"";
   ocrSectionResults.textContent=report.sections.map(section=>
-    `Section ${section.section}\nOCR confidence: ${section.confidence}%\nCharacters: ${section.characters}\n\n${section.text}`
+    `Section ${section.section} · ${section.pass||"full"} pass\nOCR confidence: ${section.confidence}%\nCharacters: ${section.characters}\n\n${section.text}`
   ).join("\n\n==============================\n\n");
   ocrDiagnosticPanel.open=true;
 }
@@ -1104,7 +1190,7 @@ function debugReportText(report){
     "",
     "PER-SECTION OCR",
     report.sections.map(section=>
-      `--- Section ${section.section} | confidence ${section.confidence}% ---\n${section.text}`
+      `--- Section ${section.section} · ${section.pass||"full"} | confidence ${section.confidence}% ---\n${section.text}`
     ).join("\n\n"),
     "",
     "COMBINED RAW OCR",
@@ -1136,74 +1222,70 @@ function shouldAutofillField(confidence,minimum=70){
 }
 
 runOcrBtn.onclick=async()=>{
-  if(!pendingReceiptPages.length)return alert('Scan or import at least one receipt section first.');
-  if(!window.Tesseract)return alert('Receipt reader is unavailable while offline. You can still enter the details manually.');
+  if(!pendingReceiptPages.length)return alert("Scan or import at least one receipt section first.");
+  if(!window.Tesseract)return alert("Receipt reader is unavailable while offline. You can still enter the details manually.");
   try{
-    receiptPreview.parentElement.classList.add('scanning');
-    let combined='';
+    receiptPreview.parentElement.classList.add("scanning");
+    let combined="";
     const sectionReports=[];
     for(let i=0;i<pendingReceiptPages.length;i++){
-      ocrStatus.textContent=`Reading section ${i+1} of ${pendingReceiptPages.length}…`;
-      const image=await processScanPage(pendingReceiptPages[i].original,pendingReceiptPages[i].rotation||0);
-      const result=await Tesseract.recognize(image,'eng',{
-        logger:m=>{
-          if(m.status==='recognizing text'){
-            ocrStatus.textContent=`Section ${i+1}: ${Math.round(m.progress*100)}%`;
-          }
-        }
-      });
-      const sectionText=result.data.text||'';
-      combined+='\n'+sectionText;
-      sectionReports.push({
-        section:i+1,
-        confidence:Math.round(Number(result.data.confidence)||0),
-        characters:sectionText.length,
-        text:sectionText
-      });
+      const section=i+1;
+      const full=await processScanPage(pendingReceiptPages[i].original,pendingReceiptPages[i].rotation||0);
+      const header=await cropScanRegion(full,0,.43,{threshold:true});
+      const totals=await cropScanRegion(full,.42,.78,{threshold:true});
+      for(const [label,image] of [["full",full],["header",header],["totals",totals]]){
+        const report=await recogniseScanPass(image,label,section,m=>{
+          if(m.status==="recognizing text")ocrStatus.textContent=`Section ${section} ${label}: ${Math.round(m.progress*100)}%`;
+        });
+        sectionReports.push(report);
+      }
+      for(const label of ["header","totals","full"]){
+        const text=sectionReports.find(r=>r.section===section&&r.pass===label)?.text||"";
+        combined+=`\n--- ${label.toUpperCase()} PASS ---\n${text}`;
+      }
     }
-
     const parsed=parseAustralianReceipt(combined);
-    const fieldConfidence=parsed.confidence?.fields||{};
-
-    // Diagnostic builds only autofill fields with reasonable evidence.
-    if(parsed.merchant&&shouldAutofillField(fieldConfidence.merchant,70))receiptMerchant.value=parsed.merchant;
-    if(parsed.date&&shouldAutofillField(fieldConfidence.date,70))receiptDate.value=parsed.date;
-    if(parsed.total&&shouldAutofillField(fieldConfidence.total,75))receiptAmount.value=parsed.total.toFixed(2);
-    if(parsed.receiptNumber&&shouldAutofillField(fieldConfidence.receiptNumber,70))receiptNumber.value=parsed.receiptNumber;
-    if(parsed.gst&&shouldAutofillField(fieldConfidence.gst,70))receiptGst.value=parsed.gst.toFixed(2);
-    if(parsed.paymentMethod&&shouldAutofillField(fieldConfidence.paymentMethod,70))receiptPaymentMethod.value=parsed.paymentMethod;
-    if(parsed.category&&shouldAutofillField(fieldConfidence.merchant,70)){
-      fillCategorySelect(receiptCategory,receiptSubcategory,parsed.category,parsed.subcategory||"");
+    const ocrAverage=Math.round(sectionReports.reduce((s,r)=>s+r.confidence,0)/Math.max(1,sectionReports.length));
+    parsed.ocrConfidence=ocrAverage;
+    if(parsed.confidence){
+      parsed.confidence.parserOverall=parsed.confidence.overall;
+      parsed.confidence.overall=Math.round(ocrAverage*.55+parsed.confidence.overall*.45);
     }
-
-    const report={
+    const fc=parsed.confidence?.fields||{};
+    receiptDate.value="";
+    receiptNumber.value="";
+    if(parsed.merchant&&shouldAutofillField(fc.merchant,70))receiptMerchant.value=parsed.merchant;
+    if(parsed.date&&shouldAutofillField(fc.date,70))receiptDate.value=parsed.date;
+    if(parsed.total&&shouldAutofillField(fc.total,75))receiptAmount.value=parsed.total.toFixed(2);
+    if(parsed.receiptNumber&&shouldAutofillField(fc.receiptNumber,75))receiptNumber.value=parsed.receiptNumber;
+    if(parsed.gst&&shouldAutofillField(fc.gst,70))receiptGst.value=parsed.gst.toFixed(2);
+    if(parsed.paymentMethod&&shouldAutofillField(fc.paymentMethod,70))receiptPaymentMethod.value=parsed.paymentMethod;
+    if(parsed.category&&shouldAutofillField(fc.merchant,70))fillCategorySelect(receiptCategory,receiptSubcategory,parsed.category,parsed.subcategory||"");
+    renderOcrDiagnostic({
       version:APP_VERSION,
       createdAt:new Date().toISOString(),
-      sections:sectionReports,
+      sections:sectionReports.map(({image,...rest})=>rest),
       rawText:combined.trim(),
       parsed
-    };
-    renderOcrDiagnostic(report);
-
-    const scanNotes=[
-      `Scanned from ${pendingReceiptPages.length} section${pendingReceiptPages.length===1?'':'s'}.`,
-      parsed.branch?`Branch: ${parsed.branch}.`:"",
+    });
+    const notes=[
+      `Scanned from ${pendingReceiptPages.length} section${pendingReceiptPages.length===1?"":"s"}.`,
       parsed.time?`Receipt time: ${parsed.time}.`:"",
       parsed.parser?`Parser: ${parsed.parser}.`:"",
       parsed.merchantProfile?`Merchant profile: ${parsed.merchantProfile}.`:"",
-      parsed.confidence?`Extraction confidence: ${parsed.confidence.overall}%.`:"",
-      Number.isFinite(parsed.imageQuality)?`OCR quality: ${parsed.imageQuality}%.`:""
+      `OCR confidence: ${ocrAverage}%.`,
+      parsed.confidence?`Combined confidence: ${parsed.confidence.overall}%.`:""
     ].filter(Boolean).join(" ");
-    receiptNotes.value=(receiptNotes.value?receiptNotes.value+'\n':'')+scanNotes;
-
-    const lowConfidence=(parsed.confidence?.overall||0)<75;
-    ocrStatus.textContent=lowConfidence?'Low confidence — review diagnostics':'Details extracted — please check';
+    receiptNotes.value=(receiptNotes.value?receiptNotes.value+"\n":"")+notes;
+    ocrStatus.textContent=(parsed.confidence?.overall||0)<72
+      ?"Low confidence — review diagnostics"
+      :"Details extracted — please verify";
   }catch(err){
     console.error(err);
-    ocrStatus.textContent='Manual check needed';
-    alert('The scanned receipt could not be read reliably. Open OCR diagnostics and enter missing details manually.');
+    ocrStatus.textContent="Manual check needed";
+    alert("The scanned receipt could not be read reliably. Open OCR diagnostics and enter missing details manually.");
   }finally{
-    receiptPreview.parentElement.classList.remove('scanning');
+    receiptPreview.parentElement.classList.remove("scanning");
   }
 };
 saveReceiptBtn.onclick=e=>{e.preventDefault();const receipt={id:crypto.randomUUID?crypto.randomUUID():`r-${Date.now()}`,merchant:norm(receiptMerchant.value),date:receiptDate.value,amount:Number(receiptAmount.value),category:receiptCategory.value||'Uncategorised',subcategory:receiptSubcategory.value,account:norm(receiptAccount.value),paymentMethod:receiptPaymentMethod.value,receiptNumber:norm(receiptNumber.value),gst:Number(receiptGst.value)||0,notes:receiptNotes.value,image:pendingReceiptImage,createdAt:new Date().toISOString(),status:receiptPaymentMethod.value==='Cash'?'cash':'awaiting'};if(!receipt.merchant||!receipt.date||!receipt.amount)return;const fingerprint=receiptFingerprint(receipt);if(state.receipts.some(r=>receiptFingerprint(r)===fingerprint))return alert('This receipt appears to have already been saved.');state.receipts.unshift(receipt);state.transactions.push(applyRule({date:receipt.date,description:receipt.merchant,merchant:receipt.merchant,amount:-Math.abs(receipt.amount),source:'Receipt',receiptId:receipt.id,reconciliationStatus:receipt.status,account:receipt.account,category:receipt.category,subcategory:receipt.subcategory,notes:receipt.notes,taxDeductible:false}));saveState();receiptDialog.close();pendingReceiptImage='';pendingReceiptPages=[];rebuildReviewQueue();renderAll();showNotice('Receipt saved. BalanceIQ will look for the matching bank transaction on future imports.')};

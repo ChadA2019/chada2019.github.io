@@ -1,18 +1,15 @@
-BALANCEIQ v6.1 OCR DIAGNOSTIC BUILD
-Build 2026.07.21.009
+BALANCEIQ v6.2
+Build 2026.07.21.010
 
-Added
-- Expandable OCR diagnostics in the receipt dialog.
-- Raw OCR text.
-- Per-section OCR confidence and text.
-- Field decision report.
-- Ranked amount-candidate report.
-- Copyable text report and downloadable JSON report.
-- Low-confidence autofill safeguards.
+Fixed:
+- 10/07/2026 interpreted as an Australian date.
+- 2006 can be corrected to 2026 from footer evidence.
+- Detadls/Details cannot become the receipt number.
+- Order and Job references are not receipt-number fallbacks.
+- PowerPass OCR variants improve payment-total selection.
+- Overall confidence now incorporates OCR confidence.
 
-Retained
-- Merchant Intelligence Engine.
-- Bunnings repeated-value consensus.
-- Multiline invoice-number support.
-- GST recovery.
-- Stable navigation and receipt reconciliation.
+Added:
+- Header OCR pass.
+- Totals OCR pass.
+- Pass-labelled diagnostics.

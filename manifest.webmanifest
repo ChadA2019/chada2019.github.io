@@ -1,7 +1,7 @@
 {
   "name": "BalanceIQ",
   "short_name": "BalanceIQ",
-  "description": "BalanceIQ 6.1 OCR Diagnostic Build \u2014 raw OCR output, candidate scoring and receipt diagnostics.",
+  "description": "BalanceIQ 6.2 \u2014 region OCR, Australian date recovery and strict invoice validation.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#071d3b",
