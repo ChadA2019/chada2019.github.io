@@ -1,0 +1,20 @@
+BALANCEIQ v5.3 PROFESSIONAL — VALIDATION REPORT
+
+JavaScript syntax: PASS
+Navigation targets: PASS (7 tabs)
+Required release files: PASS
+Bunnings receipt parser: PASS
+Parser output: {"merchant":"Bunnings Warehouse","branch":"O'CONNOR","category":"Home & Maintenance","subcategory":"Hardware","date":"2026-07-21","time":"08:30:45 AM","total":68.64,"gst":6.24,"receiptNumber":"2402/01719325","paymentMethod":"Card","confidence":{"overall":93,"fields":{"merchant":98,"date":92,"total":95,"gst":90,"receiptNumber":96,"paymentMethod":88}},"imageQuality":70}
+
+SHA-256 FILE HASHES
+5e6f03addd9449548d1261a42c65bf18757823e28454629b42505f33a485974a  README.txt
+82125dd404b5894a6a835ce8e2c72f13a4c3463aa46bc7472ec49c7608c7cb2f  RELEASE_NOTES.txt
+1cc00b2e93234f6abbefdb86b136880751e8477091c809e583f8339edca4405a  VERSION_HISTORY.txt
+6ba219f5d91eed4d89b5b23117add1ebc27a4232b6a148434bfb733911bf75bb  app.js
+73a13cb30f08fd802651a6e6bf841c565e1eb516d2e1685a8fec49fda20f5fc7  cloud-sync.js
+4fbd70da51025b02abb500d21a8220b103fa590ba09c5260f2c78c7dbc3d8c9f  icon.svg
+fc44ec0ad48fe0fa82573f0c3323c00154e9f8bb545fe44aecf567e189d6f22a  index.html
+13bd50ca077559dea64b7eebc60428a01a7f392a16cde1ca5a96b5c0735ad550  manifest.webmanifest
+ef759c81107ea70768129e588fafc6a49cda7d25d29c7dfe7c92cd0852c5be0a  service-worker.js
+f68bf5696f54546c15a6af4c2ba7a78e08a9eed22ed9a94855c3cbbdb3de3c2d  styles.css
+b98d03e0b916aac8ab1004bb8d5ccee343d142b39d7785cf2c5f0ed4f37035c2  supabase_setup.sql

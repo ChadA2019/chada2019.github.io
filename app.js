@@ -149,7 +149,7 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_VERSION="5.2.2";
+const APP_VERSION="5.3";
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 const defaultCategories=["Alcohol","Bills & Direct Debits","Cafes","Cash","Child Support","Dining Out","Education","Entertainment","Fuel","Groceries","Health & Fitness","Home & Maintenance","Income","Insurance","Loans & Finance","Loans & Mortgages","Medical","Personal Care","Pets","Refunds","Shopping","Subscriptions","Take Away","Transfers","Transport","Travel","Uncategorised","Vehicles"];
 const subcategoriesByCategory={
@@ -613,6 +613,177 @@ enhanceScan.onchange=rebuildReceiptPreview;
 receiptCategory.onchange=()=>fillSubcategorySelect(receiptCategory,receiptSubcategory,"");
 txCategory.onchange=()=>fillSubcategorySelect(txCategory,txSubcategory,"");
 ruleCategory.onchange=()=>fillSubcategorySelect(ruleCategory,ruleSubcategory,"");
+
+function normaliseOcrText(text){
+  return String(text||"")
+    .replace(/[|]/g,"I")
+    .replace(/[ \t]+/g," ")
+    .replace(/\r/g,"")
+    .trim();
+}
+function ocrLines(text){
+  return normaliseOcrText(text).split("\n").map(line=>line.trim()).filter(Boolean);
+}
+function firstCaptured(text,patterns){
+  for(const pattern of patterns){
+    const match=text.match(pattern);
+    if(match?.[1])return match[1].trim();
+  }
+  return "";
+}
+function cleanReceiptIdentifier(value){
+  return String(value||"")
+    .replace(/^[#:\s]+|[#:\s]+$/g,"")
+    .replace(/\s+/g,"")
+    .replace(/[^\w\/.-]/g,"");
+}
+function detectKnownMerchant(text,lines){
+  const upperText=upper(text);
+  const known=[
+    {tests:[/BUNNINGS/,/WAREHOUSE/],merchant:"Bunnings Warehouse",category:"Home & Maintenance",subcategory:"Hardware"},
+    {tests:[/WOOLWORTHS?/],merchant:"Woolworths",category:"Groceries",subcategory:"Supermarket"},
+    {tests:[/\bCOLES\b/],merchant:"Coles",category:"Groceries",subcategory:"Supermarket"},
+    {tests:[/OFFICEWORKS/],merchant:"Officeworks",category:"Shopping",subcategory:"Retail"},
+    {tests:[/JB\s*HI[- ]?FI/],merchant:"JB Hi-Fi",category:"Shopping",subcategory:"Electronics"},
+    {tests:[/SUPERCHEAP\s*AUTO/],merchant:"Supercheap Auto",category:"Vehicles",subcategory:"Parts / Accessories"},
+    {tests:[/\bREPCO\b/],merchant:"Repco",category:"Vehicles",subcategory:"Parts / Accessories"},
+    {tests:[/\bBCF\b/,/BOATING CAMPING FISHING/],merchant:"BCF",category:"Shopping",subcategory:"Retail"},
+    {tests:[/\bKMART\b/],merchant:"Kmart",category:"Shopping",subcategory:"Retail"},
+    {tests:[/\bTARGET\b/],merchant:"Target",category:"Shopping",subcategory:"Retail"},
+    {tests:[/\bALDI\b/],merchant:"ALDI",category:"Groceries",subcategory:"Supermarket"}
+  ];
+  for(const item of known){
+    if(item.tests.some(test=>test.test(upperText)))return item;
+  }
+
+  const ignore=/^(tax invoice|invoice|receipt|welcome|thank you|abn\b|date\b|time\b|total\b|subtotal\b|returns|customer|account|order|job|card|change|gst\b)/i;
+  const candidate=lines.find(line=>
+    /[A-Za-z]{3}/.test(line) &&
+    !ignore.test(line) &&
+    line.length>=3 &&
+    line.length<70 &&
+    !/^\d/.test(line)
+  );
+  return {merchant:candidate||"",category:"",subcategory:""};
+}
+function extractReceiptNumber(text){
+  const priorities=[
+    /invoice\s*(?:number|no\.?|#)\s*(?:details)?\s*[:#]?\s*([A-Z0-9][A-Z0-9\/.-]{3,})/i,
+    /tax\s*invoice\s*(?:number|no\.?|#)?\s*(?:details)?\s*[:#]?\s*([A-Z0-9][A-Z0-9\/.-]{3,})/i,
+    /receipt\s*(?:number|no\.?|#)\s*[:#]?\s*([A-Z0-9][A-Z0-9\/.-]{3,})/i,
+    /docket\s*(?:number|no\.?|#)\s*[:#]?\s*([A-Z0-9][A-Z0-9\/.-]{3,})/i,
+    /invoice\s*#\s*([A-Z0-9][A-Z0-9\/.-]{3,})/i,
+    /transaction\s*(?:id|number|no\.?|#)\s*[:#]?\s*([A-Z0-9][A-Z0-9\/.-]{3,})/i,
+    /order\s*(?:number|no\.?|#)\s*[:#]?\s*([A-Z0-9][A-Z0-9\/.-]{3,})/i,
+    /job\s*(?:number|no\.?|#)\s*[:#]?\s*([A-Z0-9][A-Z0-9\/.-]{3,})/i
+  ];
+  return cleanReceiptIdentifier(firstCaptured(text,priorities));
+}
+function extractReceiptDateTime(text){
+  const dateMatch=text.match(/\b(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})\b|\b(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{2,4})\b/i);
+  const timeMatch=text.match(/\b(\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM)?)\b/i);
+  return {
+    date:dateMatch?parseDate(dateMatch[1]||dateMatch[2]):"",
+    time:timeMatch?timeMatch[1].replace(/\s+/g," ").toUpperCase():""
+  };
+}
+function extractReceiptTotal(text){
+  const labelled=[
+    /(?:grand\s*total|amount\s*paid|total\s*paid|balance\s*due)\s*[:$ ]+\$?\s*([0-9,]+\.\d{2})/ig,
+    /^\s*total\s*[:$ ]+\$?\s*([0-9,]+\.\d{2})\s*$/igm,
+    /(?:card|eftpos|visa|mastercard|powerpass)\s*[:$ ]+\$?\s*([0-9,]+\.\d{2})/ig
+  ];
+  let values=[];
+  for(const pattern of labelled){
+    values.push(...[...text.matchAll(pattern)].map(match=>Number(match[1].replace(/,/g,""))));
+  }
+  values=values.filter(value=>value>0&&value<100000);
+  if(values.length)return Math.max(...values);
+
+  const all=[...text.matchAll(/\$\s*([0-9,]+\.\d{2})/g)]
+    .map(match=>Number(match[1].replace(/,/g,"")))
+    .filter(value=>value>0&&value<100000);
+  return all.length?Math.max(...all):0;
+}
+function extractReceiptGst(text,total=0){
+  const direct=firstCaptured(text,[
+    /GST\s+INCLUDED\s+IN\s+THE\s+TOTAL[\s:$]*\$?\s*([0-9,]+\.\d{2})/i,
+    /GST\s+INCLUDED[\s:$]*\$?\s*([0-9,]+\.\d{2})/i,
+    /(?:GST|TAX)\s*(?:AMOUNT)?\s*[:$ ]+\$?\s*([0-9,]+\.\d{2})/i
+  ]);
+  if(direct)return Number(direct.replace(/,/g,""));
+
+  if(total>0&&/GST\s+INCLUDED/i.test(text))return Number((total/11).toFixed(2));
+  return 0;
+}
+function detectReceiptPaymentMethod(text){
+  if(/\bCASH\b/i.test(text)&&!/CASHIER/i.test(text))return "Cash";
+  if(/\b(POWERPASS|EFTPOS|VISA|MASTERCARD|CARD NO|CARD)\b/i.test(text))return "Card";
+  return "";
+}
+
+function receiptFieldConfidence(parsed,rawText){
+  const text=normaliseOcrText(rawText);
+  const scores={
+    merchant:parsed.merchant?(/BUNNINGS|WOOLWORTHS|COLES|OFFICEWORKS|JB\s*HI|SUPERCHEAP|REPCO|BCF|KMART|TARGET|ALDI/i.test(text)?98:72):0,
+    date:parsed.date?92:0,
+    total:parsed.total?95:0,
+    gst:parsed.gst?90:0,
+    receiptNumber:parsed.receiptNumber?(/invoice\s*(?:number|no\.?|#)/i.test(text)?96:78):0,
+    paymentMethod:parsed.paymentMethod?88:0
+  };
+  const present=Object.values(scores).filter(Boolean);
+  const overall=present.length?Math.round(present.reduce((a,b)=>a+b,0)/present.length):0;
+  return {overall,fields:scores};
+}
+function receiptImageQuality(text){
+  const lines=ocrLines(text);
+  const alphaNumeric=String(text||"").replace(/[^A-Za-z0-9]/g,"").length;
+  const replacementNoise=(String(text||"").match(/[�]/g)||[]).length;
+  let score=30;
+  if(lines.length>=8)score+=20;
+  if(lines.length>=16)score+=15;
+  if(alphaNumeric>=120)score+=20;
+  if(alphaNumeric>=250)score+=10;
+  score-=Math.min(20,replacementNoise*4);
+  return Math.max(0,Math.min(100,score));
+}
+
+function parseAustralianReceipt(rawText){
+  const text=normaliseOcrText(rawText);
+  const lines=ocrLines(text);
+  const merchantInfo=detectKnownMerchant(text,lines);
+  const dateTime=extractReceiptDateTime(text);
+  const total=extractReceiptTotal(text);
+  const gst=extractReceiptGst(text,total);
+  const receiptNumber=extractReceiptNumber(text);
+  const paymentMethod=detectReceiptPaymentMethod(text);
+
+  let branch="";
+  if(merchantInfo.merchant==="Bunnings Warehouse"){
+    branch=firstCaptured(text,[
+      /BUNNINGS\s+WAREHOUSE\s*\n\s*([A-Z][A-Z' -]{2,})/i,
+      /\b(O['’]?CONNOR|CANNINGTON|BALCATTA|MIDLAND|ARMADALE|MORLEY|JOONDALUP)\b/i
+    ]);
+  }
+
+  const parsed={
+    merchant:merchantInfo.merchant,
+    branch,
+    category:merchantInfo.category,
+    subcategory:merchantInfo.subcategory,
+    date:dateTime.date,
+    time:dateTime.time,
+    total,
+    gst,
+    receiptNumber,
+    paymentMethod
+  };
+  parsed.confidence=receiptFieldConfidence(parsed,text);
+  parsed.imageQuality=receiptImageQuality(text);
+  return parsed;
+}
+
 runOcrBtn.onclick=async()=>{
   if(!pendingReceiptPages.length)return alert('Scan or import at least one receipt section first.');
   if(!window.Tesseract)return alert('Receipt reader is unavailable while offline. You can still enter the details manually.');
@@ -623,16 +794,24 @@ runOcrBtn.onclick=async()=>{
       const image=await processScanPage(pendingReceiptPages[i].original,pendingReceiptPages[i].rotation||0);
       const result=await Tesseract.recognize(image,'eng',{logger:m=>{if(m.status==='recognizing text')ocrStatus.textContent=`Section ${i+1}: ${Math.round(m.progress*100)}%`}});combined+='\n'+(result.data.text||'');
     }
-    const text=combined,lines=text.split(/\n/).map(x=>x.trim()).filter(Boolean);
-    const ignore=/^(tax invoice|receipt|invoice|welcome|thank you|abn\b)/i;
-    if(!receiptMerchant.value)receiptMerchant.value=lines.find(x=>/[A-Za-z]{3}/.test(x)&&!ignore.test(x)&&x.length<70)||'';
-    const totalPatterns=[/(?:grand\s*total|amount\s*paid|total\s*(?:aud)?|balance\s*due)\s*[:$ ]+([0-9,]+\.\d{2})/ig,/\$\s*([0-9,]+\.\d{2})/g];
-    let totals=[];for(const rx of totalPatterns)totals.push(...[...text.matchAll(rx)].map(m=>Number(m[1].replace(/,/g,''))));totals=totals.filter(n=>n>0&&n<100000);
-    if(totals.length)receiptAmount.value=Math.max(...totals).toFixed(2);
-    const date=text.match(/\b(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})\b|\b(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{2,4})\b/i);if(date)receiptDate.value=parseDate(date[1]||date[2]);
-    const gst=text.match(/(?:GST|TAX)(?:\s+INCLUDED)?\s*[:$ ]+([0-9,]+\.\d{2})/i);if(gst)receiptGst.value=Number(gst[1].replace(/,/g,'')).toFixed(2);
-    const rn=text.match(/(?:receipt|invoice|trans(?:action)?|order)\s*(?:no|number|#)?\s*[:#]?\s*([A-Z0-9-]{4,})/i);if(rn)receiptNumber.value=rn[1];
-    receiptNotes.value=(receiptNotes.value?receiptNotes.value+'\n':'')+`Scanned from ${pendingReceiptPages.length} section${pendingReceiptPages.length===1?'':'s'}.`;
+    const parsed=parseAustralianReceipt(combined);
+    if(parsed.merchant)receiptMerchant.value=parsed.merchant;
+    if(parsed.date)receiptDate.value=parsed.date;
+    if(parsed.total)receiptAmount.value=parsed.total.toFixed(2);
+    if(parsed.receiptNumber)receiptNumber.value=parsed.receiptNumber;
+    if(parsed.gst)receiptGst.value=parsed.gst.toFixed(2);
+    if(parsed.paymentMethod)receiptPaymentMethod.value=parsed.paymentMethod;
+    if(parsed.category){
+      fillCategorySelect(receiptCategory,receiptSubcategory,parsed.category,parsed.subcategory||"");
+    }
+    const scanNotes=[
+      `Scanned from ${pendingReceiptPages.length} section${pendingReceiptPages.length===1?'':'s'}.`,
+      parsed.branch?`Branch: ${parsed.branch}.`:"",
+      parsed.time?`Receipt time: ${parsed.time}.`:"",
+      parsed.confidence?`Extraction confidence: ${parsed.confidence.overall}%.`:"",
+      Number.isFinite(parsed.imageQuality)?`OCR quality: ${parsed.imageQuality}%.`:""
+    ].filter(Boolean).join(" ");
+    receiptNotes.value=(receiptNotes.value?receiptNotes.value+'\n':'')+scanNotes;
     ocrStatus.textContent='Details extracted — please check';
   }catch(err){console.error(err);ocrStatus.textContent='Manual check needed';alert('The scanned receipt could not be read reliably. Please check the image and enter any missing details manually.')}finally{receiptPreview.parentElement.classList.remove('scanning')}
 };

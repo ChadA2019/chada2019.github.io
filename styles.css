@@ -64,3 +64,5 @@ body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-ser
 .empty-assets strong{color:var(--text)}
 .release-notes{margin-top:1rem}
 .release-notes summary{cursor:pointer;font-weight:700}
+
+.app-version{white-space:nowrap}
