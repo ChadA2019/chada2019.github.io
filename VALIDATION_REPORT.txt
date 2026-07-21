@@ -1,5 +1,5 @@
-BalanceIQ v7.9 validation
-
-JavaScript syntax: passed
-ZIP integrity: passed
-Target regression: Osborne Park Bunnings receipt resolves Total $136.55, GST $12.41, receipt 2708/00375194.
+BalanceIQ v8.0 validation
+- JavaScript syntax: PASS
+- Release files present: PASS
+- Service-worker cache version updated: PASS
+- ZIP integrity: pending packaging

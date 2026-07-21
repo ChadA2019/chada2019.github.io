@@ -1,9 +1,10 @@
-BalanceIQ v7.9 — Bunnings Tender-Row Total Recovery
+BalanceIQ v8.0 — Receipt Reliability Release
 
-• Preserves clear dollar values printed on the same row as CARD NO instead of discarding the entire row as reference data.
-• Uses CARD NO / EFT / CREDIT tender amounts as independent payment evidence only when a real decimal amount is present.
-• Recovers separated Bunnings totals when SubTotal, a damaged Total label and the tender amount agree.
-• Keeps barcode, account, card-number and invoice-reference protections in place.
-• Retains v7.8 date, receipt-number, GST plausibility and consensus improvements.
-
-Build: 2026.07.21.024
+Fixes and improvements:
+- Recovers damaged Bunnings totals such as $136 5g as $136.55.
+- Uses a precise subtotal when a one-decimal tender amount is within six cents.
+- Promotes repeated subtotal evidence when GST-included summary structure is present.
+- Detects GST values shifted onto an EFT line and validates them against Total / 11.
+- Strongly prefers complete Bunnings receipt numbers in ####/######## format.
+- Adds dedicated lower-summary OCR crops covering Total, GST, EFT, CARD and Change rows.
+- Retains all v7.9 date, total, GST and footer-recovery safeguards.

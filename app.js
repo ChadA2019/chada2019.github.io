@@ -149,7 +149,7 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_VERSION="7.9";
+const APP_VERSION="8.0";
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 const defaultCategories=["Alcohol","Bills & Direct Debits","Cafes","Cash","Child Support","Dining Out","Education","Entertainment","Fuel","Groceries","Health & Fitness","Home & Maintenance","Income","Insurance","Loans & Finance","Loans & Mortgages","Medical","Personal Care","Pets","Refunds","Shopping","Subscriptions","Take Away","Transfers","Transport","Travel","Uncategorised","Vehicles"];
 const subcategoriesByCategory={
@@ -1530,6 +1530,14 @@ function currencyCandidates(line,{labelled=false}={}){
     for(const match of text.matchAll(/\$\s*(\d{1,4})\.(\d)\s*\)/g)){
       add(Number(`${match[1]}.${match[2]}5`),91,"closing-paren-as-five",match[0],match.index,match.index+match[0].length);
     }
+
+    // v8.0: thermal receipt OCR frequently reads a final 5 as g, q, S or ).
+    // Examples: "$136 5g" and "$136.5g" are both $136.55. Restrict
+    // this repair to labelled money lines so product text cannot create totals.
+    for(const match of text.matchAll(/\$\s*(\d{1,4})\s*[., ]\s*(\d)\s*([gGqQsS)])/g)){
+      const tail=/[gGqQsS)]/.test(match[3])?"5":match[3];
+      add(Number(`${match[1]}.${match[2]}${tail}`),94,"damaged-final-five",match[0],match.index,match.index+match[0].length);
+    }
   }
 
   // Clear two-decimal values.
@@ -1692,7 +1700,7 @@ function safeReceiptTotal(channels,merchant=""){
     if(roles.has("payment")&&(roles.has("total")||roles.has("included-total")))item.score+=185;
     if(roles.has("payment")&&item.repairs.some(r=>r!=="compact-currency"))item.score+=70;
     if(roles.size>=2)item.score+=55;
-    if(roles.has("total")&&item.repairs.some(r=>["exact-decimal","spaced-both-sides-decimal","fragmented-decimal-sequence","spaced-cents"].includes(r)))item.score+=180;
+    if(roles.has("total")&&item.repairs.some(r=>["exact-decimal","spaced-both-sides-decimal","fragmented-decimal-sequence","spaced-cents","damaged-final-five"].includes(r)))item.score+=180;
   }
 
   let ranked=[...scored.values()]
@@ -1744,7 +1752,8 @@ function safeReceiptTotal(channels,merchant=""){
       "exact-decimal",
       "spaced-both-sides-decimal",
       "fragmented-decimal-sequence",
-      "spaced-cents"
+      "spaced-cents",
+      "damaged-final-five"
     ].includes(repair))
   );
 
@@ -1766,7 +1775,7 @@ function safeReceiptTotal(channels,merchant=""){
   const roleConsensusTotal=ranked.find(item=>{
     const roles=new Set(item.roles);
     const clearMoney=item.repairs.some(repair=>[
-      "exact-decimal","spaced-both-sides-decimal","fragmented-decimal-sequence","spaced-cents"
+      "exact-decimal","spaced-both-sides-decimal","fragmented-decimal-sequence","spaced-cents","damaged-final-five"
     ].includes(repair));
     return hasSeparatedTotalLabel&&item.value>0&&item.value<=5000&&clearMoney&&
       roles.has("subtotal")&&roles.has("payment");
@@ -1784,7 +1793,7 @@ function safeReceiptTotal(channels,merchant=""){
   // and requires both semantic subtotal evidence and repeated exact money OCR.
   const bunningsSubtotalConsensus=merchant==="Bunnings Warehouse"&&ranked.find(item=>{
     const clearMoney=item.repairs.some(repair=>[
-      "exact-decimal","spaced-both-sides-decimal","fragmented-decimal-sequence","spaced-cents"
+      "exact-decimal","spaced-both-sides-decimal","fragmented-decimal-sequence","spaced-cents","damaged-final-five"
     ].includes(repair));
     const totalsAreaHits=item.sources.filter(source=>/^(?:totals-right|totals|full):/i.test(source)).length;
     return hasSeparatedTotalLabel&&item.value>0&&item.value<=5000&&clearMoney&&
@@ -1803,7 +1812,7 @@ function safeReceiptTotal(channels,merchant=""){
   const bunningsTenderConsensus=merchant==="Bunnings Warehouse"&&ranked.find(item=>{
     const roles=new Set(item.roles);
     const clearMoney=item.repairs.some(repair=>[
-      "exact-decimal","spaced-both-sides-decimal","fragmented-decimal-sequence","spaced-cents"
+      "exact-decimal","spaced-both-sides-decimal","fragmented-decimal-sequence","spaced-cents","damaged-final-five"
     ].includes(repair));
     return hasSeparatedTotalLabel&&item.value>0&&item.value<=5000&&clearMoney&&
       roles.has("subtotal")&&roles.has("payment");
@@ -1812,6 +1821,45 @@ function safeReceiptTotal(channels,merchant=""){
     bunningsTenderConsensus.score+=1700;
     ranked=ranked.sort((a,b)=>b.score-a.score||b.count-a.count||a.value-b.value);
     return {value:bunningsTenderConsensus.value,candidates:ranked.slice(0,10),trusted:true};
+  }
+
+  // v8.0: tolerate a partially read tender amount. A common Bunnings failure is
+  // SubTotal $136.55 plus CARD NO ... $136.5. The one-decimal tender is not the
+  // final answer, but it is strong structural confirmation for the precise
+  // subtotal. We allow at most six cents difference and require Total/GST-total
+  // evidence in the same lower receipt area.
+  if(merchant==="Bunnings Warehouse"&&(hasSeparatedTotalLabel||fuzzyIncludedTotalEvidence(combinedReceiptText(channels)))){
+    const subtotalItems=ranked.filter(item=>item.roles.includes("subtotal")&&item.value>0&&item.value<=5000);
+    const paymentItems=ranked.filter(item=>item.roles.includes("payment")&&item.value>0&&item.value<=5000);
+    for(const subtotal of subtotalItems){
+      const nearPayment=paymentItems.find(payment=>Math.abs(payment.value-subtotal.value)<=.06);
+      if(nearPayment){
+        subtotal.score+=1900;
+        subtotal.sources.push(`v8-near-tender:${nearPayment.value.toFixed(2)}`);
+        subtotal.roles.push("payment-near-match");
+        ranked=ranked.sort((a,b)=>b.score-a.score||b.count-a.count||a.value-b.value);
+        return {value:subtotal.value,candidates:ranked.slice(0,10),trusted:true};
+      }
+    }
+  }
+
+  // v8.0: when the lower block clearly contains GST INCLUDED IN THE TOTAL, a
+  // precise subtotal repeated in independent OCR passes can be promoted even if
+  // the printed word Total is mangled beyond recognition. To avoid selecting an
+  // item line, require at least two subtotal-role reads and ensure no individual
+  // non-total candidate is larger.
+  if(merchant==="Bunnings Warehouse"&&fuzzyIncludedTotalEvidence(combinedReceiptText(channels))){
+    const fallbackSubtotal=ranked.find(item=>{
+      const subtotalHits=item.roles.filter(role=>role==="subtotal").length;
+      const clear=item.repairs.some(repair=>["exact-decimal","spaced-both-sides-decimal","fragmented-decimal-sequence","spaced-cents","damaged-final-five"].includes(repair));
+      const largerItem=ranked.some(other=>other.value>item.value&&other.roles.every(role=>role==="other"));
+      return subtotalHits>=2&&clear&&!largerItem;
+    });
+    if(fallbackSubtotal){
+      fallbackSubtotal.score+=1450;
+      ranked=ranked.sort((a,b)=>b.score-a.score||b.count-a.count||a.value-b.value);
+      return {value:fallbackSubtotal.value,candidates:ranked.slice(0,10),trusted:true};
+    }
   }
 
   const best=ranked[0];
@@ -1988,6 +2036,13 @@ function chooseReceiptNumber(text,merchant="",channels={}){
   for(const candidate of candidates){
     let score=candidate.weight;
     const [store,number]=candidate.value.split("/");
+    // v8.0: the native Bunnings format is exactly ####/########. A seven-digit
+    // suffix is an incomplete OCR fragment and must not win a tie against a
+    // complete candidate from a focused pass.
+    if(/^\d{4}\/\d{8}$/.test(candidate.value))score+=320;
+    else if(/^\d{4}\/\d{7}$/.test(candidate.value))score-=140;
+    if(candidate.source==="focused-date")score+=80;
+    if(candidate.source==="footer-pass")score+=100;
 
     for(const hint of hints){
       // v7.4: the encoded footer reference is more reliable than repeated
@@ -2039,6 +2094,23 @@ function gstCandidatesFromText(text,channels={}){
       }
       for(const candidate of currencyCandidates(next,{labelled:true})){
         out.push({value:candidate.value,source,weight:weight-20+candidate.quality,repair:candidate.reason,printed:true});
+      }
+    }
+  }
+
+  // v8.0: OCR can shift the lower Bunnings rows so the GST amount appears on a
+  // line labelled EFT, while the actual tender amount is on the following CARD
+  // row. Capture up to two lines after a GST-included label as contextual GST
+  // candidates; mathematical validation in chooseGst decides which one is sane.
+  for(const [source,body,weight] of sources){
+    const lines=ocrLines(body);
+    for(let i=0;i<lines.length;i++){
+      if(!fuzzyIncludedTotalEvidence(lines[i]))continue;
+      for(let offset=1;offset<=2;offset++){
+        const nearby=lines[i+offset]||"";
+        for(const candidate of currencyCandidates(nearby,{labelled:true})){
+          out.push({value:candidate.value,source:`${source}-shifted-row`,weight:weight+80-offset*15+candidate.quality,repair:candidate.reason,printed:true});
+        }
       }
     }
   }
@@ -2593,9 +2665,15 @@ runOcrBtn.onclick=async()=>{
       const amountColumn=await cropReceiptBox(full,.54,.43,.99,.69,{threshold:false,scale:4.0});
       const amountColumnThreshold=await cropReceiptBox(full,.54,.43,.99,.69,{threshold:true,scale:4.0});
       const gstRight=await cropReceiptBox(full,.43,.50,.99,.67,{threshold:true,scale:3.8});
+      // v8.0: dedicated lower-summary crops keep Total, GST, EFT and CARD rows
+      // together. This is more reliable than a narrow amount column when the
+      // receipt is long, skewed or photographed at an angle.
+      const totalsLower=await cropReceiptBox(full,.08,.60,.99,.86,{threshold:false,scale:3.5});
+      const totalsLowerThreshold=await cropReceiptBox(full,.08,.60,.99,.86,{threshold:true,scale:3.5});
+      const tenderLower=await cropReceiptBox(full,.38,.64,.99,.83,{threshold:true,scale:4.0});
       const dateVariants=await makeDateStripVariants(full);
 
-      for(const [label,image] of [["full",full],["header",header],["totals",totals],["footer",footer],["gst",gst],["totals-right",totalsRight],["totals-right-threshold",totalsRightThreshold],["gst-right",gstRight]]){
+      for(const [label,image] of [["full",full],["header",header],["totals",totals],["footer",footer],["gst",gst],["totals-right",totalsRight],["totals-right-threshold",totalsRightThreshold],["gst-right",gstRight],["totals-lower",totalsLower],["totals-lower-threshold",totalsLowerThreshold],["tender-lower",tenderLower]]){
         const report=await recogniseScanPass(image,label,section,m=>{
           if(m.status==="recognizing text")ocrStatus.textContent=`Section ${section} ${label}: ${Math.round(m.progress*100)}%`;
         });
@@ -2633,12 +2711,12 @@ runOcrBtn.onclick=async()=>{
     }
     const channels={
       header:sectionReports.filter(r=>r.pass==="header").map(r=>r.text).join("\n"),
-      totals:sectionReports.filter(r=>r.pass==="totals").map(r=>r.text).join("\n"),
+      totals:sectionReports.filter(r=>r.pass==="totals"||r.pass.startsWith("totals-lower")).map(r=>r.text).join("\n"),
       full:sectionReports.filter(r=>r.pass==="full").map(r=>r.text).join("\n"),
       date:sectionReports.filter(r=>r.pass.startsWith("date-")).map(r=>r.text).join("\n"),
       footer:sectionReports.filter(r=>r.pass==="footer").map(r=>r.text).join("\n"),
-      gst:sectionReports.filter(r=>r.pass==="gst"||r.pass==="gst-right").map(r=>r.text).join("\n"),
-      totalsRight:sectionReports.filter(r=>r.pass.startsWith("totals-right")||r.pass.startsWith("amount-column")).map(r=>r.text).join("\n")
+      gst:sectionReports.filter(r=>r.pass==="gst"||r.pass==="gst-right"||r.pass==="tender-lower").map(r=>r.text).join("\n"),
+      totalsRight:sectionReports.filter(r=>r.pass.startsWith("totals-right")||r.pass.startsWith("amount-column")||r.pass.startsWith("totals-lower")||r.pass==="tender-lower").map(r=>r.text).join("\n")
     };
     const parsed=parseReceiptChannels(channels);
     const ocrAverage=Math.round(sectionReports.reduce((s,r)=>s+r.confidence,0)/Math.max(1,sectionReports.length));

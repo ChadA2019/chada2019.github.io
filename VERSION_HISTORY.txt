@@ -26,3 +26,5 @@ Semantic field labels now outrank crop repetition; improved Bunnings footer rece
 
 7.9 — 2026-07-21
 Bunnings degraded payment-label total consensus and focused-pass invoice voting.
+
+8.0  2026-07-22  Tolerant tender matching, damaged-cents repair, shifted GST recovery, invoice completeness scoring, lower-summary OCR.

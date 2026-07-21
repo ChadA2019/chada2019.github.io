@@ -1,3 +1,2 @@
-BalanceIQ v7.9 — Bunnings Degraded-Label Consensus Release
-
-Deploy all files in this folder together.
+BalanceIQ v8.0
+Deploy all files in this folder to replace the previous release.
