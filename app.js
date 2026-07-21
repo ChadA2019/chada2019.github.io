@@ -149,7 +149,7 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_VERSION="7.6";
+const APP_VERSION="7.7";
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 const defaultCategories=["Alcohol","Bills & Direct Debits","Cafes","Cash","Child Support","Dining Out","Education","Entertainment","Fuel","Groceries","Health & Fitness","Home & Maintenance","Income","Insurance","Loans & Finance","Loans & Mortgages","Medical","Personal Care","Pets","Refunds","Shopping","Subscriptions","Take Away","Transfers","Transport","Travel","Uncategorised","Vehicles"];
 const subcategoriesByCategory={
@@ -1745,7 +1745,7 @@ function safeReceiptTotal(channels,merchant=""){
     return {value:authoritativeTotal.value,candidates:ranked.slice(0,10),trusted:true};
   }
 
-  // v7.6: some Bunnings layouts print the word "Total" on the left and the
+  // v7.7: some Bunnings layouts print the word "Total" on the left and the
   // amount in a separate right-hand column. OCR can therefore preserve the
   // label but lose its amount association. When the same clear two-decimal
   // value is independently read as both SubTotal and card/EFT payment, and a
@@ -1891,7 +1891,7 @@ function footerInvoiceHints(text){
     });
   }
 
-  // v7.6: partial Bunnings footer recovery. The barcode line often preserves
+  // v7.7: partial Bunnings footer recovery. The barcode line often preserves
   // #019-78347-2052 even when the following year/date is merged or damaged,
   // for example #019-78347-20522096 07-07. The first two groups are the
   // eight-digit invoice suffix and the third group is the four-digit store.
@@ -1995,9 +1995,38 @@ function gstCandidatesFromText(text,channels={}){
   }
   return out;
 }
+function repairedGstCandidates(text,channels,expected){
+  if(!expected)return [];
+  const bodies=[channels.full||text,channels.totals||"",channels.totalsRight||"",channels.gst||""];
+  const out=[];
+  for(const body of bodies){
+    const lines=ocrLines(body);
+    for(let i=0;i<lines.length;i++){
+      const line=lines[i];
+      if(!(/GST|[BG8]ST|INCLUDED\s+IN\s+THE\s+TOTAL|THE\s+TOTAL/i.test(line)))continue;
+      const tokens=line.match(/[$£€¥]?\s*[0-9OISB]{2,4}(?:\s*[.,]\s*[0-9OISB]{1,2})/gi)||[];
+      for(const token of tokens){
+        const cleaned=token.toUpperCase().replace(/[O]/g,'0').replace(/[IS]/g,'1').replace(/B/g,'8').replace(/[^0-9.,]/g,'').replace(',','.');
+        const parts=cleaned.split('.');
+        if(parts.length!==2)continue;
+        const whole=parts[0], cents=(parts[1]+'0').slice(0,2);
+        if(whole.length<3)continue;
+        for(let d=0;d<whole.length;d++){
+          const repairedWhole=whole.slice(0,d)+whole.slice(d+1);
+          if(!repairedWhole)continue;
+          const value=Number(repairedWhole+'.'+cents);
+          if(value>0&&Math.abs(value-expected)<=.12){
+            out.push({value,source:'gst-digit-repair',weight:360,repair:'remove-extra-gst-digit',printed:true});
+          }
+        }
+      }
+    }
+  }
+  return out;
+}
 function chooseGst(text,total,channels={}){
   const expected=total>0?Number((total/11).toFixed(2)):0;
-  const candidates=gstCandidatesFromText(text,channels)
+  const candidates=[...gstCandidatesFromText(text,channels),...repairedGstCandidates(text,channels,expected)]
     .filter(candidate=>candidate.value>0&&candidate.value<total*.20&&Math.abs(candidate.value-total)>.01);
   const scores=new Map();
 
@@ -2005,28 +2034,34 @@ function chooseGst(text,total,channels={}){
     let score=candidate.weight;
     const difference=Math.abs(candidate.value-expected);
 
-    // Printed GST is authoritative when it is plausible, even if Total/11 differs slightly.
-    if(candidate.source==="gst-right")score+=180;
+    if(candidate.source==="gst-digit-repair")score+=220;
+    else if(candidate.source==="gst-right")score+=180;
     else if(candidate.source==="totals-right")score+=120;
 
-    if(difference<=.03)score+=120;
-    else if(difference<=.15)score+=65;
-    else if(difference<=1.00)score+=10;
-    else score-=100;
+    if(difference<=.03)score+=180;
+    else if(difference<=.08)score+=100;
+    else if(difference<=.15)score+=25;
+    else if(difference<=1.00)score-=140;
+    else score-=260;
 
     const key=candidate.value.toFixed(2);
     scores.set(key,(scores.get(key)||0)+score);
   }
 
   if(total>0&&fuzzyIncludedTotalEvidence(text)){
-    scores.set(expected.toFixed(2),(scores.get(expected.toFixed(2))||0)+160);
+    scores.set(expected.toFixed(2),(scores.get(expected.toFixed(2))||0)+260);
   }
 
   const ranked=[...scores.entries()]
     .map(([value,score])=>({value:Number(value),score}))
     .sort((a,b)=>b.score-a.score);
 
-  const best=ranked[0];
+  let best=ranked[0];
+  // A damaged printed GST must not override the mathematically consistent GST
+  // unless it is within 15 cents of Total/11.
+  if(best&&Math.abs(best.value-expected)>.15&&fuzzyIncludedTotalEvidence(text)){
+    best={value:expected,score:scores.get(expected.toFixed(2))||260};
+  }
   return {
     value:best&&best.value<total*.20?best.value:0,
     candidates:ranked,
@@ -2192,7 +2227,7 @@ function chooseRecoveredDate(channels){
 
 function reconstructBunningsInvoice(text){
   const body=String(text||"");
-  // v7.6 safety: only reconstruct from an Invoice Number-labelled context.
+  // v7.7 safety: only reconstruct from an Invoice Number-labelled context.
   // Never use arbitrary 12/13-digit runs because Bunnings product barcodes
   // (for example 9320090113802) look like invoice numbers after truncation.
   const labelled=[];

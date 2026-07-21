@@ -1,11 +1,17 @@
-BalanceIQ v7.6 — Bunnings Footer Invoice Recovery
+BalanceIQ v7.7 — GST Plausibility and Digit Repair
+
+- Repairs OCR GST strings with one inserted digit, such as $211.55 or $214.55, back to $21.55 when consistent with Total/11.
+- Prevents damaged printed GST values such as $21.70 from overriding a strongly supported expected GST.
+- Retains v7.6 receipt-number recovery and all prior total/date improvements.
+
+BalanceIQ v7.7 — Bunnings Footer Invoice Recovery
 
 - Recovers Bunnings receipt numbers from partial barcode/footer references such as #019-78347-2052 even when the following year/date is merged or corrupted.
 - Prevents product barcodes from being reconstructed as receipt numbers.
 - Restricts digit-based invoice reconstruction to text immediately associated with an Invoice Number label.
 - Retains all v7.5 total, GST and date improvements.
 
-BalanceIQ v7.6
+BalanceIQ v7.7
 Build 2026.07.21.024
 
 - A printed two-decimal amount on an explicitly labelled Total line is now authoritative.
