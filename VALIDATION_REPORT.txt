@@ -1,13 +1,6 @@
-BALANCEIQ v7.2 VALIDATION
-Build 2026.07.21.020
-
-STATIC VALIDATION
-- JavaScript syntax check: required and completed during packaging.
-- Version references updated in HTML, manifest and service worker.
-- Service-worker cache changed to balanceiq-v7-2.
-
-TARGET REGRESSION
-Input: Bunnings diagnostic containing `PowerPass $236` and `Total $236 . 92`.
-Expected ranking behaviour: the labelled two-decimal Total must outrank the compact-currency value 2.36.
-
-Note: OCR can still misread an individual printed digit. Version 7.2 adds focused amount-column OCR to improve the source text before candidate ranking.
+BalanceIQ v7.3 validation
+- JavaScript syntax checked with Node.js.
+- Deployment ZIP integrity checked.
+- Version/build references updated.
+- Focused date OCR and tolerant date parsing added.
+- v7.2 total-ranking protections retained.

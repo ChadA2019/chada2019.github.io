@@ -1,12 +1,10 @@
-BALANCEIQ v7.2
-Build 2026.07.21.020
+BalanceIQ v7.3 — Focused Date Recovery Release
+Build 2026.07.21.021
 
-CHANGES
-- Prevents `PowerPass $236` from being promoted to a $2.36 payment.
-- Applies a severe penalty when compact-currency repair invents a decimal point.
-- Gives labelled Total / Amount Paid values with visible cents decisive priority.
-- Removes the unconditional PowerPass-as-payment rule.
-- Adds wide totals-band and focused amount-column OCR passes.
-- Uses a money-specific Tesseract pass to improve recognition of final cents.
-- Retains printed-GST consensus and Total/11 fallback validation.
-- Updates the app, manifest and service-worker cache to version 7.2.
+Changes
+- Preserves the corrected v7.2 labelled-total ranking.
+- Adds four tightly focused date-line OCR passes at higher resolution.
+- Uses single-line OCR mode for focused receipt date bands.
+- Accepts OCR-spaced and dotted date separators such as 07 / 07 / 2026.
+- Repairs the common 2026-to-2006 OCR year error when safely supported by the current year.
+- Keeps date autofill blank when no plausible date evidence exists.

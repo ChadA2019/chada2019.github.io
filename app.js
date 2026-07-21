@@ -149,7 +149,7 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_VERSION="7.2";
+const APP_VERSION="7.3";
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 const defaultCategories=["Alcohol","Bills & Direct Debits","Cafes","Cash","Child Support","Dining Out","Education","Entertainment","Fuel","Groceries","Health & Fitness","Home & Maintenance","Income","Insurance","Loans & Finance","Loans & Mortgages","Medical","Personal Care","Pets","Refunds","Shopping","Subscriptions","Take Away","Transfers","Transport","Travel","Uncategorised","Vehicles"];
 const subcategoriesByCategory={
@@ -809,10 +809,42 @@ async function makeDateStripVariants(dataUrl){
     ctx.putImageData(out,0,0);
   }
 
+  // Also create tightly focused single-line bands. The previous broad crop could
+  // recognise the time while losing the date because surrounding header text dominated.
+  const makeFocused=(start,end,thresholdMode=false)=>{
+    const fy=Math.max(0,Math.floor(img.height*start));
+    const fh=Math.max(1,Math.floor(img.height*(end-start)));
+    const fx=Math.floor(img.width*.03),fw=Math.floor(img.width*.94);
+    const focusedScale=4.2;
+    const canvas=document.createElement("canvas");
+    canvas.width=Math.round(fw*focusedScale);
+    canvas.height=Math.round(fh*focusedScale);
+    const ctx=canvas.getContext("2d",{willReadFrequently:true});
+    ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";
+    ctx.drawImage(img,fx,fy,fw,fh,0,0,canvas.width,canvas.height);
+    const image=ctx.getImageData(0,0,canvas.width,canvas.height),data=image.data;
+    let sum=0;
+    for(let i=0;i<data.length;i+=4)sum+=.299*data[i]+.587*data[i+1]+.114*data[i+2];
+    const mean=sum/(data.length/4);
+    for(let i=0;i<data.length;i+=4){
+      const gray=.299*data[i]+.587*data[i+1]+.114*data[i+2];
+      let value=(gray-mean)*2.15+166;
+      if(thresholdMode)value=value>Math.max(140,mean*.91)?255:0;
+      value=Math.max(0,Math.min(255,value));
+      data[i]=data[i+1]=data[i+2]=value;
+    }
+    ctx.putImageData(image,0,0);
+    return canvas.toDataURL("image/png");
+  };
+
   return [
     {label:"date-gray",image:grayscale.toDataURL("image/png")},
     {label:"date-threshold",image:threshold.toDataURL("image/png")},
-    {label:"date-sharpen",image:sharpened.toDataURL("image/png")}
+    {label:"date-sharpen",image:sharpened.toDataURL("image/png")},
+    {label:"date-line-upper",image:makeFocused(.105,.205,false)},
+    {label:"date-line-upper-threshold",image:makeFocused(.105,.205,true)},
+    {label:"date-line-lower",image:makeFocused(.135,.235,false)},
+    {label:"date-line-lower-threshold",image:makeFocused(.135,.235,true)}
   ];
 }
 
@@ -868,7 +900,9 @@ async function recogniseMoneyPass(image,label,section,logger){
 async function recogniseDatePass(image,label,section,logger){
   const result=await Tesseract.recognize(image,"eng",{
     logger,
-    tessedit_char_whitelist:"0123456789/-:AMPampMonTueWedThuFriSatSun "
+    tessedit_pageseg_mode:label.includes("line")?"7":"6",
+    preserve_interword_spaces:"1",
+    tessedit_char_whitelist:"0123456789/-. :AMPampMonTueWedThuFriSatSun"
   });
   return {
     section,
@@ -1710,15 +1744,31 @@ function splitOcrPasses(text){
 }
 function dateCandidatesFromText(text,source,weight){
   const out=[];
-  for(const match of text.matchAll(/\b([0-3]?\d)[\/-]([01]?\d)[\/-](20\d{2}|\d{2})\b/g)){
-    const value=isoAustralianDate(match[1],match[2],match[3]);
-    if(value)out.push({value,source,weight});
+  const cleaned=String(text||"")
+    .replace(/[|Iil]/g,m=>m==="|"?"/":m)
+    .replace(/\\/g,"/");
+
+  // Standard Australian date, allowing OCR spaces or dots around separators.
+  const australian=/\b([0-3]?\d)\s*[\/\-.]\s*([01]?\d)\s*[\/\-.]\s*((?:20)?\d{2})\b/g;
+  for(const match of cleaned.matchAll(australian)){
+    let year=Number(match[3]);
+    if(year<100)year+=2000;
+    // A common receipt OCR error is 2026 -> 2006. Repair only when the result is
+    // implausibly old and its final digit agrees with the current year.
+    const currentYear=new Date().getFullYear();
+    if(year<=currentYear-10&&year%10===currentYear%10)year=currentYear;
+    const value=isoAustralianDate(match[1],match[2],year);
+    if(value)out.push({value,source,weight,raw:match[0]});
   }
-  for(const match of text.matchAll(/\b(20\d{2})[-\/](0?[1-9]|1[0-2])[-\/](0?[1-9]|[12]\d|3[01])\b/g)){
+
+  // Machine/footer date, also allowing spaces around separators.
+  const footer=/\b(20\d{2})\s*[-\/]\s*(0?[1-9]|1[0-2])\s*[-\/]\s*(0?[1-9]|[12]\d|3[01])\b/g;
+  for(const match of cleaned.matchAll(footer)){
     out.push({
       value:`${match[1]}-${String(match[2]).padStart(2,"0")}-${String(match[3]).padStart(2,"0")}`,
       source:`${source}-footer`,
-      weight:weight+25
+      weight:weight+25,
+      raw:match[0]
     });
   }
   return out;
@@ -1932,12 +1982,16 @@ function recoverDateCandidates(channels){
   for(const [source,raw,weight] of sources){
     const text=normaliseDateOcrText(raw);
 
-    for(const match of text.matchAll(/\b([0-3]?\d)[\/\-]([01]?\d)[\/\-](20\d{2}|\d{2})\b/g)){
-      const value=isoAustralianDate(match[1],match[2],match[3]);
+    for(const match of text.matchAll(/\b([0-3]?\d)\s*[\/\-.]\s*([01]?\d)\s*[\/\-.]\s*(20\d{2}|\d{2})\b/g)){
+      let year=Number(match[3]);
+      if(year<100)year+=2000;
+      const currentYear=new Date().getFullYear();
+      if(year<=currentYear-10&&year%10===currentYear%10)year=currentYear;
+      const value=isoAustralianDate(match[1],match[2],year);
       if(value)out.push({value,source,weight,raw:match[0]});
     }
 
-    for(const match of text.matchAll(/\b(20\d{2})[\/\-](0?[1-9]|1[0-2])[\/\-](0?[1-9]|[12]\d|3[01])\b/g)){
+    for(const match of text.matchAll(/\b(20\d{2})\s*[\/\-]\s*(0?[1-9]|1[0-2])\s*[\/\-]\s*(0?[1-9]|[12]\d|3[01])\b/g)){
       out.push({
         value:`${match[1]}-${String(match[2]).padStart(2,"0")}-${String(match[3]).padStart(2,"0")}`,
         source:`${source}-footer`,
