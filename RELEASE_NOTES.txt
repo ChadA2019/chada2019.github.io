@@ -1,13 +1,16 @@
-BALANCEIQ v6.5
-Build 2026.07.21.013
+BALANCEIQ v6.6
+Build 2026.07.21.014
 
 Added:
-- Dedicated upper-receipt date strip.
-- Three date image variants: grayscale, thresholded and sharpened.
-- Enlarged date OCR with restricted character set.
-- Date-specific OCR channel.
-- Australian date candidate consensus across date, full, header and footer evidence.
+- Automatic receipt bounding-box detection.
+- Receipt-relative regional OCR.
+- Geometry metadata in diagnostics.
+- Digit-only Bunnings invoice reconstruction.
+- Partial-date recovery with footer corroboration.
+- Fuzzy included-total phrase recognition.
 
 Retained:
-- Blank date when evidence is insufficient.
-- Parser isolation and receipt-value safeguards.
+- Parser isolation.
+- Implausible-total rejection.
+- GST trust gate.
+- Low-confidence blank fields.

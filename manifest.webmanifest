@@ -1,7 +1,7 @@
 {
   "name": "BalanceIQ",
   "short_name": "BalanceIQ",
-  "description": "BalanceIQ 6.5 \u2014 dedicated date-strip OCR and Australian receipt date recovery.",
+  "description": "BalanceIQ 6.6 \u2014 automatic receipt bounds and receipt-relative OCR recovery.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#071d3b",

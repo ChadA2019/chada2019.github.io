@@ -1,32 +1,28 @@
-BALANCEIQ v6.5 — DATE RECOVERY RELEASE
+BALANCEIQ v6.6 — RECEIPT GEOMETRY & RECOVERY
 
-NEW OCR PASSES
-Each receipt section now receives three dedicated date-strip OCR passes:
-- Enlarged grayscale
-- Enlarged adaptive black-and-white
-- Enlarged sharpened
+RECEIPT GEOMETRY
+- Detects the bright, low-saturation receipt area inside the camera image.
+- Crops OCR processing to the detected receipt bounds.
+- Header, date and totals regions are now measured relative to the receipt rather than
+  the full photograph.
+- Geometry confidence and bounds are included in OCR diagnostics.
 
-The date strip is cropped from the upper receipt area where Australian retailers commonly
-print the transaction date and time. Date OCR restricts recognition to digits, slashes,
-hyphens, time punctuation, AM/PM and weekday letters.
+DATE RECOVERY
+- Dedicated date-strip OCR now runs on the detected receipt.
+- Existing Australian DD/MM/YYYY, footer date and year-correction logic remains active.
+- Partial date fragments can be completed only when matching footer evidence exists.
+- Weak dates remain blank.
 
-DATE CONSENSUS
-- Date-strip OCR has the highest candidate weight.
-- Full and header OCR remain supporting evidence.
-- Australian numeric dates use DD/MM/YYYY.
-- Footer/barcode dates in YYYY-MM-DD format remain strong evidence.
-- Likely year errors such as 2006 instead of 2026 are merged when day/month agree.
-- Separated OCR tokens such as “10 07 2026” are recoverable.
-- If no defensible date exists, the field remains blank.
+INVOICE RECOVERY
+- Bunnings invoice numbers can be reconstructed from digit-only OCR such as
+  2163700737706 → 2163/00737706.
+- Standard invoice and footer consensus remains preferred.
 
-RETAINED
-- Parser isolation
-- Bunnings merchant evidence scoring
-- Trusted total selection
-- GST arithmetic recovery
-- Strict invoice-number handling
-- OCR diagnostics and JSON export
+TOTAL AND GST RECOVERY
+- Fuzzy “included in the total” OCR variants can support a total candidate.
+- GST arithmetic recovery recognizes damaged versions of the GST-included phrase.
+- Existing trusted-total and item-line safety rules remain active.
 
 INSTALLATION
-Replace every hosted file, unregister the previous service worker or uninstall the old PWA,
-clear cached files, hard-refresh, and reinstall if needed.
+Replace every hosted file, unregister the old service worker or uninstall the old PWA,
+clear cached files, hard-refresh, and reinstall if required.

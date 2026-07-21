@@ -149,7 +149,7 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_VERSION="6.5";
+const APP_VERSION="6.6";
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 const defaultCategories=["Alcohol","Bills & Direct Debits","Cafes","Cash","Child Support","Dining Out","Education","Entertainment","Fuel","Groceries","Health & Fitness","Home & Maintenance","Income","Insurance","Loans & Finance","Loans & Mortgages","Medical","Personal Care","Pets","Refunds","Shopping","Subscriptions","Take Away","Transfers","Transport","Travel","Uncategorised","Vehicles"];
 const subcategoriesByCategory={
@@ -588,11 +588,128 @@ async function processScanPage(dataUrl,rotation=0){
 }
 
 
+
+async function detectReceiptGeometry(dataUrl){
+  const img=await loadImage(dataUrl);
+  const analysisWidth=Math.min(900,img.width);
+  const scale=analysisWidth/img.width;
+  const analysisHeight=Math.max(1,Math.round(img.height*scale));
+  const canvas=document.createElement("canvas");
+  canvas.width=analysisWidth;
+  canvas.height=analysisHeight;
+  const ctx=canvas.getContext("2d",{willReadFrequently:true});
+  ctx.drawImage(img,0,0,analysisWidth,analysisHeight);
+  const image=ctx.getImageData(0,0,analysisWidth,analysisHeight);
+  const data=image.data;
+
+  // Receipt paper is normally substantially brighter and less saturated than the background.
+  const mask=new Uint8Array(analysisWidth*analysisHeight);
+  for(let y=0;y<analysisHeight;y++){
+    for(let x=0;x<analysisWidth;x++){
+      const i=(y*analysisWidth+x)*4;
+      const r=data[i],g=data[i+1],b=data[i+2];
+      const max=Math.max(r,g,b),min=Math.min(r,g,b);
+      const brightness=.299*r+.587*g+.114*b;
+      const saturation=max-min;
+      if(brightness>145&&saturation<72)mask[y*analysisWidth+x]=1;
+    }
+  }
+
+  // Row/column occupancy smooths over printed text and small creases.
+  const rowCounts=new Uint32Array(analysisHeight);
+  const colCounts=new Uint32Array(analysisWidth);
+  for(let y=0;y<analysisHeight;y++){
+    for(let x=0;x<analysisWidth;x++){
+      if(mask[y*analysisWidth+x]){
+        rowCounts[y]++;
+        colCounts[x]++;
+      }
+    }
+  }
+
+  const rowThreshold=Math.max(8,Math.round(analysisWidth*.12));
+  const colThreshold=Math.max(8,Math.round(analysisHeight*.12));
+  let top=0,bottom=analysisHeight-1,left=0,right=analysisWidth-1;
+
+  while(top<analysisHeight-1&&rowCounts[top]<rowThreshold)top++;
+  while(bottom>top&&rowCounts[bottom]<rowThreshold)bottom--;
+  while(left<analysisWidth-1&&colCounts[left]<colThreshold)left++;
+  while(right>left&&colCounts[right]<colThreshold)right--;
+
+  // Guard against failed detection.
+  const detectedWidth=right-left+1;
+  const detectedHeight=bottom-top+1;
+  const plausible=detectedWidth>analysisWidth*.22&&detectedHeight>analysisHeight*.35;
+  if(!plausible){
+    return {
+      source:dataUrl,
+      detected:false,
+      bounds:{x:0,y:0,width:img.width,height:img.height},
+      confidence:0
+    };
+  }
+
+  const paddingX=Math.round(detectedWidth*.035);
+  const paddingY=Math.round(detectedHeight*.025);
+  left=Math.max(0,left-paddingX);
+  right=Math.min(analysisWidth-1,right+paddingX);
+  top=Math.max(0,top-paddingY);
+  bottom=Math.min(analysisHeight-1,bottom+paddingY);
+
+  const sourceX=Math.round(left/scale);
+  const sourceY=Math.round(top/scale);
+  const sourceW=Math.round((right-left+1)/scale);
+  const sourceH=Math.round((bottom-top+1)/scale);
+
+  const receiptCanvas=document.createElement("canvas");
+  receiptCanvas.width=Math.max(1,sourceW);
+  receiptCanvas.height=Math.max(1,sourceH);
+  const receiptCtx=receiptCanvas.getContext("2d");
+  receiptCtx.drawImage(img,sourceX,sourceY,sourceW,sourceH,0,0,sourceW,sourceH);
+
+  const coverage=(detectedWidth*detectedHeight)/(analysisWidth*analysisHeight);
+  const confidence=Math.round(Math.max(1,Math.min(99,55+coverage*65)));
+
+  return {
+    source:receiptCanvas.toDataURL("image/png"),
+    detected:true,
+    bounds:{x:sourceX,y:sourceY,width:sourceW,height:sourceH},
+    confidence
+  };
+}
+async function cropReceiptRegion(dataUrl,startRatio,endRatio,{threshold=false,scale=1.8}={}){
+  const img=await loadImage(dataUrl);
+  const y=Math.max(0,Math.floor(img.height*startRatio));
+  const h=Math.max(1,Math.floor(img.height*(endRatio-startRatio)));
+  const canvas=document.createElement("canvas");
+  canvas.width=Math.max(1,Math.round(img.width*scale));
+  canvas.height=Math.max(1,Math.round(h*scale));
+  const ctx=canvas.getContext("2d",{willReadFrequently:true});
+  ctx.imageSmoothingEnabled=true;
+  ctx.imageSmoothingQuality="high";
+  ctx.drawImage(img,0,y,img.width,h,0,0,canvas.width,canvas.height);
+
+  if(threshold){
+    const image=ctx.getImageData(0,0,canvas.width,canvas.height);
+    const data=image.data;
+    let sum=0;
+    for(let i=0;i<data.length;i+=4)sum+=.299*data[i]+.587*data[i+1]+.114*data[i+2];
+    const mean=sum/(data.length/4);
+    for(let i=0;i<data.length;i+=4){
+      const gray=.299*data[i]+.587*data[i+1]+.114*data[i+2];
+      const value=gray>Math.max(140,mean*.9)?255:0;
+      data[i]=data[i+1]=data[i+2]=value;
+    }
+    ctx.putImageData(image,0,0);
+  }
+  return canvas.toDataURL("image/png");
+}
+
 async function makeDateStripVariants(dataUrl){
   const img=await loadImage(dataUrl);
   // Bunnings date/time is normally between the store header and invoice number.
-  const y=Math.max(0,Math.floor(img.height*.11));
-  const h=Math.max(1,Math.floor(img.height*.22));
+  const y=Math.max(0,Math.floor(img.height*.10));
+  const h=Math.max(1,Math.floor(img.height*.28));
   const scale=2.4;
   const width=Math.round(img.width*scale);
   const height=Math.round(h*scale);
@@ -1316,15 +1433,17 @@ function safeReceiptTotal(channels,merchant=""){
       const isPayment=/\bPOWERPASS\b|\bEFTPOS\b|\bVISA\b|\bMASTERCARD\b|\bCARD\b/i.test(line);
       const isSubtotal=/\bSUB\s*TOTAL\b|\bSUBTOTAL\b/i.test(line);
       const isGst=/\bGST\b|\bBST\b|\bTAX\s*AMOUNT\b/i.test(line);
+      const isIncludedTotal=fuzzyIncludedTotalEvidence(line);
 
       for(const value of values){
         let score=baseWeight;
         if(isTotal)score+=130;
         else if(isPayment)score+=115;
+        else if(isIncludedTotal)score+=92;
         else if(isSubtotal)score+=35;
         else score-=50;
 
-        if(isGst)score-=180;
+        if(isGst&&!isIncludedTotal)score-=180;
         if(isItemOrNoiseLine(line)&&!isTotal&&!isPayment)score-=170;
         if(value>1000)score-=200;
         add(value,score,`${source}:${line.trim()}`);
@@ -1483,7 +1602,7 @@ function chooseGst(text,total){
 
   // For an Australian GST-inclusive receipt, arithmetic consistency is decisive
   // when OCR candidates disagree around the expected value.
-  if(total>0&&/GST\s+INCLUDED|BST\s+INCLUDED|GST\s+THCLUDED/i.test(text)){
+  if(total>0&&fuzzyIncludedTotalEvidence(text)){
     scores.set(expected.toFixed(2),(scores.get(expected.toFixed(2))||0)+320);
   }
 
@@ -1583,6 +1702,72 @@ function chooseRecoveredDate(channels){
   return {value:ranked[0]?.value||"",candidates:ranked,rawCandidates:candidates};
 }
 
+
+function reconstructBunningsInvoice(text){
+  const cleaned=String(text||"").replace(/[^\d]/g,"");
+  // Bunnings invoice format: 4-digit store + 8-digit invoice.
+  // Search around OCR labels first, then fall back to any 12-digit run.
+  const labelled=String(text||"").match(/(?:invoice|number|details|deters|deteyis)[^\d]{0,20}(\d{11,13})/i);
+  const candidates=[];
+  if(labelled)candidates.push(labelled[1]);
+  candidates.push(...(String(text||"").match(/\b\d{11,13}\b/g)||[]));
+  // OCR may attach punctuation or letters around the identifier.
+  candidates.push(...[...String(text||"").matchAll(/(?:^|\D)(\d{11,13})(?=\D|$)/g)].map(match=>match[1]));
+
+  for(const raw of candidates){
+    const digits=raw.replace(/\D/g,"");
+    if(digits.length===12)return `${digits.slice(0,4)}/${digits.slice(4)}`;
+    if(digits.length===13){
+      if(digits[0]==="0")return `${digits.slice(1,5)}/${digits.slice(5)}`;
+      // OCR sometimes inserts one extra digit immediately after the four-digit store code.
+      // Prefer removal that leaves a Bunnings-style invoice beginning with 00.
+      for(let removeAt=4;removeAt<=6;removeAt++){
+        const repaired=digits.slice(0,removeAt)+digits.slice(removeAt+1);
+        if(repaired.length===12&&/^\d{4}00\d{6}$/.test(repaired)){
+          return `${repaired.slice(0,4)}/${repaired.slice(4)}`;
+        }
+      }
+    }
+  }
+  return "";
+}
+function recoverPartialAustralianDate(channels){
+  const all=[channels.date,channels.full,channels.header].filter(Boolean).join("\n");
+  const footer=extractFooterDate(combinedReceiptText(channels));
+
+  // Common OCR loss: first day digit disappears, e.g. "0/07/2026".
+  for(const match of all.matchAll(/\b([0-9])[\/-]([01]\d)[\/-](20\d{2})\b/g)){
+    if(footer){
+      const [fy,fm,fd]=footer.split("-").map(Number);
+      if(Number(match[2])===fm&&Number(match[3])===fy&&String(fd).endsWith(match[1])){
+        return footer;
+      }
+    }
+  }
+
+  // If the full OCR contains month/year and the footer contains the complete date,
+  // use the footer only when the year/month agree.
+  const monthYear=all.match(/\b(?:[0-3]?\d[\/-])?([01]\d)[\/-](20\d{2})\b/);
+  if(monthYear&&footer){
+    const [fy,fm]=footer.split("-").map(Number);
+    if(Number(monthYear[1])===fm&&Number(monthYear[2])===fy)return footer;
+  }
+  return "";
+}
+function fuzzyIncludedTotalEvidence(text){
+  const compact=upper(text).replace(/[^A-Z]/g,"");
+  return (
+    compact.includes("GSTINCLUDEDINTHETOTAL") ||
+    compact.includes("GSTTHCLUDEDINTHETOTAL") ||
+    compact.includes("INCLUDEDINTHEYOTAL") ||
+    compact.includes("LHCLUDEDINHEYOTAI") ||
+    compact.includes("LHCLUDEDIRHEYOTAI") ||
+    compact.includes("THCLUDEDINTHETOTAL") ||
+    compact.includes("USTTHLLUUEDTHHKTUTHL") ||
+    compact.includes("INCLUDEDIRHEYOTAI")
+  );
+}
+
 function parseReceiptChannels(input){
   const channels=buildReceiptChannels(input);
   const text=combinedReceiptText(channels);
@@ -1593,6 +1778,20 @@ function parseReceiptChannels(input){
 
   const totalChoice=safeReceiptTotal(channels,merchantInfo.merchant);
   const receiptChoice=chooseReceiptNumber(text,merchantInfo.merchant);
+  if(!receiptChoice.value&&merchantInfo.merchant==="Bunnings Warehouse"){
+    const reconstructed=reconstructBunningsInvoice(text);
+    if(reconstructed){
+      receiptChoice.value=reconstructed;
+      receiptChoice.candidates=[{value:reconstructed,score:72,source:"digit-reconstruction"}];
+    }
+  }
+  if(!dateChoice.value){
+    const partial=recoverPartialAustralianDate(channels);
+    if(partial){
+      dateChoice.value=partial;
+      dateChoice.candidates=[{value:partial,score:80,source:"partial-plus-footer"}];
+    }
+  }
   const gstChoice=totalChoice.trusted?chooseGst(text,totalChoice.value):{value:0,candidates:[],expected:0};
 
   const base={
@@ -1619,7 +1818,6 @@ function parseReceiptChannels(input){
 
   if(merchantInfo.parser==="bunnings"){
     base.branch=firstCaptured(text,[
-      /BUNNINGS\s+WAREHOUSE\s*\n\s*([A-Z][A-Z'’ -]{2,})/i,
       /\b(MIRRABOOKA|O['’]?CONNOR|CANNINGTON|BALCATTA|MIDLAND|ARMADALE|MORLEY|JOONDALUP)\b/i
     ]);
   }
@@ -1806,15 +2004,22 @@ runOcrBtn.onclick=async()=>{
     const sectionReports=[];
     for(let i=0;i<pendingReceiptPages.length;i++){
       const section=i+1;
-      const full=await processScanPage(pendingReceiptPages[i].original,pendingReceiptPages[i].rotation||0);
-      const header=await cropScanRegion(full,0,.43,{threshold:true});
-      const totals=await cropScanRegion(full,.42,.78,{threshold:true});
+      const processed=await processScanPage(pendingReceiptPages[i].original,pendingReceiptPages[i].rotation||0);
+      const geometry=await detectReceiptGeometry(processed);
+      const full=geometry.source;
+      const header=await cropReceiptRegion(full,0,.42,{threshold:true,scale:1.9});
+      const totals=await cropReceiptRegion(full,.40,.80,{threshold:true,scale:1.9});
       const dateVariants=await makeDateStripVariants(full);
 
       for(const [label,image] of [["full",full],["header",header],["totals",totals]]){
         const report=await recogniseScanPass(image,label,section,m=>{
           if(m.status==="recognizing text")ocrStatus.textContent=`Section ${section} ${label}: ${Math.round(m.progress*100)}%`;
         });
+        report.geometry={
+          detected:geometry.detected,
+          confidence:geometry.confidence,
+          bounds:geometry.bounds
+        };
         sectionReports.push(report);
       }
 
@@ -1822,6 +2027,11 @@ runOcrBtn.onclick=async()=>{
         const report=await recogniseDatePass(variant.image,variant.label,section,m=>{
           if(m.status==="recognizing text")ocrStatus.textContent=`Section ${section} ${variant.label}: ${Math.round(m.progress*100)}%`;
         });
+        report.geometry={
+          detected:geometry.detected,
+          confidence:geometry.confidence,
+          bounds:geometry.bounds
+        };
         sectionReports.push(report);
       }
       for(const label of ["header","totals","full"]){

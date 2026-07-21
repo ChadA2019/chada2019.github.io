@@ -1,27 +1,26 @@
-BALANCEIQ v6.5 VALIDATION
+BALANCEIQ v6.6 VALIDATION
 
 JavaScript syntax: PASS
-Dedicated date strip pipeline: PASS
-Three date image variants: PASS
-Restricted date OCR: PASS
-Australian DD/MM/YYYY recovery: PASS
-Footer year correction: PASS
-Separated date-token recovery: PASS
-Existing total/GST/invoice regressions: PASS
+Receipt geometry pipeline present: PASS
+Receipt-relative regions present: PASS
+Digit-only invoice reconstruction: PASS
+Partial date recovery safeguards: PASS
+Fuzzy included-total recovery: PASS
+Latest damaged-receipt parser regression: PASS
+Clean baseline regression: PASS
 
-date strip recovers clear date {"merchant":"Bunnings Warehouse","branch":"","category":"Home & Maintenance","subcategory":"Hardware","date":"2026-07-10","time":"11:02:15 AM","total":77.26,"gst":7.02,"receiptNumber":"2163/00737706","paymentMethod":"Card","parser":"Bunnings","merchantProfile":"bunnings","amountCandidates":[{"value":77.26,"score":515,"count":2,"sources":["totals:Total $77.26","totals:PowerPass $77.26"]}],"dateCandidates":[{"value":"2026-07-10","score":130}],"rawDateCandidates":[{"value":"2026-07-10","source":"date","weight":130,"raw":"10/07/2026"}],"receiptNumberCandidates":[{"value":"2163/00737706","score":25}],"gstCandidates":[{"value":7.02,"score":320}],"expectedGst":7.02,"totalTrusted":true,"confidence":{"overall":94,"fields":{"merchant":98,"date":92,"total":98,"gst":92,"receiptNumber":98,"paymentMethod":88}},"imageQuality":30}
-footer corrects 2006 {"merchant":"Bunnings Warehouse","branch":"","category":"Home & Maintenance","subcategory":"Hardware","date":"2026-07-10","time":"11:02:15 AM","total":77.26,"gst":7.02,"receiptNumber":"2163/00737706","paymentMethod":"Card","parser":"Bunnings","merchantProfile":"bunnings","amountCandidates":[{"value":77.26,"score":515,"count":2,"sources":["totals:Total $77.26","totals:PowerPass $77.26"]}],"dateCandidates":[{"value":"2026-07-10","score":224},{"value":"2026-07-01","score":170},{"value":"2006-07-10","score":130}],"rawDateCandidates":[{"value":"2006-07-10","source":"date","weight":130,"raw":"10/07/2006"},{"value":"2026-07-10","source":"full-footer","weight":120,"raw":"2026-07-10"},{"value":"2026-07-01","source":"footer-reference","weight":170,"raw":"R07 P213 C263698 #007-37706-2163-2026-07-1"}],"receiptNumberCandidates":[{"value":"2163/00737706","score":155}],"gstCandidates":[{"value":7.02,"score":320}],"expectedGst":7.02,"totalTrusted":true,"confidence":{"overall":94,"fields":{"merchant":98,"date":92,"total":98,"gst":92,"receiptNumber":98,"paymentMethod":88}},"imageQuality":50}
-separated date tokens {"merchant":"Bunnings Warehouse","branch":"","category":"Home & Maintenance","subcategory":"Hardware","date":"2026-07-10","time":"11:02:15 AM","total":24.36,"gst":2.21,"receiptNumber":"2402/00180844","paymentMethod":"Card","parser":"Bunnings","merchantProfile":"bunnings","amountCandidates":[{"value":24.36,"score":515,"count":2,"sources":["totals:Total $24.36","totals:PowerPass $24.36"]}],"dateCandidates":[{"value":"2026-07-10","score":115}],"rawDateCandidates":[{"value":"2026-07-10","source":"date","weight":115,"raw":"10 07 2026"}],"receiptNumberCandidates":[{"value":"2402/00180844","score":25}],"gstCandidates":[{"value":2.21,"score":320}],"expectedGst":2.21,"totalTrusted":true,"confidence":{"overall":94,"fields":{"merchant":98,"date":92,"total":98,"gst":92,"receiptNumber":98,"paymentMethod":88}},"imageQuality":30}
+latest damaged receipt {"merchant":"Bunnings Warehouse","branch":"","category":"Home & Maintenance","subcategory":"Hardware","date":"","time":"11:07:15 ","total":77.26,"gst":7.02,"receiptNumber":"2163/00737706","paymentMethod":"Card","parser":"Bunnings","merchantProfile":"bunnings","amountCandidates":[{"value":77.26,"score":512,"count":2,"sources":["full:LHCLUDED IR (HE YOTAI $77.26","totals:Total $77.26"]}],"dateCandidates":[],"rawDateCandidates":[],"receiptNumberCandidates":[{"value":"2163/00737706","score":72,"source":"digit-reconstruction"}],"gstCandidates":[{"value":7.02,"score":320}],"expectedGst":7.02,"totalTrusted":true,"confidence":{"overall":95,"fields":{"merchant":98,"date":0,"total":98,"gst":92,"receiptNumber":98,"paymentMethod":88}},"imageQuality":70}
+clean baseline {"merchant":"Bunnings Warehouse","branch":"","category":"Home & Maintenance","subcategory":"Hardware","date":"2026-07-21","time":"08:30:45 AM","total":68.64,"gst":6.24,"receiptNumber":"2402/01719325","paymentMethod":"Card","parser":"Bunnings","merchantProfile":"bunnings","amountCandidates":[{"value":68.64,"score":515,"count":2,"sources":["totals:Total $68.64","totals:PowerPass $68.64"]},{"value":6.24,"score":172,"count":1,"sources":["totals:GST INCLUDED IN THE TOTAL $6.24"]}],"dateCandidates":[{"value":"2026-07-21","score":130}],"rawDateCandidates":[{"value":"2026-07-21","source":"date","weight":130,"raw":"21/07/2026"}],"receiptNumberCandidates":[{"value":"2402/01719325","score":25}],"gstCandidates":[{"value":6.24,"score":460}],"expectedGst":6.24,"totalTrusted":true,"confidence":{"overall":94,"fields":{"merchant":98,"date":92,"total":98,"gst":92,"receiptNumber":98,"paymentMethod":88}},"imageQuality":30}
 
 SHA-256
-19d593a1c79206de1fe936f22a28e8b52a4a44bccd8e62e6ae679ec73294d960  README.txt
-51a045cc49ca05d7b24d5405925512acb26871700bb55bf3dee7fbe7ec4bd350  RELEASE_NOTES.txt
+9cf0bb96b80e20537388d60a353fe412473ea6937eff4a1bdb2d92ee2cf35870  README.txt
+0427f6081482fabbb9c8a29393553ee371ed108d44935af10bb243e072fc0270  RELEASE_NOTES.txt
 2a4306ec9e7ea225280588c90a6066657848c5249a16ecf0ff0bfa2e239a824f  VERSION_HISTORY.txt
-f774e0b6e8ad7be4d1cea9a33e65424865b6f5e5e4656dc0bdbca4e05b6b5475  app.js
+093f48869727e33d70bc4db104344a29213c44807d163dcc26c815bd90b09656  app.js
 73a13cb30f08fd802651a6e6bf841c565e1eb516d2e1685a8fec49fda20f5fc7  cloud-sync.js
 4fbd70da51025b02abb500d21a8220b103fa590ba09c5260f2c78c7dbc3d8c9f  icon.svg
-4f40afdd61bde7d3bf89b1b64492ed7e802ef38037a95385036733cd584ce35e  index.html
-ead5612525d8cebb841e699321f30bb3e28ca33302b9121747c492e6895bfd45  manifest.webmanifest
-8cb8a454b0ca6d56d0a1217841501a10291f3eeed46353dd74a9188becfddd67  service-worker.js
-fe8c722caf4202489d38754138ad8b5ff4f9f92984aa4e48473cad31f59d7141  styles.css
+43cf6890da4827676cc9b096d415e55622dd63de1f428883d556a8f5e5d6ffc9  index.html
+ac691d7e00d6ac70e2f5c8a5c8d03c3849d96b0855f82db22c70662f73f911d9  manifest.webmanifest
+9a785aa4ac4ac2b4ad8daff51a087f20141b6ca6e56267439ae9230eac4c0433  service-worker.js
+f30d46965803b412a26376ae16667f784044bd23b99eab827416b0e169e3be51  styles.css
 b98d03e0b916aac8ab1004bb8d5ccee343d142b39d7785cf2c5f0ed4f37035c2  supabase_setup.sql
