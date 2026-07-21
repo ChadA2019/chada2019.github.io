@@ -149,7 +149,7 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_VERSION="7.1";
+const APP_VERSION="7.2";
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 const defaultCategories=["Alcohol","Bills & Direct Debits","Cafes","Cash","Child Support","Dining Out","Education","Entertainment","Fuel","Groceries","Health & Fitness","Home & Maintenance","Income","Insurance","Loans & Finance","Loans & Mortgages","Medical","Personal Care","Pets","Refunds","Shopping","Subscriptions","Take Away","Transfers","Transport","Travel","Uncategorised","Vehicles"];
 const subcategoriesByCategory={
@@ -842,6 +842,22 @@ async function recogniseScanPass(image,label,section,logger){
   const result=await Tesseract.recognize(image,"eng",{logger});
   return {
     section,pass:label,
+    confidence:Math.round(Number(result.data.confidence)||0),
+    characters:(result.data.text||"").length,
+    text:result.data.text||"",
+    image
+  };
+}
+
+async function recogniseMoneyPass(image,label,section,logger){
+  const result=await Tesseract.recognize(image,"eng",{
+    logger,
+    tessedit_pageseg_mode:"6",
+    tessedit_char_whitelist:"0123456789.$, TOTALTotalGSTgstPOWERPASSPowerpassINCLUDED included"
+  });
+  return {
+    section,
+    pass:label,
     confidence:Math.round(Number(result.data.confidence)||0),
     characters:(result.data.text||"").length,
     text:result.data.text||"",
@@ -1552,7 +1568,8 @@ function isCardPaymentLine(line){
   const text=upper(line);
   if(isReferenceOnlyLine(line))return false;
   return (
-    /\b(?:EFT|EFTPOS|VISA|MASTERCARD|POWERPASS)\b/.test(text) ||
+    /\b(?:EFT|EFTPOS|VISA|MASTERCARD)\b.*(?:\$\s*\d|PAID|PAYMENT|PURCHASE|DEBIT|CREDIT)\b/.test(text) ||
+    /\bPOWERPASS\b.*(?:PAID|PAYMENT|PURCHASE|DEBIT|CREDIT|\$\s*\d+[.,]\s*\d{2})\b/.test(text) ||
     /\bCARD\b.*(?:PAID|PAYMENT|PURCHASE|DEBIT|CREDIT)\b/.test(text)
   );
 }
@@ -1587,7 +1604,7 @@ function safeReceiptTotal(channels,merchant=""){
       if(!candidates.length)continue;
 
       const isTotal=/^\s*(?:TOTAL|FOTAL|FOOTED)\b|\bAMOUNT\s+PAID\b/i.test(line);
-      const isPayment=isCardPaymentLine(line)||/\bPOWERPASS\b|\bPOVERPASE\b|\bPOUSR?PASS\b/i.test(line);
+      const isPayment=isCardPaymentLine(line);
       const isSubtotal=/\bSUB\s*TOTAL\b|\bSUBTOTAL\b|\bSUBTOTAR\b|\bSUBLOTAI\b/i.test(line);
       const isGst=/\bGST\b|\bBST\b|\bTAX\s*AMOUNT\b/i.test(line);
       const isIncludedTotal=fuzzyIncludedTotalEvidence(line);
@@ -1609,9 +1626,14 @@ function safeReceiptTotal(channels,merchant=""){
 
         if(role==="gst")score-=240;
         if(isItemOrNoiseLine(line)&&!["total","payment","included-total"].includes(role))score-=190;
-        if(candidate.reason==="one-decimal-pad")score-=30;
-        if(candidate.reason==="compact-currency"&&role==="payment")score+=80;
-        if(candidate.reason==="compact-currency"&&role==="total")score+=55;
+        if(candidate.reason==="one-decimal-pad")score-=90;
+        // Compact currency invents a decimal point. It is a last-resort repair,
+        // never stronger than a printed two-decimal total.
+        if(candidate.reason==="compact-currency"){
+          score-=candidate.raw.replace(/\D/g,"").length<=3?260:145;
+          if(role==="payment")score-=90;
+          if(role==="total")score-=35;
+        }
         if(candidate.value>1000)score-=240;
 
         add(candidate,score,`${source}:${line.trim()}`,role);
@@ -1624,8 +1646,9 @@ function safeReceiptTotal(channels,merchant=""){
     if(item.count>=2)item.score+=item.count*60;
     if(item.count>=3)item.score+=80;
     if(roles.has("payment")&&(roles.has("total")||roles.has("included-total")))item.score+=185;
-    if(roles.has("payment"))item.score+=100;
+    if(roles.has("payment")&&item.repairs.some(r=>r!=="compact-currency"))item.score+=70;
     if(roles.size>=2)item.score+=55;
+    if(roles.has("total")&&item.repairs.some(r=>["exact-decimal","spaced-both-sides-decimal","fragmented-decimal-sequence","spaced-cents"].includes(r)))item.score+=180;
   }
 
   let ranked=[...scored.values()]
@@ -1639,7 +1662,11 @@ function safeReceiptTotal(channels,merchant=""){
   );
   if(paymentCandidate&&exactTotalCandidate){
     const difference=Math.abs(paymentCandidate.value-exactTotalCandidate.value);
-    if(difference>0&&difference<=1){
+    // A labelled, two-decimal Total is stronger than a repaired payment token.
+    if(paymentCandidate.repairs.every(r=>r==="compact-currency")){
+      exactTotalCandidate.score+=340;
+      paymentCandidate.score-=260;
+    }else if(difference>0&&difference<=1){
       exactTotalCandidate.score+=260;
       paymentCandidate.score-=90;
     }
@@ -2347,9 +2374,13 @@ runOcrBtn.onclick=async()=>{
       const totals=await cropReceiptRegion(full,.40,.80,{threshold:true,scale:1.9});
       const footer=await cropReceiptRegion(full,.72,.97,{threshold:true,scale:2.2});
       const gst=await cropReceiptRegion(full,.60,.79,{threshold:true,scale:2.5});
-      const totalsRight=await cropReceiptBox(full,.48,.57,.98,.78,{threshold:false,scale:2.8});
-      const totalsRightThreshold=await cropReceiptBox(full,.48,.57,.98,.78,{threshold:true,scale:2.8});
-      const gstRight=await cropReceiptBox(full,.53,.62,.98,.72,{threshold:true,scale:3.2});
+      // The totals block position varies with receipt length. Use a wider vertical band,
+      // plus a focused right-column pass so the final cents are not clipped or lost.
+      const totalsRight=await cropReceiptBox(full,.38,.43,.99,.74,{threshold:false,scale:3.2});
+      const totalsRightThreshold=await cropReceiptBox(full,.38,.43,.99,.74,{threshold:true,scale:3.2});
+      const amountColumn=await cropReceiptBox(full,.54,.43,.99,.69,{threshold:false,scale:4.0});
+      const amountColumnThreshold=await cropReceiptBox(full,.54,.43,.99,.69,{threshold:true,scale:4.0});
+      const gstRight=await cropReceiptBox(full,.43,.50,.99,.67,{threshold:true,scale:3.8});
       const dateVariants=await makeDateStripVariants(full);
 
       for(const [label,image] of [["full",full],["header",header],["totals",totals],["footer",footer],["gst",gst],["totals-right",totalsRight],["totals-right-threshold",totalsRightThreshold],["gst-right",gstRight]]){
@@ -2361,6 +2392,14 @@ runOcrBtn.onclick=async()=>{
           confidence:geometry.confidence,
           bounds:geometry.bounds
         };
+        sectionReports.push(report);
+      }
+
+      for(const [label,image] of [["amount-column",amountColumn],["amount-column-threshold",amountColumnThreshold]]){
+        const report=await recogniseMoneyPass(image,label,section,m=>{
+          if(m.status==="recognizing text")ocrStatus.textContent=`Section ${section} ${label}: ${Math.round(m.progress*100)}%`;
+        });
+        report.geometry={detected:geometry.detected,confidence:geometry.confidence,bounds:geometry.bounds};
         sectionReports.push(report);
       }
 
@@ -2387,7 +2426,7 @@ runOcrBtn.onclick=async()=>{
       date:sectionReports.filter(r=>r.pass.startsWith("date-")).map(r=>r.text).join("\n"),
       footer:sectionReports.filter(r=>r.pass==="footer").map(r=>r.text).join("\n"),
       gst:sectionReports.filter(r=>r.pass==="gst"||r.pass==="gst-right").map(r=>r.text).join("\n"),
-      totalsRight:sectionReports.filter(r=>r.pass.startsWith("totals-right")).map(r=>r.text).join("\n")
+      totalsRight:sectionReports.filter(r=>r.pass.startsWith("totals-right")||r.pass.startsWith("amount-column")).map(r=>r.text).join("\n")
     };
     const parsed=parseReceiptChannels(channels);
     const ocrAverage=Math.round(sectionReports.reduce((s,r)=>s+r.confidence,0)/Math.max(1,sectionReports.length));

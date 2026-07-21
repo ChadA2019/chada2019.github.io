@@ -14,3 +14,9 @@ Navigation stability, explicit DOM bindings and lazy PDF loading.
 
 v5.1
 Last known-good navigation baseline and smart receipt scanner.
+
+
+7.2 — 2026-07-21
+- Labelled total priority and compact-currency safety.
+- Focused amount-column OCR for damaged cents.
+- Bunnings PowerPass false-payment correction.

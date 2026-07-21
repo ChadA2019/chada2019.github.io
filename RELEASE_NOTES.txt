@@ -1,8 +1,12 @@
-BALANCEIQ v7.1
-Build 2026.07.21.019
+BALANCEIQ v7.2
+Build 2026.07.21.020
 
-Fixed for the supplied Belmont v7.0 result:
-- Total $236 . 93 resolves to $236.93.
-- Conflicting PowerPass $236.43 no longer overrides the clear Total.
-- Printed GST $21.55 from the dedicated totals/GST column outranks arithmetic fallback.
-- Date 07/07/2026 and invoice 2052/01978347 remain protected.
+CHANGES
+- Prevents `PowerPass $236` from being promoted to a $2.36 payment.
+- Applies a severe penalty when compact-currency repair invents a decimal point.
+- Gives labelled Total / Amount Paid values with visible cents decisive priority.
+- Removes the unconditional PowerPass-as-payment rule.
+- Adds wide totals-band and focused amount-column OCR passes.
+- Uses a money-specific Tesseract pass to improve recognition of final cents.
+- Retains printed-GST consensus and Total/11 fallback validation.
+- Updates the app, manifest and service-worker cache to version 7.2.

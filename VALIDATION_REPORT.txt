@@ -1,26 +1,13 @@
-BALANCEIQ v7.1 VALIDATION
+BALANCEIQ v7.2 VALIDATION
+Build 2026.07.21.020
 
-JavaScript syntax: PASS
-Right-column OCR pipeline: PASS
-Tight GST OCR pipeline: PASS
-Spaced-decimal reconstruction: PASS
-Exact Total vs payment arbitration: PASS
-Printed GST preference: PASS
-Belmont supplied-case regression: PASS
-Busselton baseline regression: PASS
+STATIC VALIDATION
+- JavaScript syntax check: required and completed during packaging.
+- Version references updated in HTML, manifest and service worker.
+- Service-worker cache changed to balanceiq-v7-2.
 
-Belmont totals-column consensus {"merchant":"Bunnings Warehouse","branch":"","category":"Home & Maintenance","subcategory":"Hardware","date":"2026-07-07","time":"08:11:01 AM","total":236.93,"gst":21.55,"receiptNumber":"2052/01978347","paymentMethod":"Card","parser":"Bunnings","merchantProfile":"bunnings","amountCandidates":[{"value":236.93,"score":1283,"count":2,"sources":["totals-right:Total $236.93","full:Total $236 . 93"],"roles":["total","total"],"repairs":["spaced-both-sides-decimal","spaced-both-sides-decimal"]},{"value":236.43,"score":913,"count":2,"sources":["totals-right:PowerPass $236.43","full:PowerPass $236.43"],"roles":["payment","payment"],"repairs":["spaced-both-sides-decimal","spaced-both-sides-decimal"]},{"value":21.55,"score":179,"count":1,"sources":["totals-right:GST INCLUDED IN THE TOTAL $21.55"],"roles":["included-total"],"repairs":["spaced-both-sides-decimal"]}],"dateCandidates":[{"value":"2026-07-07","score":430}],"rawDateCandidates":[{"value":"2026-07-07","source":"date","weight":130,"raw":"07/07/2026"},{"value":"2026-07-07","source":"full","weight":95,"raw":"07/07/2026"},{"value":"2026-07-07","source":"footer-reference","weight":170,"raw":"R19 P678 C255291 #019-78347-2052-2026-07-07"}],"receiptNumberCandidates":[{"value":"2052/01978347","score":3945},{"value":"2052/01476347","score":160}],"gstCandidates":[{"value":21.55,"score":1591},{"value":21.54,"score":160}],"expectedGst":21.54,"totalTrusted":true,"confidence":{"overall":94,"fields":{"merchant":98,"date":92,"total":98,"gst":92,"receiptNumber":98,"paymentMethod":88}},"imageQuality":80}
-Busselton baseline {"merchant":"Bunnings Warehouse","branch":"","category":"Home & Maintenance","subcategory":"Hardware","date":"2026-01-01","time":"12:29:18 PM","total":91.06,"gst":8.28,"receiptNumber":"2063/01184341","paymentMethod":"Card","parser":"Bunnings","merchantProfile":"bunnings","amountCandidates":[{"value":91.06,"score":2306,"count":4,"sources":["totals-right:Total $91.06","totals-right:EFT $91.06","totals:Total $91.06","totals:EFT $91.06"],"roles":["total","payment","total","payment"],"repairs":["spaced-both-sides-decimal","spaced-both-sides-decimal","spaced-both-sides-decimal","spaced-both-sides-decimal"]}],"dateCandidates":[{"value":"2026-01-01","score":130}],"rawDateCandidates":[{"value":"2026-01-01","source":"date","weight":130,"raw":"01/01/2026"}],"receiptNumberCandidates":[{"value":"2063/01184341","score":25}],"gstCandidates":[{"value":8.28,"score":1751}],"expectedGst":8.28,"totalTrusted":true,"confidence":{"overall":94,"fields":{"merchant":98,"date":92,"total":98,"gst":92,"receiptNumber":98,"paymentMethod":88}},"imageQuality":70}
+TARGET REGRESSION
+Input: Bunnings diagnostic containing `PowerPass $236` and `Total $236 . 92`.
+Expected ranking behaviour: the labelled two-decimal Total must outrank the compact-currency value 2.36.
 
-SHA-256
-7bdace3c7069cb99b885487cee5789fc5cab6a740f225a403e47416e29a21ef9  README.txt
-cec94692b7f3b224c616c46be7fe024cf51cea4a5429cc6d35b5812d418822ad  RELEASE_NOTES.txt
-2a4306ec9e7ea225280588c90a6066657848c5249a16ecf0ff0bfa2e239a824f  VERSION_HISTORY.txt
-8fd225f5b889a0bdba18dc58b5382c1fb41a733bb0d180ac89175e60cdd22014  app.js
-73a13cb30f08fd802651a6e6bf841c565e1eb516d2e1685a8fec49fda20f5fc7  cloud-sync.js
-4fbd70da51025b02abb500d21a8220b103fa590ba09c5260f2c78c7dbc3d8c9f  icon.svg
-52788463223d5b53f7f2702ae552d0fd264f8e8b7e4f00fafb72720e9b5dba10  index.html
-d90ae5b2a2c06624c43d33c93d9aff9b63b004e40c33f1b132672291d20bae00  manifest.webmanifest
-a7e333301262aa212df10c2c8bbf4ff56259f5b3cd55b3d09ad15e59aace24f3  service-worker.js
-9af8a4e87579a9808298f57e143c6701dbd4e86ee0c96759bc4cadec29934bbb  styles.css
-b98d03e0b916aac8ab1004bb8d5ccee343d142b39d7785cf2c5f0ed4f37035c2  supabase_setup.sql
+Note: OCR can still misread an individual printed digit. Version 7.2 adds focused amount-column OCR to improve the source text before candidate ranking.
