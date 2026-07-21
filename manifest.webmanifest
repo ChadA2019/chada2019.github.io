@@ -1,7 +1,7 @@
 {
   "name": "BalanceIQ",
   "short_name": "BalanceIQ",
-  "description": "BalanceIQ 6.0 \u2014 merchant-aware Australian receipt intelligence and private reconciliation.",
+  "description": "BalanceIQ 6.1 OCR Diagnostic Build \u2014 raw OCR output, candidate scoring and receipt diagnostics.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#071d3b",

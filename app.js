@@ -149,7 +149,7 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_VERSION="6.0";
+const APP_VERSION="6.1-diagnostic";
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 const defaultCategories=["Alcohol","Bills & Direct Debits","Cafes","Cash","Child Support","Dining Out","Education","Entertainment","Fuel","Groceries","Health & Fitness","Home & Maintenance","Income","Insurance","Loans & Finance","Loans & Mortgages","Medical","Personal Care","Pets","Refunds","Shopping","Subscriptions","Take Away","Transfers","Transport","Travel","Uncategorised","Vehicles"];
 const subcategoriesByCategory={
@@ -603,7 +603,7 @@ async function addReceiptFiles(files,reset=false){
 async function openReceiptCapture(fileOrFiles){
   const files=fileOrFiles instanceof FileList||Array.isArray(fileOrFiles)?fileOrFiles:[fileOrFiles];
   await addReceiptFiles(files,true);
-  receiptDate.value=localDateValue();receiptMerchant.value="";receiptAmount.value="";fillCategorySelect(receiptCategory,receiptSubcategory,"Uncategorised","Review Required");receiptAccount.value="";receiptPaymentMethod.value="Card";receiptNumber.value="";receiptGst.value="";receiptNotes.value="";ocrStatus.textContent=`${pendingReceiptPages.length} section${pendingReceiptPages.length===1?'':'s'} ready`;receiptDialog.showModal();
+  clearOcrDiagnostic();receiptDate.value=localDateValue();receiptMerchant.value="";receiptAmount.value="";fillCategorySelect(receiptCategory,receiptSubcategory,"Uncategorised","Review Required");receiptAccount.value="";receiptPaymentMethod.value="Card";receiptNumber.value="";receiptGst.value="";receiptNotes.value="";ocrStatus.textContent=`${pendingReceiptPages.length} section${pendingReceiptPages.length===1?'':'s'} ready`;receiptDialog.showModal();
 }
 receiptImageInput.onchange=e=>{if(e.target.files.length)openReceiptCapture(e.target.files);e.target.value=""};heroScanBtn.onclick=()=>receiptImageInput.click();
 receiptMoreInput.onchange=async e=>{if(e.target.files.length){await addReceiptFiles(e.target.files);ocrStatus.textContent=`${pendingReceiptPages.length} sections ready`}e.target.value=''};
@@ -1033,26 +1033,158 @@ function parseAustralianReceipt(rawText){
   return parsed;
 }
 
+
+let lastOcrDiagnostic=null;
+const ocrDiagnosticPanel=document.getElementById("ocrDiagnosticPanel");
+const ocrDiagnosticSummary=document.getElementById("ocrDiagnosticSummary");
+const ocrFieldDecisions=document.getElementById("ocrFieldDecisions");
+const ocrAmountCandidates=document.getElementById("ocrAmountCandidates");
+const ocrRawText=document.getElementById("ocrRawText");
+const ocrSectionResults=document.getElementById("ocrSectionResults");
+const copyOcrDebugBtn=document.getElementById("copyOcrDebugBtn");
+const downloadOcrDebugBtn=document.getElementById("downloadOcrDebugBtn");
+const clearOcrDebugBtn=document.getElementById("clearOcrDebugBtn");
+
+function diagnosticFieldRows(parsed){
+  const confidence=parsed.confidence?.fields||{};
+  return [
+    ["Merchant",parsed.merchant||"(blank)",confidence.merchant||0],
+    ["Date",parsed.date||"(blank)",confidence.date||0],
+    ["Total",parsed.total?`$${parsed.total.toFixed(2)}`:"(blank)",confidence.total||0],
+    ["GST",parsed.gst?`$${parsed.gst.toFixed(2)}`:"(blank)",confidence.gst||0],
+    ["Receipt number",parsed.receiptNumber||"(blank)",confidence.receiptNumber||0],
+    ["Payment method",parsed.paymentMethod||"(blank)",confidence.paymentMethod||0],
+    ["Parser",parsed.parser||"Generic",100],
+    ["Merchant profile",parsed.merchantProfile||"generic",100]
+  ];
+}
+function renderOcrDiagnostic(report){
+  lastOcrDiagnostic=report;
+  const parsed=report.parsed;
+  const lowFields=diagnosticFieldRows(parsed).filter(row=>row[2]<70&&row[2]!==0).map(row=>row[0]);
+  ocrDiagnosticSummary.textContent=
+    `Overall extraction confidence: ${parsed.confidence?.overall||0}% · `+
+    `OCR quality: ${parsed.imageQuality||0}% · `+
+    `Sections: ${report.sections.length}`+
+    (lowFields.length?` · Review: ${lowFields.join(", ")}`:"");
+
+  ocrFieldDecisions.textContent=diagnosticFieldRows(parsed)
+    .map(([field,value,confidence])=>`${field}: ${value}\nConfidence: ${confidence}%`)
+    .join("\n\n");
+
+  const candidates=parsed.amountCandidates||[];
+  ocrAmountCandidates.textContent=candidates.length
+    ? candidates.map((item,index)=>
+        `${index+1}. $${Number(item.value).toFixed(2)} · score ${item.score} · seen ${item.count} time${item.count===1?"":"s"}`
+      ).join("\n")
+    : "No scored amount candidates.";
+
+  ocrRawText.value=report.rawText||"";
+  ocrSectionResults.textContent=report.sections.map(section=>
+    `Section ${section.section}\nOCR confidence: ${section.confidence}%\nCharacters: ${section.characters}\n\n${section.text}`
+  ).join("\n\n==============================\n\n");
+  ocrDiagnosticPanel.open=true;
+}
+function clearOcrDiagnostic(){
+  lastOcrDiagnostic=null;
+  ocrDiagnosticSummary.textContent="Run OCR to see diagnostic results.";
+  ocrFieldDecisions.textContent="No data yet.";
+  ocrAmountCandidates.textContent="No data yet.";
+  ocrRawText.value="";
+  ocrSectionResults.textContent="No data yet.";
+}
+function debugReportText(report){
+  return [
+    `BalanceIQ ${APP_VERSION} OCR diagnostic`,
+    `Created: ${report.createdAt}`,
+    `Sections: ${report.sections.length}`,
+    "",
+    "PARSED RESULT",
+    JSON.stringify(report.parsed,null,2),
+    "",
+    "PER-SECTION OCR",
+    report.sections.map(section=>
+      `--- Section ${section.section} | confidence ${section.confidence}% ---\n${section.text}`
+    ).join("\n\n"),
+    "",
+    "COMBINED RAW OCR",
+    report.rawText
+  ].join("\n");
+}
+copyOcrDebugBtn.onclick=async()=>{
+  if(!lastOcrDiagnostic)return alert("Run OCR first.");
+  try{
+    await navigator.clipboard.writeText(debugReportText(lastOcrDiagnostic));
+    showNotice("OCR diagnostic copied.");
+  }catch{
+    alert("Copy was blocked by the browser. Use Download JSON instead.");
+  }
+};
+downloadOcrDebugBtn.onclick=()=>{
+  if(!lastOcrDiagnostic)return alert("Run OCR first.");
+  const blob=new Blob([JSON.stringify(lastOcrDiagnostic,null,2)],{type:"application/json"});
+  const link=document.createElement("a");
+  link.href=URL.createObjectURL(blob);
+  link.download=`balanceiq-ocr-debug-${new Date().toISOString().replace(/[:.]/g,"-")}.json`;
+  link.click();
+  setTimeout(()=>URL.revokeObjectURL(link.href),1000);
+};
+clearOcrDebugBtn.onclick=clearOcrDiagnostic;
+
+function shouldAutofillField(confidence,minimum=70){
+  return Number(confidence||0)>=minimum;
+}
+
 runOcrBtn.onclick=async()=>{
   if(!pendingReceiptPages.length)return alert('Scan or import at least one receipt section first.');
   if(!window.Tesseract)return alert('Receipt reader is unavailable while offline. You can still enter the details manually.');
   try{
-    receiptPreview.parentElement.classList.add('scanning');let combined='';
+    receiptPreview.parentElement.classList.add('scanning');
+    let combined='';
+    const sectionReports=[];
     for(let i=0;i<pendingReceiptPages.length;i++){
       ocrStatus.textContent=`Reading section ${i+1} of ${pendingReceiptPages.length}…`;
       const image=await processScanPage(pendingReceiptPages[i].original,pendingReceiptPages[i].rotation||0);
-      const result=await Tesseract.recognize(image,'eng',{logger:m=>{if(m.status==='recognizing text')ocrStatus.textContent=`Section ${i+1}: ${Math.round(m.progress*100)}%`}});combined+='\n'+(result.data.text||'');
+      const result=await Tesseract.recognize(image,'eng',{
+        logger:m=>{
+          if(m.status==='recognizing text'){
+            ocrStatus.textContent=`Section ${i+1}: ${Math.round(m.progress*100)}%`;
+          }
+        }
+      });
+      const sectionText=result.data.text||'';
+      combined+='\n'+sectionText;
+      sectionReports.push({
+        section:i+1,
+        confidence:Math.round(Number(result.data.confidence)||0),
+        characters:sectionText.length,
+        text:sectionText
+      });
     }
+
     const parsed=parseAustralianReceipt(combined);
-    if(parsed.merchant)receiptMerchant.value=parsed.merchant;
-    if(parsed.date)receiptDate.value=parsed.date;
-    if(parsed.total)receiptAmount.value=parsed.total.toFixed(2);
-    if(parsed.receiptNumber)receiptNumber.value=parsed.receiptNumber;
-    if(parsed.gst)receiptGst.value=parsed.gst.toFixed(2);
-    if(parsed.paymentMethod)receiptPaymentMethod.value=parsed.paymentMethod;
-    if(parsed.category){
+    const fieldConfidence=parsed.confidence?.fields||{};
+
+    // Diagnostic builds only autofill fields with reasonable evidence.
+    if(parsed.merchant&&shouldAutofillField(fieldConfidence.merchant,70))receiptMerchant.value=parsed.merchant;
+    if(parsed.date&&shouldAutofillField(fieldConfidence.date,70))receiptDate.value=parsed.date;
+    if(parsed.total&&shouldAutofillField(fieldConfidence.total,75))receiptAmount.value=parsed.total.toFixed(2);
+    if(parsed.receiptNumber&&shouldAutofillField(fieldConfidence.receiptNumber,70))receiptNumber.value=parsed.receiptNumber;
+    if(parsed.gst&&shouldAutofillField(fieldConfidence.gst,70))receiptGst.value=parsed.gst.toFixed(2);
+    if(parsed.paymentMethod&&shouldAutofillField(fieldConfidence.paymentMethod,70))receiptPaymentMethod.value=parsed.paymentMethod;
+    if(parsed.category&&shouldAutofillField(fieldConfidence.merchant,70)){
       fillCategorySelect(receiptCategory,receiptSubcategory,parsed.category,parsed.subcategory||"");
     }
+
+    const report={
+      version:APP_VERSION,
+      createdAt:new Date().toISOString(),
+      sections:sectionReports,
+      rawText:combined.trim(),
+      parsed
+    };
+    renderOcrDiagnostic(report);
+
     const scanNotes=[
       `Scanned from ${pendingReceiptPages.length} section${pendingReceiptPages.length===1?'':'s'}.`,
       parsed.branch?`Branch: ${parsed.branch}.`:"",
@@ -1063,8 +1195,16 @@ runOcrBtn.onclick=async()=>{
       Number.isFinite(parsed.imageQuality)?`OCR quality: ${parsed.imageQuality}%.`:""
     ].filter(Boolean).join(" ");
     receiptNotes.value=(receiptNotes.value?receiptNotes.value+'\n':'')+scanNotes;
-    ocrStatus.textContent='Details extracted — please check';
-  }catch(err){console.error(err);ocrStatus.textContent='Manual check needed';alert('The scanned receipt could not be read reliably. Please check the image and enter any missing details manually.')}finally{receiptPreview.parentElement.classList.remove('scanning')}
+
+    const lowConfidence=(parsed.confidence?.overall||0)<75;
+    ocrStatus.textContent=lowConfidence?'Low confidence — review diagnostics':'Details extracted — please check';
+  }catch(err){
+    console.error(err);
+    ocrStatus.textContent='Manual check needed';
+    alert('The scanned receipt could not be read reliably. Open OCR diagnostics and enter missing details manually.');
+  }finally{
+    receiptPreview.parentElement.classList.remove('scanning');
+  }
 };
 saveReceiptBtn.onclick=e=>{e.preventDefault();const receipt={id:crypto.randomUUID?crypto.randomUUID():`r-${Date.now()}`,merchant:norm(receiptMerchant.value),date:receiptDate.value,amount:Number(receiptAmount.value),category:receiptCategory.value||'Uncategorised',subcategory:receiptSubcategory.value,account:norm(receiptAccount.value),paymentMethod:receiptPaymentMethod.value,receiptNumber:norm(receiptNumber.value),gst:Number(receiptGst.value)||0,notes:receiptNotes.value,image:pendingReceiptImage,createdAt:new Date().toISOString(),status:receiptPaymentMethod.value==='Cash'?'cash':'awaiting'};if(!receipt.merchant||!receipt.date||!receipt.amount)return;const fingerprint=receiptFingerprint(receipt);if(state.receipts.some(r=>receiptFingerprint(r)===fingerprint))return alert('This receipt appears to have already been saved.');state.receipts.unshift(receipt);state.transactions.push(applyRule({date:receipt.date,description:receipt.merchant,merchant:receipt.merchant,amount:-Math.abs(receipt.amount),source:'Receipt',receiptId:receipt.id,reconciliationStatus:receipt.status,account:receipt.account,category:receipt.category,subcategory:receipt.subcategory,notes:receipt.notes,taxDeductible:false}));saveState();receiptDialog.close();pendingReceiptImage='';pendingReceiptPages=[];rebuildReviewQueue();renderAll();showNotice('Receipt saved. BalanceIQ will look for the matching bank transaction on future imports.')};
 addTransactionBtn.onclick=()=>openTransaction();saveTransactionBtn.onclick=e=>{e.preventDefault();const t={date:txDate.value,amount:+txAmount.value,description:txDescription.value,category:txCategory.value,subcategory:txSubcategory.value,asset:txAsset.value,taxDeductible:txTax.value==="true",tag:txTag.value,notes:txNotes.value,reviewed:true,auto:false,source:"Manual"};const i=txIndex.value;if(i==="")state.transactions.push(t);else state.transactions[+i]={...state.transactions[+i],...t};rebuildReviewQueue();saveState();transactionDialog.close();renderAll()};

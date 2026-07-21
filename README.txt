@@ -1,38 +1,35 @@
-BALANCEIQ v6.0 — MERCHANT INTELLIGENCE ENGINE
+BALANCEIQ v6.1 — OCR DIAGNOSTIC BUILD
 
-v6.0 introduces a profile-driven receipt parsing architecture.
+PURPOSE
+This is a development build for diagnosing real receipt-recognition failures. It exposes
+the actual OCR output instead of hiding it behind the completed form.
 
-MERCHANT PROFILES INCLUDED
-- Bunnings Warehouse
-- Woolworths
-- Coles
-- ALDI
-- Officeworks
-- JB Hi-Fi
-- Supercheap Auto
-- Repco
-- BCF
-- Kmart
-- Target
-- Ampol
-- Shell
-- BP
+DIAGNOSTIC PANEL
+After pressing “Read scanned receipt”, expand OCR diagnostics to see:
+- Raw combined OCR text
+- OCR text and confidence for every photographed section
+- Parser and merchant profile selected
+- Extracted field values and confidence scores
+- Ranked monetary candidates, their scores and repetition counts
+- Overall extraction confidence and OCR quality
 
-RECEIPT INTELLIGENCE
-- Merchant detection selects a parser profile.
-- Invoice numbers rank above receipt, transaction, order and job numbers.
-- Multiline invoice numbers are supported.
-- Repeated monetary values are used as consensus signals.
-- A single noisy OCR total can be rejected when repeated subtotal/payment values agree.
-- GST is read from the same line or following line.
-- Australian GST-inclusive receipts can recover GST as total ÷ 11 when the printed amount is missed.
-- Parser identity, merchant profile, OCR quality and extraction confidence are saved in notes.
+DEBUG EXPORT
+- Copy debug report copies a readable report to the clipboard.
+- Download JSON creates a local diagnostic file that can be shared for analysis.
+- Receipt images are not placed inside the debug JSON.
 
-VERIFIED BUNNINGS CASES
-1. $68.64 total, $6.24 GST, invoice 2402/01719325
-2. Noisy OCR total $76.69 corrected to $26.89, GST recovered as $2.44,
-   invoice 2402/00972200
+SAFETY
+Low-confidence fields are no longer automatically inserted into the form. This prevents
+values such as product dimensions or weights from being silently saved as transaction totals.
+
+TESTING WORKFLOW
+1. Scan a receipt.
+2. Press Read scanned receipt.
+3. Open OCR diagnostics.
+4. Check Raw OCR text and Amount candidates.
+5. Download the JSON when the result is wrong.
+6. Keep the original receipt image with the JSON for parser development.
 
 INSTALLATION
-Replace every hosted file with this package. Unregister the previous service worker or
-uninstall the old PWA, clear cached site files, hard-refresh, and reinstall if required.
+Replace every hosted file. Clear/unregister the previous service worker or uninstall the
+old PWA, hard-refresh the site, then reinstall if needed.

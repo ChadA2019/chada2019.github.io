@@ -68,3 +68,16 @@ body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-ser
 .app-version{white-space:nowrap}
 
 .app-version{letter-spacing:.02em}
+
+.ocr-diagnostic{margin-top:1rem;border:1px solid var(--border);border-radius:14px;background:var(--surface);padding:.8rem}
+.ocr-diagnostic>summary{cursor:pointer;font-weight:800;color:var(--blue)}
+.diagnostic-toolbar{display:flex;gap:.55rem;flex-wrap:wrap;margin:.8rem 0}
+.diagnostic-toolbar button{padding:.55rem .75rem}
+.diagnostic-summary{background:var(--light);border-radius:10px;padding:.8rem;margin:.7rem 0;font-size:.9rem}
+.diagnostic-grid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
+.diagnostic-grid section{min-width:0}
+.diagnostic-grid section.wide{grid-column:1/-1}
+.diagnostic-grid h3{font-size:.9rem;margin:.25rem 0 .45rem}
+.diagnostic-grid pre,.diagnostic-grid textarea{white-space:pre-wrap;overflow:auto;max-height:300px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.78rem;line-height:1.45;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:.7rem;width:100%}
+.field-warning{background:var(--yellow)}
+@media(max-width:700px){.diagnostic-grid{grid-template-columns:1fr}.diagnostic-grid section.wide{grid-column:auto}}

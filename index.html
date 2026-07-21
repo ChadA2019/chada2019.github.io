@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#17365d">
-  <title>BalanceIQ v6.0</title>
+  <title>BalanceIQ v6.1 Diagnostic</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -12,7 +12,7 @@
 <header class="app-header">
   <div class="brand-lockup">
     <div class="brand-mark" aria-hidden="true"><span></span></div>
-    <div><div class="brand-title-row"><h1>Balance<span>IQ</span></h1><small class="app-version">v6.0</small></div><p>Smarter money clarity, without losing control of your data.</p></div>
+    <div><div class="brand-title-row"><h1>Balance<span>IQ</span></h1><small class="app-version">v6.1 Diag</small></div><p>Smarter money clarity, without losing control of your data.</p></div>
   </div>
   <div class="header-actions">
     <button id="themeBtn" class="secondary" title="Toggle dark mode">🌙</button>
@@ -234,12 +234,12 @@
   <section class="panel about-panel">
     <h2>About BalanceIQ</h2>
     <div class="metric-list">
-      <div><span>Version</span><strong>6.0</strong></div>
-      <div><span>Build</span><strong>2026.07.21.008</strong></div>
+      <div><span>Version</span><strong>6.1 Diagnostic</strong></div>
+      <div><span>Build</span><strong>2026.07.21.009</strong></div>
     </div>
     <details class="release-notes">
       <summary>What’s new</summary>
-      <p>Merchant Intelligence Engine with profile-driven receipt parsing, repeated-value consensus and Australian GST recovery.</p>
+      <p>OCR Diagnostic Build with raw recognition output, candidate scoring and low-confidence safeguards.</p>
     </details>
   </section>
 
@@ -323,6 +323,36 @@
       <label class="wide">Notes<textarea id="receiptNotes" rows="2"></textarea></label>
     </div>
   </div>
+
+  <details id="ocrDiagnosticPanel" class="ocr-diagnostic">
+    <summary>OCR diagnostics</summary>
+    <p class="small-note">Development information for improving receipt recognition. Personal receipt text stays in this browser.</p>
+    <div class="diagnostic-toolbar">
+      <button id="copyOcrDebugBtn" type="button" class="secondary">Copy debug report</button>
+      <button id="downloadOcrDebugBtn" type="button" class="secondary">Download JSON</button>
+      <button id="clearOcrDebugBtn" type="button" class="secondary">Clear</button>
+    </div>
+    <div id="ocrDiagnosticSummary" class="diagnostic-summary">Run OCR to see diagnostic results.</div>
+    <div class="diagnostic-grid">
+      <section>
+        <h3>Field decisions</h3>
+        <pre id="ocrFieldDecisions">No data yet.</pre>
+      </section>
+      <section>
+        <h3>Amount candidates</h3>
+        <pre id="ocrAmountCandidates">No data yet.</pre>
+      </section>
+      <section class="wide">
+        <h3>Raw OCR text</h3>
+        <textarea id="ocrRawText" rows="14" readonly placeholder="Raw OCR text will appear here"></textarea>
+      </section>
+      <section class="wide">
+        <h3>Per-section OCR</h3>
+        <pre id="ocrSectionResults">No data yet.</pre>
+      </section>
+    </div>
+  </details>
+
   <div class="dialog-actions"><button value="cancel" class="secondary">Cancel</button><button id="runOcrBtn" type="button" class="secondary">Read scanned receipt</button><button id="saveReceiptBtn" value="default">Save expense</button></div>
 </form>
 </dialog>

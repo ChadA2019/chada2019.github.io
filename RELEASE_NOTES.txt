@@ -1,14 +1,18 @@
-BALANCEIQ v6.0
-Build 2026.07.21.008
+BALANCEIQ v6.1 OCR DIAGNOSTIC BUILD
+Build 2026.07.21.009
 
-Major architecture
-- Introduced merchantProfiles registry.
-- Added profile-driven parser dispatch.
-- Added parser families for Bunnings, supermarkets, general retail, automotive and fuel.
-- Merchant profile ID is recorded with each OCR scan.
+Added
+- Expandable OCR diagnostics in the receipt dialog.
+- Raw OCR text.
+- Per-section OCR confidence and text.
+- Field decision report.
+- Ranked amount-candidate report.
+- Copyable text report and downloadable JSON report.
+- Low-confidence autofill safeguards.
 
-Receipt accuracy
-- Retains repetition consensus.
-- Retains multiline invoice detection.
-- Retains GST next-line extraction and GST recovery.
-- Retains local-time dates, stable navigation and receipt reconciliation.
+Retained
+- Merchant Intelligence Engine.
+- Bunnings repeated-value consensus.
+- Multiline invoice-number support.
+- GST recovery.
+- Stable navigation and receipt reconciliation.
