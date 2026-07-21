@@ -1,24 +1,28 @@
-BALANCEIQ v6.3 — CANDIDATE CONSENSUS RELEASE
+BALANCEIQ v6.4 — PARSER ISOLATION & SAFETY RELEASE
 
-DATE
-- Collects dates from every OCR pass.
-- Full-pass and footer agreement outweighs a weaker header result.
-- Likely OCR year errors are merged when day/month match.
+STRUCTURAL FIX
+The business parser no longer consumes diagnostic marker text. Header, totals and full OCR
+results are passed as separate channels.
 
-INVOICE
-- Collects every Bunnings-format invoice candidate.
-- Full-pass candidates receive higher weight.
-- Barcode/footer store and suffix references arbitrate competing invoice values.
+MERCHANT SAFETY
+- Bunnings is detected using combined evidence: damaged name variants, PowerPass, ABN,
+  Tax Invoice wording and Bunnings-format invoice numbers.
+- Diagnostic labels can never become the merchant.
+- Weak generic merchant guesses beginning with separators are rejected.
 
-GST
-- Collects GST candidates from all OCR passes.
-- Cross-checks values against Total ÷ 11.
-- For GST-inclusive receipts, arithmetic consistency wins when OCR returns nearby conflicting values.
-- Example: total $77.26 resolves conflicting $7.00 and $7.07 readings to $7.02.
+TOTAL SAFETY
+- Only values on labelled Total, PowerPass, Card, EFTPOS, Visa, Mastercard or Subtotal
+  lines are considered.
+- Item, quantity, discount, barcode, savings, change and rounding lines are heavily penalised.
+- Implausible values over $5,000 are rejected.
+- GST is never calculated from an untrusted total.
+- Missing decimal repair is allowed only on labelled financial lines.
 
-CONFIDENCE AND DIAGNOSTICS
-- Candidate disagreement lowers field confidence.
-- Ranked date, invoice and GST candidates appear in OCR diagnostics.
+RECEIPT SAFETY
+- Invoice extraction runs even when merchant detection is imperfect.
+- Existing Bunnings invoice consensus and footer validation are retained.
+- Low-evidence fields stay blank.
 
 INSTALLATION
-Replace every file, unregister the old service worker or uninstall the old PWA, clear cached files, hard-refresh, then reinstall if required.
+Replace all files, unregister the previous service worker or uninstall the old PWA, clear
+cached files, hard-refresh, and reinstall if required.

@@ -1,7 +1,7 @@
 {
   "name": "BalanceIQ",
   "short_name": "BalanceIQ",
-  "description": "BalanceIQ 6.3 \u2014 pass-aware candidate consensus for receipt dates, invoices and GST.",
+  "description": "BalanceIQ 6.4 \u2014 isolated OCR channels, merchant evidence scoring and receipt-value safety.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#071d3b",

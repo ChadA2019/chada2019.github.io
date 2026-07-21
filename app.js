@@ -149,7 +149,7 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_VERSION="6.3";
+const APP_VERSION="6.4";
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 const defaultCategories=["Alcohol","Bills & Direct Debits","Cafes","Cash","Child Support","Dining Out","Education","Entertainment","Fuel","Groceries","Health & Fitness","Home & Maintenance","Income","Insurance","Loans & Finance","Loans & Mortgages","Medical","Personal Care","Pets","Refunds","Shopping","Subscriptions","Take Away","Transfers","Transport","Travel","Uncategorised","Vehicles"];
 const subcategoriesByCategory={
@@ -660,6 +660,10 @@ function normaliseOcrText(text){
     .replace(/\bDGT[E]?ILE\b/gi,"Details")
     .replace(/\bNUNBER\b/gi,"Number")
     .replace(/\bBUNNTNGS\b/gi,"BUNNINGS")
+    .replace(/\bAUNNINGS\b/gi,"BUNNINGS")
+    .replace(/\bBUN\s+ING\b/gi,"BUNNINGS")
+    .replace(/\bP(?:U|O)VERP(?:ASS|AGS)\b/gi,"PowerPass")
+    .replace(/\bFOOTED\b/gi,"Total")
     .trim();
 }
 function ocrLines(text){
@@ -683,11 +687,28 @@ function parseMoneyToken(value){
   const number=Number(cleaned);
   return Number.isFinite(number)?Math.abs(number):0;
 }
-function moneyValues(line){
-  return [...String(line||"").matchAll(/\$?\s*([0-9]{1,5}(?:,[0-9]{3})*\.\d{2})\b/g)]
-    .map(match=>parseMoneyToken(match[1]))
-    .filter(value=>value>0&&value<100000);
+function moneyValues(line,{labelled=false}={}){
+  const text=String(line||"");
+  const values=[];
+
+  // Standard decimal currency.
+  for(const match of text.matchAll(/\$?\s*([0-9]{1,5}(?:,[0-9]{3})*\.\d{2})\b/g)){
+    const value=parseMoneyToken(match[1]);
+    if(value>0&&value<100000)values.push(value);
+  }
+
+  // Missing decimal repair is only safe beside a financial label.
+  if(labelled){
+    for(const match of text.matchAll(/\$\s*([0-9]{3,6})\b/g)){
+      const digits=match[1];
+      const value=Number(`${digits.slice(0,-2)}.${digits.slice(-2)}`);
+      if(value>0&&value<5000)values.push(value);
+    }
+  }
+
+  return [...new Set(values.map(v=>Number(v.toFixed(2))))];
 }
+
 
 const merchantProfiles=[
   {
@@ -1093,6 +1114,140 @@ function runMerchantParser(profile,text,base){
 }
 
 
+
+function cleanOcrPassText(text){
+  return normaliseOcrText(text)
+    .split("\n")
+    .filter(line=>!/^---\s*(?:HEADER|TOTALS|FULL)\s+PASS\s*---$/i.test(line.trim()))
+    .join("\n")
+    .trim();
+}
+function buildReceiptChannels(input){
+  if(input&&typeof input==="object"){
+    return {
+      header:cleanOcrPassText(input.header||""),
+      totals:cleanOcrPassText(input.totals||""),
+      full:cleanOcrPassText(input.full||"")
+    };
+  }
+  const split=splitOcrPasses(String(input||""));
+  return {
+    header:cleanOcrPassText(split.header),
+    totals:cleanOcrPassText(split.totals),
+    full:cleanOcrPassText(split.full||String(input||""))
+  };
+}
+function combinedReceiptText(channels){
+  return [channels.full,channels.header,channels.totals].filter(Boolean).join("\n");
+}
+function bunningsEvidenceScore(text){
+  const upperText=upper(text);
+  let score=0;
+  if(/\bBUNNINGS\b|\bBUNNINGS\s+GROUP\b|\bWAREHOUSE\b/.test(upperText))score+=80;
+  if(/\bPOWERPASS\b/.test(upperText))score+=45;
+  if(/ABN\s*26\s*00[68]\s*672\s*179/.test(upperText))score+=45;
+  if(/\bTAX\s+INVOICE\b/.test(upperText))score+=20;
+  if(/\b\d{4}\/\d{7,8}\b/.test(upperText))score+=25;
+  if(/\bCARD\s*(?:NO|NG|KO)\b/.test(upperText))score+=10;
+  return score;
+}
+function detectMerchantAcrossChannels(channels){
+  const perPass=[
+    {name:"full",text:channels.full,weight:1},
+    {name:"header",text:channels.header,weight:.8},
+    {name:"totals",text:channels.totals,weight:.7}
+  ];
+  let bunnings=0;
+  for(const pass of perPass)bunnings+=bunningsEvidenceScore(pass.text)*pass.weight;
+  if(bunnings>=55){
+    return {
+      id:"bunnings",
+      merchant:"Bunnings Warehouse",
+      parser:"bunnings",
+      category:"Home & Maintenance",
+      subcategory:"Hardware",
+      score:Math.round(bunnings)
+    };
+  }
+
+  const combined=combinedReceiptText(channels);
+  const detected=detectKnownMerchant(combined,ocrLines(combined));
+  if(/^---/.test(detected.merchant||""))detected.merchant="";
+  return detected;
+}
+function isItemOrNoiseLine(line){
+  const text=upper(line);
+  return (
+    /(?:\bDISC\b|\bDISCOUNT\b|\bSAVINGS?\b|\bCHANGE\b|\bROUNDING\b)/.test(text) ||
+    /(?:\b\d{10,14}\b|\b\d+\s*@|\bQTY\b|\bEACH\b|\bUNIT\b)/.test(text) ||
+    /(?:\bMM\b|\bCM\b|\bKG\b|\bGRAM\b|\bG\b\s*(?:CLEAR|WHITE|BLACK|RED)\b)/.test(text)
+  );
+}
+function labelledMoneyValues(line){
+  const labelled=/\b(?:TOTAL|SUBTOTAL|POWERPASS|EFTPOS|VISA|MASTERCARD|CARD|GST|TAX)\b/i.test(line);
+  return moneyValues(line,{labelled});
+}
+function safeReceiptTotal(channels,merchant=""){
+  const scored=new Map();
+  const add=(value,score,source)=>{
+    if(!(value>0&&value<=5000))return;
+    const key=value.toFixed(2);
+    const current=scored.get(key)||{value,score:0,count:0,sources:[]};
+    current.score+=score;
+    current.count++;
+    current.sources.push(source);
+    scored.set(key,current);
+  };
+
+  const sources=[
+    ["full",channels.full,100],
+    ["totals",channels.totals,80],
+    ["header",channels.header,15]
+  ];
+
+  for(const [source,text,baseWeight] of sources){
+    const lines=ocrLines(text);
+    for(let i=0;i<lines.length;i++){
+      const line=lines[i];
+      const u=upper(line);
+      const values=labelledMoneyValues(line);
+      if(!values.length)continue;
+
+      const isTotal=/^\s*(?:TOTAL|FOTAL|FOOTED)\b|\bAMOUNT\s+PAID\b/i.test(line);
+      const isPayment=/\bPOWERPASS\b|\bEFTPOS\b|\bVISA\b|\bMASTERCARD\b|\bCARD\b/i.test(line);
+      const isSubtotal=/\bSUB\s*TOTAL\b|\bSUBTOTAL\b/i.test(line);
+      const isGst=/\bGST\b|\bBST\b|\bTAX\s*AMOUNT\b/i.test(line);
+
+      for(const value of values){
+        let score=baseWeight;
+        if(isTotal)score+=130;
+        else if(isPayment)score+=115;
+        else if(isSubtotal)score+=35;
+        else score-=50;
+
+        if(isGst)score-=180;
+        if(isItemOrNoiseLine(line)&&!isTotal&&!isPayment)score-=170;
+        if(value>1000)score-=200;
+        add(value,score,`${source}:${line.trim()}`);
+      }
+    }
+  }
+
+  for(const item of scored.values()){
+    if(item.count>=2)item.score+=item.count*55;
+    if(item.count>=3)item.score+=70;
+  }
+
+  const ranked=[...scored.values()]
+    .filter(item=>item.score>0)
+    .sort((a,b)=>b.score-a.score||b.count-a.count||a.value-b.value);
+
+  const best=ranked[0];
+  const second=ranked[1];
+  const trusted=!!best && best.score>=160 && (!second||best.score>=second.score*1.08||best.count>=2);
+  return {value:trusted?best.value:0,candidates:ranked.slice(0,8),trusted};
+}
+
 function splitOcrPasses(text){
   const sections={header:"",totals:"",full:""};
   const rx=/---\s*(HEADER|TOTALS|FULL)\s+PASS\s*---\s*([\s\S]*?)(?=---\s*(?:HEADER|TOTALS|FULL)\s+PASS\s*---|$)/gi;
@@ -1239,7 +1394,62 @@ function chooseGst(text,total){
   return {value:ranked[0]?.value||0,candidates:ranked,expected};
 }
 
+
+function parseReceiptChannels(input){
+  const channels=buildReceiptChannels(input);
+  const text=combinedReceiptText(channels);
+  const lines=ocrLines(text);
+  const merchantInfo=detectMerchantAcrossChannels(channels);
+  const dateChoice=chooseReceiptDate(text);
+  const dateTime=extractReceiptDateTime(text);
+
+  const totalChoice=safeReceiptTotal(channels,merchantInfo.merchant);
+  const receiptChoice=chooseReceiptNumber(text,merchantInfo.merchant);
+  const gstChoice=totalChoice.trusted?chooseGst(text,totalChoice.value):{value:0,candidates:[],expected:0};
+
+  const base={
+    merchant:merchantInfo.merchant||"",
+    branch:"",
+    category:merchantInfo.category||"",
+    subcategory:merchantInfo.subcategory||"",
+    date:dateChoice.value||dateTime.date,
+    time:dateTime.time,
+    total:totalChoice.value,
+    gst:gstChoice.value,
+    receiptNumber:receiptChoice.value||"",
+    paymentMethod:detectReceiptPaymentMethod(text),
+    parser:merchantInfo.parser==="bunnings"?"Bunnings":"Generic",
+    merchantProfile:merchantInfo.id||"generic",
+    amountCandidates:totalChoice.candidates,
+    dateCandidates:dateChoice.candidates,
+    receiptNumberCandidates:receiptChoice.candidates,
+    gstCandidates:gstChoice.candidates,
+    expectedGst:gstChoice.expected,
+    totalTrusted:totalChoice.trusted
+  };
+
+  if(merchantInfo.parser==="bunnings"){
+    base.branch=firstCaptured(text,[
+      /BUNNINGS\s+WAREHOUSE\s*\n\s*([A-Z][A-Z'’ -]{2,})/i,
+      /\b(MIRRABOOKA|O['’]?CONNOR|CANNINGTON|BALCATTA|MIDLAND|ARMADALE|MORLEY|JOONDALUP)\b/i
+    ]);
+  }
+
+  base.confidence=receiptFieldConfidence(base,text);
+  if(base.confidence){
+    if(!base.totalTrusted)base.confidence.fields.total=0;
+    if(!base.receiptNumber)base.confidence.fields.receiptNumber=0;
+    if(!base.date)base.confidence.fields.date=0;
+    if(!base.gst)base.confidence.fields.gst=0;
+    const vals=Object.values(base.confidence.fields).filter(Boolean);
+    base.confidence.overall=vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):0;
+  }
+  base.imageQuality=receiptImageQuality(text);
+  return base;
+}
+
 function parseAustralianReceipt(rawText){
+  if(rawText&&typeof rawText==="object")return parseReceiptChannels(rawText);
   const text=normaliseOcrText(rawText);
   const lines=ocrLines(text);
   const merchantInfo=detectKnownMerchant(text,lines);
@@ -1421,7 +1631,12 @@ runOcrBtn.onclick=async()=>{
         combined+=`\n--- ${label.toUpperCase()} PASS ---\n${text}`;
       }
     }
-    const parsed=parseAustralianReceipt(combined);
+    const channels={
+      header:sectionReports.filter(r=>r.pass==="header").map(r=>r.text).join("\n"),
+      totals:sectionReports.filter(r=>r.pass==="totals").map(r=>r.text).join("\n"),
+      full:sectionReports.filter(r=>r.pass==="full").map(r=>r.text).join("\n")
+    };
+    const parsed=parseReceiptChannels(channels);
     const ocrAverage=Math.round(sectionReports.reduce((s,r)=>s+r.confidence,0)/Math.max(1,sectionReports.length));
     parsed.ocrConfidence=ocrAverage;
     if(parsed.confidence){
