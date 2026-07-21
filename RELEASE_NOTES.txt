@@ -1,15 +1,13 @@
-BALANCEIQ v6.2
-Build 2026.07.21.010
+BALANCEIQ v6.3
+Build 2026.07.21.011
 
 Fixed:
-- 10/07/2026 interpreted as an Australian date.
-- 2006 can be corrected to 2026 from footer evidence.
-- Detadls/Details cannot become the receipt number.
-- Order and Job references are not receipt-number fallbacks.
-- PowerPass OCR variants improve payment-total selection.
-- Overall confidence now incorporates OCR confidence.
+- 10/07/2026 and footer 2026-07-10 beat header OCR 10/01/2006.
+- Invoice 2163/00737706 beats header OCR 2163/00737106 using pass quality and footer hints.
+- GST $7.02 is selected from total $77.26 when OCR reports $7.00 and $7.07.
 
 Added:
-- Header OCR pass.
-- Totals OCR pass.
-- Pass-labelled diagnostics.
+- Date candidate consensus.
+- Footer-assisted invoice consensus.
+- GST arithmetic arbitration.
+- Candidate rankings in diagnostics.

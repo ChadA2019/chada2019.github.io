@@ -1,7 +1,7 @@
 {
   "name": "BalanceIQ",
   "short_name": "BalanceIQ",
-  "description": "BalanceIQ 6.2 \u2014 region OCR, Australian date recovery and strict invoice validation.",
+  "description": "BalanceIQ 6.3 \u2014 pass-aware candidate consensus for receipt dates, invoices and GST.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#071d3b",

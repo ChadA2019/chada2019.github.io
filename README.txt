@@ -1,15 +1,24 @@
-BALANCEIQ v6.2 — OCR QUALITY RELEASE
+BALANCEIQ v6.3 — CANDIDATE CONSENSUS RELEASE
 
-- Three OCR passes per image: full receipt, high-contrast header, high-contrast totals.
-- Australian DD/MM/YYYY parsing.
-- Footer date correction for OCR year errors such as 2006 vs 2026.
-- No fallback from Invoice/Receipt Number to Order Number or Job Number.
-- Letters-only labels such as Details are rejected.
-- Bunnings invoice IDs require ####/####### or ####/######## format.
-- Fuzzy PowerPass and Total OCR variants are normalised.
-- Payment values outrank subtotals when totals are damaged.
-- Combined confidence includes actual Tesseract confidence.
-- Date and receipt number stay blank when recognition is not reliable.
-- Diagnostic panel remains available.
+DATE
+- Collects dates from every OCR pass.
+- Full-pass and footer agreement outweighs a weaker header result.
+- Likely OCR year errors are merged when day/month match.
 
-Install by replacing all files and clearing/unregistering the previous service worker.
+INVOICE
+- Collects every Bunnings-format invoice candidate.
+- Full-pass candidates receive higher weight.
+- Barcode/footer store and suffix references arbitrate competing invoice values.
+
+GST
+- Collects GST candidates from all OCR passes.
+- Cross-checks values against Total ÷ 11.
+- For GST-inclusive receipts, arithmetic consistency wins when OCR returns nearby conflicting values.
+- Example: total $77.26 resolves conflicting $7.00 and $7.07 readings to $7.02.
+
+CONFIDENCE AND DIAGNOSTICS
+- Candidate disagreement lowers field confidence.
+- Ranked date, invoice and GST candidates appear in OCR diagnostics.
+
+INSTALLATION
+Replace every file, unregister the old service worker or uninstall the old PWA, clear cached files, hard-refresh, then reinstall if required.

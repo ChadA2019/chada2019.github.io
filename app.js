@@ -149,7 +149,7 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_VERSION="6.2";
+const APP_VERSION="6.3";
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 const defaultCategories=["Alcohol","Bills & Direct Debits","Cafes","Cash","Child Support","Dining Out","Education","Entertainment","Fuel","Groceries","Health & Fitness","Home & Maintenance","Income","Insurance","Loans & Finance","Loans & Mortgages","Medical","Personal Care","Pets","Refunds","Shopping","Subscriptions","Take Away","Transfers","Transport","Travel","Uncategorised","Vehicles"];
 const subcategoriesByCategory={
@@ -1092,17 +1092,165 @@ function runMerchantParser(profile,text,base){
   }
 }
 
+
+function splitOcrPasses(text){
+  const sections={header:"",totals:"",full:""};
+  const rx=/---\s*(HEADER|TOTALS|FULL)\s+PASS\s*---\s*([\s\S]*?)(?=---\s*(?:HEADER|TOTALS|FULL)\s+PASS\s*---|$)/gi;
+  for(const match of text.matchAll(rx)){
+    sections[match[1].toLowerCase()]+="\n"+match[2].trim();
+  }
+  return sections;
+}
+function dateCandidatesFromText(text,source,weight){
+  const out=[];
+  for(const match of text.matchAll(/\b([0-3]?\d)[\/-]([01]?\d)[\/-](20\d{2}|\d{2})\b/g)){
+    const value=isoAustralianDate(match[1],match[2],match[3]);
+    if(value)out.push({value,source,weight});
+  }
+  for(const match of text.matchAll(/\b(20\d{2})[-\/](0?[1-9]|1[0-2])[-\/](0?[1-9]|[12]\d|3[01])\b/g)){
+    out.push({
+      value:`${match[1]}-${String(match[2]).padStart(2,"0")}-${String(match[3]).padStart(2,"0")}`,
+      source:`${source}-footer`,
+      weight:weight+25
+    });
+  }
+  return out;
+}
+function chooseReceiptDate(text){
+  const passes=splitOcrPasses(text);
+  const candidates=[
+    ...dateCandidatesFromText(passes.full,"full",100),
+    ...dateCandidatesFromText(passes.header,"header",45),
+    ...dateCandidatesFromText(passes.totals,"totals",15),
+    ...dateCandidatesFromText(text,"combined",30)
+  ];
+  const scores=new Map();
+  for(const c of candidates)scores.set(c.value,(scores.get(c.value)||0)+c.weight);
+
+  // Transfer support from likely OCR year errors when month/day match.
+  const groups={};
+  for(const c of candidates){
+    const [year,month,day]=c.value.split("-");
+    const key=`${month}-${day}`;
+    (groups[key]||=[]).push({...c,year:Number(year)});
+  }
+  for(const group of Object.values(groups)){
+    const newest=Math.max(...group.map(c=>c.year));
+    const preferred=group.find(c=>c.year===newest)?.value;
+    for(const c of group){
+      if(preferred&&newest-c.year>=10){
+        scores.set(preferred,(scores.get(preferred)||0)+Math.round(c.weight*.8));
+      }
+    }
+  }
+
+  const ranked=[...scores.entries()]
+    .map(([value,score])=>({value,score}))
+    .sort((a,b)=>b.score-a.score);
+  return {value:ranked[0]?.value||"",candidates:ranked};
+}
+function invoiceCandidatesFromText(text,source,weight){
+  return [...text.matchAll(/\b(\d{4}\/\d{7,8})\b/g)]
+    .map(match=>({value:match[1],source,weight}));
+}
+function footerInvoiceHints(text){
+  return [...text.matchAll(/#([0-9]{3}-[0-9]{5})-([0-9]{4})-(20\d{2})-[0-9]{2}-[0-9]{2}/g)]
+    .map(match=>({suffix:match[1].replace("-",""),store:match[2]}));
+}
+function chooseReceiptNumber(text,merchant=""){
+  if(merchant!=="Bunnings Warehouse"){
+    return {value:extractReceiptNumber(text,merchant),candidates:[]};
+  }
+  const passes=splitOcrPasses(text);
+  const candidates=[
+    ...invoiceCandidatesFromText(passes.full,"full",100),
+    ...invoiceCandidatesFromText(passes.header,"header",55),
+    ...invoiceCandidatesFromText(passes.totals,"totals",15),
+    ...invoiceCandidatesFromText(text,"combined",25)
+  ];
+  const hints=footerInvoiceHints(text);
+  const scores=new Map();
+  for(const c of candidates){
+    let score=c.weight;
+    const [store,number]=c.value.split("/");
+    for(const hint of hints){
+      if(store===hint.store)score+=40;
+      const tail=number.slice(-hint.suffix.length);
+      if(tail===hint.suffix)score+=90;
+      else{
+        let distance=0;
+        for(let i=0;i<Math.min(tail.length,hint.suffix.length);i++){
+          if(tail[i]!==hint.suffix[i])distance++;
+        }
+        if(distance===1)score+=35;
+      }
+    }
+    scores.set(c.value,(scores.get(c.value)||0)+score);
+  }
+  const ranked=[...scores.entries()]
+    .map(([value,score])=>({value,score}))
+    .sort((a,b)=>b.score-a.score);
+  return {value:ranked[0]?.value||"",candidates:ranked};
+}
+function gstCandidatesFromText(text){
+  const passes=splitOcrPasses(text);
+  const sources=[
+    ["full",passes.full,100],
+    ["totals",passes.totals,70],
+    ["header",passes.header,10],
+    ["combined",text,20]
+  ];
+  const out=[];
+  for(const [source,body,weight] of sources){
+    const lines=ocrLines(body);
+    for(let i=0;i<lines.length;i++){
+      if(!/\bGST\b|\bBST\b|\bTAX\s*AMOUNT\b/i.test(lines[i]))continue;
+      for(const value of moneyValues(lines[i]))out.push({value,source,weight});
+      for(const value of moneyValues(lines[i+1]||""))out.push({value,source,weight:weight-10});
+    }
+  }
+  return out;
+}
+function chooseGst(text,total){
+  const expected=total>0?Number((total/11).toFixed(2)):0;
+  const candidates=gstCandidatesFromText(text).filter(c=>c.value>0&&c.value<total*.35);
+  const scores=new Map();
+
+  for(const c of candidates){
+    let score=c.weight;
+    const diff=Math.abs(c.value-expected);
+    if(diff<=.01)score+=120;
+    else if(diff<=.03)score+=70;
+    else if(diff<=.08)score+=20;
+    else score-=50;
+    const key=c.value.toFixed(2);
+    scores.set(key,(scores.get(key)||0)+score);
+  }
+
+  // For an Australian GST-inclusive receipt, arithmetic consistency is decisive
+  // when OCR candidates disagree around the expected value.
+  if(total>0&&/GST\s+INCLUDED|BST\s+INCLUDED|GST\s+THCLUDED/i.test(text)){
+    scores.set(expected.toFixed(2),(scores.get(expected.toFixed(2))||0)+320);
+  }
+
+  const ranked=[...scores.entries()]
+    .map(([value,score])=>({value:Number(value),score}))
+    .sort((a,b)=>b.score-a.score);
+  return {value:ranked[0]?.value||0,candidates:ranked,expected};
+}
+
 function parseAustralianReceipt(rawText){
   const text=normaliseOcrText(rawText);
   const lines=ocrLines(text);
   const merchantInfo=detectKnownMerchant(text,lines);
   const dateTime=extractReceiptDateTime(text);
+  const dateChoice=chooseReceiptDate(text);
   const base={
     merchant:merchantInfo.merchant,
     branch:"",
     category:merchantInfo.category,
     subcategory:merchantInfo.subcategory,
-    date:dateTime.date,
+    date:dateChoice.value||dateTime.date,
     time:dateTime.time,
     total:0,
     gst:0,
@@ -1112,9 +1260,31 @@ function parseAustralianReceipt(rawText){
   };
 
   let parsed=runMerchantParser(merchantInfo,text,base);
+  const receiptChoice=chooseReceiptNumber(text,base.merchant);
+  const gstChoice=chooseGst(text,parsed.total);
+  parsed.date=base.date;
+  parsed.receiptNumber=receiptChoice.value||parsed.receiptNumber;
+  parsed.gst=gstChoice.value||parsed.gst;
+  parsed.dateCandidates=dateChoice.candidates;
+  parsed.receiptNumberCandidates=receiptChoice.candidates;
+  parsed.gstCandidates=gstChoice.candidates;
+  parsed.expectedGst=gstChoice.expected;
   parsed.merchantProfile=merchantInfo.id||"generic";
 
   parsed.confidence=receiptFieldConfidence(parsed,text);
+  if(parsed.confidence){
+    if(parsed.dateCandidates?.length>1&&parsed.dateCandidates[0].score<parsed.dateCandidates[1].score*1.35){
+      parsed.confidence.fields.date=Math.min(parsed.confidence.fields.date,72);
+    }
+    if(parsed.receiptNumberCandidates?.length>1&&parsed.receiptNumberCandidates[0].score<parsed.receiptNumberCandidates[1].score*1.35){
+      parsed.confidence.fields.receiptNumber=Math.min(parsed.confidence.fields.receiptNumber,74);
+    }
+    if(parsed.gstCandidates?.length>1&&parsed.gstCandidates[0].score<parsed.gstCandidates[1].score*1.35){
+      parsed.confidence.fields.gst=Math.min(parsed.confidence.fields.gst,74);
+    }
+    const values=Object.values(parsed.confidence.fields).filter(Boolean);
+    parsed.confidence.overall=values.length?Math.round(values.reduce((a,b)=>a+b,0)/values.length):0;
+  }
   parsed.imageQuality=receiptImageQuality(text);
   return parsed;
 }
@@ -1159,11 +1329,18 @@ function renderOcrDiagnostic(report){
     .join("\n\n");
 
   const candidates=parsed.amountCandidates||[];
-  ocrAmountCandidates.textContent=candidates.length
-    ? candidates.map((item,index)=>
-        `${index+1}. $${Number(item.value).toFixed(2)} · score ${item.score} · seen ${item.count} time${item.count===1?"":"s"}`
-      ).join("\n")
-    : "No scored amount candidates.";
+  const dateLines=(parsed.dateCandidates||[]).map((item,index)=>`Date ${index+1}: ${item.value} · score ${item.score}`);
+  const invoiceLines=(parsed.receiptNumberCandidates||[]).map((item,index)=>`Invoice ${index+1}: ${item.value} · score ${item.score}`);
+  const gstLines=(parsed.gstCandidates||[]).map((item,index)=>`GST ${index+1}: $${Number(item.value).toFixed(2)} · score ${item.score}`);
+  const amountLines=candidates.map((item,index)=>
+    `${index+1}. $${Number(item.value).toFixed(2)} · score ${item.score} · seen ${item.count} time${item.count===1?"":"s"}`
+  );
+  ocrAmountCandidates.textContent=[
+    ...amountLines,
+    ...(dateLines.length?["",...dateLines]:[]),
+    ...(invoiceLines.length?["",...invoiceLines]:[]),
+    ...(gstLines.length?["",...gstLines]:[])
+  ].join("\n")||"No scored candidates.";
 
   ocrRawText.value=report.rawText||"";
   ocrSectionResults.textContent=report.sections.map(section=>
