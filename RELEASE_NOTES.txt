@@ -1,14 +1,9 @@
-BalanceIQ v7.8 — Bunnings Degraded-Label Consensus
-Build 2026.07.21.025
+BalanceIQ v7.9 — Bunnings Tender-Row Total Recovery
 
-Changes
-- Recovers a separated Bunnings total when the word Total is present, the same clear amount is identified as SubTotal, and that amount is independently repeated across at least three totals-area OCR readings.
-- Recognises damaged EFT payment labels such as ET and FT when followed by a currency amount.
-- Gives focused date/header OCR passes greater weight when selecting a Bunnings invoice number, preventing a single damaged full-page reading from beating repeated correct readings.
-- Retains v7.7 GST plausibility validation and all prior date, total and footer invoice protections.
+• Preserves clear dollar values printed on the same row as CARD NO instead of discarding the entire row as reference data.
+• Uses CARD NO / EFT / CREDIT tender amounts as independent payment evidence only when a real decimal amount is present.
+• Recovers separated Bunnings totals when SubTotal, a damaged Total label and the tender amount agree.
+• Keeps barcode, account, card-number and invoice-reference protections in place.
+• Retains v7.8 date, receipt-number, GST plausibility and consensus improvements.
 
-Expected result for the supplied Busselton receipt
-Date: 01/01/2026
-Total: $91.06
-GST: $8.28
-Receipt number: 2063/01184341
+Build: 2026.07.21.024

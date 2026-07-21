@@ -1,7 +1,7 @@
 {
   "name": "BalanceIQ",
   "short_name": "BalanceIQ",
-  "description": "BalanceIQ 7.8 \u2014 labelled-total ranking and focused amount-column OCR.",
+  "description": "BalanceIQ 7.9 \u2014 labelled-total ranking and focused amount-column OCR.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#071d3b",

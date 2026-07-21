@@ -149,7 +149,7 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_VERSION="7.8";
+const APP_VERSION="7.9";
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 const defaultCategories=["Alcohol","Bills & Direct Debits","Cafes","Cash","Child Support","Dining Out","Education","Entertainment","Fuel","Groceries","Health & Fitness","Home & Maintenance","Income","Insurance","Loans & Finance","Loans & Mortgages","Medical","Personal Care","Pets","Refunds","Shopping","Subscriptions","Take Away","Transfers","Transport","Travel","Uncategorised","Vehicles"];
 const subcategoriesByCategory={
@@ -1634,12 +1634,21 @@ function safeReceiptTotal(channels,merchant=""){
   for(const [source,text,baseWeight] of sources){
     const lines=ocrLines(text);
     for(const line of lines){
-      if(isReferenceOnlyLine(line))continue;
+      const referenceOnly=isReferenceOnlyLine(line);
       const candidates=labelledMoneyValues(line);
       if(!candidates.length)continue;
 
       const isTotal=/^\s*(?:TOTAL|FOTAL|FOOTED)\b|\bAMOUNT\s+PAID\b/i.test(line);
-      const isPayment=isCardPaymentLine(line);
+      // v7.9: Bunnings often prints the tender amount on the same physical row
+      // as CARD NO. The old reference-line guard discarded that amount before
+      // consensus could use it. Preserve only a clear money value on CARD NO
+      // rows as payment-reference evidence; all other reference-only lines are
+      // still ignored so barcodes/account numbers cannot become totals.
+      const isCardReferencePayment=referenceOnly&&
+        /\bCARD\s*(?:NO|NUMBER|HO|WO|NG|KO)\b/i.test(line)&&
+        candidates.some(candidate=>candidate.reason!=="compact-currency"&&candidate.value>0);
+      if(referenceOnly&&!isCardReferencePayment)continue;
+      const isPayment=isCardPaymentLine(line)||isCardReferencePayment;
       const isSubtotal=/\bSUB\s*TOTAL\b|\bSUBTOTAL\b|\bSUBTOTAR\b|\bSUBLOTAI\b/i.test(line);
       const isGst=/\bGST\b|\bBST\b|\bTAX\s*AMOUNT\b/i.test(line);
       const isIncludedTotal=fuzzyIncludedTotalEvidence(line);
@@ -1653,7 +1662,7 @@ function safeReceiptTotal(channels,merchant=""){
 
       for(const candidate of candidates){
         let score=baseWeight;
-        if(role==="payment")score+=165;
+        if(role==="payment")score+=isCardReferencePayment?95:165;
         else if(role==="total")score+=225;
         else if(role==="included-total")score+=105;
         else if(role==="subtotal")score+=12;
@@ -1785,6 +1794,24 @@ function safeReceiptTotal(channels,merchant=""){
     bunningsSubtotalConsensus.score+=1400;
     ranked=ranked.sort((a,b)=>b.score-a.score||b.count-a.count||a.value-b.value);
     return {value:bunningsSubtotalConsensus.value,candidates:ranked.slice(0,10),trusted:true};
+  }
+
+  // v7.9: final degraded-layout recovery. Accept a clear Bunnings subtotal when
+  // a damaged/separated Total label is present and the identical amount also
+  // appears on a CARD NO/EFT/CREDIT tender row. This covers receipts where the
+  // right-hand total column is lost by OCR but the tender amount survives.
+  const bunningsTenderConsensus=merchant==="Bunnings Warehouse"&&ranked.find(item=>{
+    const roles=new Set(item.roles);
+    const clearMoney=item.repairs.some(repair=>[
+      "exact-decimal","spaced-both-sides-decimal","fragmented-decimal-sequence","spaced-cents"
+    ].includes(repair));
+    return hasSeparatedTotalLabel&&item.value>0&&item.value<=5000&&clearMoney&&
+      roles.has("subtotal")&&roles.has("payment");
+  });
+  if(bunningsTenderConsensus){
+    bunningsTenderConsensus.score+=1700;
+    ranked=ranked.sort((a,b)=>b.score-a.score||b.count-a.count||a.value-b.value);
+    return {value:bunningsTenderConsensus.value,candidates:ranked.slice(0,10),trusted:true};
   }
 
   const best=ranked[0];
