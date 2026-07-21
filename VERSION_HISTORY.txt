@@ -1,16 +1,16 @@
 BALANCEIQ VERSION HISTORY
 
-v5.3 Professional
-Professional packaging, OCR quality scoring, confidence indicators and receipt-intelligence documentation.
+v6.0
+Merchant Intelligence Engine and profile-driven parser architecture.
 
-v5.3
-Australian receipt intelligence, merchant recognition, invoice-number priority and improved GST extraction.
+v5.3.1 Professional
+Bunnings parser, repeated-value consensus, multiline invoice detection and GST recovery.
+
+v5.3 Professional
+Australian receipt intelligence, confidence scoring and professional packaging.
 
 v5.2.2
-Navigation stability release; repaired malformed JavaScript, added explicit DOM bindings and lazy PDF loading.
-
-v5.2.1
-Rebuild from the verified v5.1 baseline.
+Navigation stability, explicit DOM bindings and lazy PDF loading.
 
 v5.1
-Last verified fully working navigation baseline; smart receipt scanner and long-receipt workflow.
+Last known-good navigation baseline and smart receipt scanner.

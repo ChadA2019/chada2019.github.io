@@ -1,23 +1,14 @@
-BALANCEIQ v5.3 PROFESSIONAL — RELEASE NOTES
+BALANCEIQ v6.0
+Build 2026.07.21.008
 
-Build: 2026.07.21.006
+Major architecture
+- Introduced merchantProfiles registry.
+- Added profile-driven parser dispatch.
+- Added parser families for Bunnings, supermarkets, general retail, automotive and fuel.
+- Merchant profile ID is recorded with each OCR scan.
 
-Added
-- Australian receipt intelligence engine.
-- Known-merchant recognition.
-- Merchant-specific category recommendations.
-- Priority-based receipt/invoice number extraction.
-- GST extraction for GST-inclusive Australian tax invoices.
-- OCR quality scoring.
-- Per-field extraction confidence and overall confidence.
-- Receipt time and branch details added to receipt notes.
-- Professional release documentation and validation report.
-
-Retained
-- Stable seven-tab navigation.
-- Receipt-to-bank reconciliation.
-- CSV and selectable-text PDF imports.
-- Encrypted cloud-sync configuration.
-- Manual transaction entry.
-- Category and subcategory selectors.
-- Local-time greeting.
+Receipt accuracy
+- Retains repetition consensus.
+- Retains multiline invoice detection.
+- Retains GST next-line extraction and GST recovery.
+- Retains local-time dates, stable navigation and receipt reconciliation.

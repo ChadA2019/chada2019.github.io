@@ -1,20 +1,26 @@
-BALANCEIQ v5.3 PROFESSIONAL — VALIDATION REPORT
+BALANCEIQ v6.0 — VALIDATION REPORT
 
 JavaScript syntax: PASS
-Navigation targets: PASS (7 tabs)
-Required release files: PASS
-Bunnings receipt parser: PASS
-Parser output: {"merchant":"Bunnings Warehouse","branch":"O'CONNOR","category":"Home & Maintenance","subcategory":"Hardware","date":"2026-07-21","time":"08:30:45 AM","total":68.64,"gst":6.24,"receiptNumber":"2402/01719325","paymentMethod":"Card","confidence":{"overall":93,"fields":{"merchant":98,"date":92,"total":95,"gst":90,"receiptNumber":96,"paymentMethod":88}},"imageQuality":70}
+Navigation targets: PASS (7)
+Bunnings $68.64 parser test: PASS
+Bunnings noisy $76.69 → $26.89 test: PASS
+Woolworths merchant profile test: PASS
+Ampol merchant profile test: PASS
+
+Bunnings 68.64 {"merchant":"Bunnings Warehouse","branch":"O'CONNOR","category":"Home & Maintenance","subcategory":"Hardware","date":"2026-07-21","time":"08:30:45 AM","total":68.64,"gst":6.24,"receiptNumber":"2402/01719325","paymentMethod":"Card","parser":"Bunnings","amountCandidates":[{"value":68.64,"score":311,"count":3}],"merchantProfile":"bunnings","confidence":{"overall":94,"fields":{"merchant":98,"date":92,"total":98,"gst":92,"receiptNumber":97,"paymentMethod":88}},"imageQuality":70}
+Bunnings noisy 26.89 {"merchant":"Bunnings Warehouse","branch":"O'CONNOR","category":"Home & Maintenance","subcategory":"Hardware","date":"2026-07-14","time":"03:19:46 PM","total":26.89,"gst":2.44,"receiptNumber":"2402/00972200","paymentMethod":"Card","parser":"Bunnings","amountCandidates":[{"value":26.89,"score":201,"count":3},{"value":76.69,"score":86,"count":1},{"value":1.41,"score":16,"count":1}],"merchantProfile":"bunnings","confidence":{"overall":94,"fields":{"merchant":98,"date":92,"total":98,"gst":92,"receiptNumber":97,"paymentMethod":88}},"imageQuality":70}
+Woolworths profile {"merchant":"Woolworths","branch":"","category":"Groceries","subcategory":"Supermarket","date":"","time":"","total":42.5,"gst":3.86,"receiptNumber":"987654321","paymentMethod":"Card","parser":"Supermarket","merchantProfile":"woolworths","confidence":{"overall":89,"fields":{"merchant":98,"date":0,"total":88,"gst":92,"receiptNumber":80,"paymentMethod":88}},"imageQuality":30}
+Ampol profile {"merchant":"Ampol","branch":"","category":"Fuel","subcategory":"Fuel & Convenience","date":"","time":"","total":88.1,"gst":8.01,"receiptNumber":"A1234567","paymentMethod":"Card","parser":"Fuel","merchantProfile":"ampol","confidence":{"overall":93,"fields":{"merchant":98,"date":0,"total":88,"gst":92,"receiptNumber":97,"paymentMethod":88}},"imageQuality":30}
 
 SHA-256 FILE HASHES
-5e6f03addd9449548d1261a42c65bf18757823e28454629b42505f33a485974a  README.txt
-82125dd404b5894a6a835ce8e2c72f13a4c3463aa46bc7472ec49c7608c7cb2f  RELEASE_NOTES.txt
-1cc00b2e93234f6abbefdb86b136880751e8477091c809e583f8339edca4405a  VERSION_HISTORY.txt
-6ba219f5d91eed4d89b5b23117add1ebc27a4232b6a148434bfb733911bf75bb  app.js
+7304aa43a9f9bd3f0a0b4ebd157f9d8650661f7a5e0c17475889ed9087113baa  README.txt
+52d86b94895f2aa2b1902354e7ce4153911cda4e74c99f180683e0b8daa785a3  RELEASE_NOTES.txt
+2a4306ec9e7ea225280588c90a6066657848c5249a16ecf0ff0bfa2e239a824f  VERSION_HISTORY.txt
+a09b13d562b9bad7fa701cd2f601778b33dddda59cf49acb5c44ff17eb1af67e  app.js
 73a13cb30f08fd802651a6e6bf841c565e1eb516d2e1685a8fec49fda20f5fc7  cloud-sync.js
 4fbd70da51025b02abb500d21a8220b103fa590ba09c5260f2c78c7dbc3d8c9f  icon.svg
-fc44ec0ad48fe0fa82573f0c3323c00154e9f8bb545fe44aecf567e189d6f22a  index.html
-13bd50ca077559dea64b7eebc60428a01a7f392a16cde1ca5a96b5c0735ad550  manifest.webmanifest
-ef759c81107ea70768129e588fafc6a49cda7d25d29c7dfe7c92cd0852c5be0a  service-worker.js
-f68bf5696f54546c15a6af4c2ba7a78e08a9eed22ed9a94855c3cbbdb3de3c2d  styles.css
+75e31bd070b069e7c133f0256381918b6200f52ccdbe96b63adac0ff98c27262  index.html
+3de2f9abe48dee33ca73e785502c9360cd9a2f8854b8272b269f028c7b268476  manifest.webmanifest
+61deeaf3c0e51a80ca6895a57309008531461b858918be7e2735f1e4f35ed387  service-worker.js
+42ca3efc58a25bd7f691de2d12029a197030e82b2b7aac3b39749bcd78900310  styles.css
 b98d03e0b916aac8ab1004bb8d5ccee343d142b39d7785cf2c5f0ed4f37035c2  supabase_setup.sql

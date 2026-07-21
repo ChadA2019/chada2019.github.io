@@ -149,7 +149,7 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_VERSION="5.3";
+const APP_VERSION="6.0";
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 const defaultCategories=["Alcohol","Bills & Direct Debits","Cafes","Cash","Child Support","Dining Out","Education","Entertainment","Fuel","Groceries","Health & Fitness","Home & Maintenance","Income","Insurance","Loans & Finance","Loans & Mortgages","Medical","Personal Care","Pets","Refunds","Shopping","Subscriptions","Take Away","Transfers","Transport","Travel","Uncategorised","Vehicles"];
 const subcategoriesByCategory={
@@ -637,47 +637,174 @@ function cleanReceiptIdentifier(value){
     .replace(/\s+/g,"")
     .replace(/[^\w\/.-]/g,"");
 }
-function detectKnownMerchant(text,lines){
-  const upperText=upper(text);
-  const known=[
-    {tests:[/BUNNINGS/,/WAREHOUSE/],merchant:"Bunnings Warehouse",category:"Home & Maintenance",subcategory:"Hardware"},
-    {tests:[/WOOLWORTHS?/],merchant:"Woolworths",category:"Groceries",subcategory:"Supermarket"},
-    {tests:[/\bCOLES\b/],merchant:"Coles",category:"Groceries",subcategory:"Supermarket"},
-    {tests:[/OFFICEWORKS/],merchant:"Officeworks",category:"Shopping",subcategory:"Retail"},
-    {tests:[/JB\s*HI[- ]?FI/],merchant:"JB Hi-Fi",category:"Shopping",subcategory:"Electronics"},
-    {tests:[/SUPERCHEAP\s*AUTO/],merchant:"Supercheap Auto",category:"Vehicles",subcategory:"Parts / Accessories"},
-    {tests:[/\bREPCO\b/],merchant:"Repco",category:"Vehicles",subcategory:"Parts / Accessories"},
-    {tests:[/\bBCF\b/,/BOATING CAMPING FISHING/],merchant:"BCF",category:"Shopping",subcategory:"Retail"},
-    {tests:[/\bKMART\b/],merchant:"Kmart",category:"Shopping",subcategory:"Retail"},
-    {tests:[/\bTARGET\b/],merchant:"Target",category:"Shopping",subcategory:"Retail"},
-    {tests:[/\bALDI\b/],merchant:"ALDI",category:"Groceries",subcategory:"Supermarket"}
-  ];
-  for(const item of known){
-    if(item.tests.some(test=>test.test(upperText)))return item;
-  }
+function parseMoneyToken(value){
+  const cleaned=String(value||"").replace(/[^\d.,-]/g,"").replace(/,/g,"");
+  const number=Number(cleaned);
+  return Number.isFinite(number)?Math.abs(number):0;
+}
+function moneyValues(line){
+  return [...String(line||"").matchAll(/\$?\s*([0-9]{1,5}(?:,[0-9]{3})*\.\d{2})\b/g)]
+    .map(match=>parseMoneyToken(match[1]))
+    .filter(value=>value>0&&value<100000);
+}
 
+const merchantProfiles=[
+  {
+    id:"bunnings",
+    merchant:"Bunnings Warehouse",
+    tests:[/BUNNINGS/,/WAREHOUSE/],
+    category:"Home & Maintenance",
+    subcategory:"Hardware",
+    parser:"bunnings"
+  },
+  {
+    id:"woolworths",
+    merchant:"Woolworths",
+    tests:[/WOOLWORTHS?/],
+    category:"Groceries",
+    subcategory:"Supermarket",
+    parser:"supermarket"
+  },
+  {
+    id:"coles",
+    merchant:"Coles",
+    tests:[/\bCOLES\b/],
+    category:"Groceries",
+    subcategory:"Supermarket",
+    parser:"supermarket"
+  },
+  {
+    id:"aldi",
+    merchant:"ALDI",
+    tests:[/\bALDI\b/],
+    category:"Groceries",
+    subcategory:"Supermarket",
+    parser:"supermarket"
+  },
+  {
+    id:"officeworks",
+    merchant:"Officeworks",
+    tests:[/OFFICEWORKS/],
+    category:"Shopping",
+    subcategory:"Retail",
+    parser:"retail"
+  },
+  {
+    id:"jb-hifi",
+    merchant:"JB Hi-Fi",
+    tests:[/JB\s*HI[- ]?FI/],
+    category:"Shopping",
+    subcategory:"Electronics",
+    parser:"retail"
+  },
+  {
+    id:"supercheap-auto",
+    merchant:"Supercheap Auto",
+    tests:[/SUPERCHEAP\s*AUTO/],
+    category:"Vehicles",
+    subcategory:"Parts / Accessories",
+    parser:"automotive"
+  },
+  {
+    id:"repco",
+    merchant:"Repco",
+    tests:[/\bREPCO\b/],
+    category:"Vehicles",
+    subcategory:"Parts / Accessories",
+    parser:"automotive"
+  },
+  {
+    id:"bcf",
+    merchant:"BCF",
+    tests:[/\bBCF\b/,/BOATING CAMPING FISHING/],
+    category:"Shopping",
+    subcategory:"Retail",
+    parser:"retail"
+  },
+  {
+    id:"kmart",
+    merchant:"Kmart",
+    tests:[/\bKMART\b/],
+    category:"Shopping",
+    subcategory:"Retail",
+    parser:"retail"
+  },
+  {
+    id:"target",
+    merchant:"Target",
+    tests:[/\bTARGET\b/],
+    category:"Shopping",
+    subcategory:"Retail",
+    parser:"retail"
+  },
+  {
+    id:"ampol",
+    merchant:"Ampol",
+    tests:[/\bAMPOL\b/],
+    category:"Fuel",
+    subcategory:"Fuel & Convenience",
+    parser:"fuel"
+  },
+  {
+    id:"shell",
+    merchant:"Shell",
+    tests:[/\bSHELL\b/],
+    category:"Fuel",
+    subcategory:"Fuel & Convenience",
+    parser:"fuel"
+  },
+  {
+    id:"bp",
+    merchant:"BP",
+    tests:[/\bBP\b/,/BRITISH PETROLEUM/],
+    category:"Fuel",
+    subcategory:"Fuel & Convenience",
+    parser:"fuel"
+  }
+];
+function getMerchantProfile(text){
+  const upperText=upper(text);
+  return merchantProfiles.find(profile=>profile.tests.some(test=>test.test(upperText)))||null;
+}
+
+function detectKnownMerchant(text,lines){
+  const profile=getMerchantProfile(text);
+  if(profile)return profile;
   const ignore=/^(tax invoice|invoice|receipt|welcome|thank you|abn\b|date\b|time\b|total\b|subtotal\b|returns|customer|account|order|job|card|change|gst\b)/i;
   const candidate=lines.find(line=>
-    /[A-Za-z]{3}/.test(line) &&
-    !ignore.test(line) &&
-    line.length>=3 &&
-    line.length<70 &&
-    !/^\d/.test(line)
+    /[A-Za-z]{3}/.test(line)&&!ignore.test(line)&&line.length>=3&&line.length<70&&!/^\d/.test(line)
   );
-  return {merchant:candidate||"",category:"",subcategory:""};
+  return {merchant:candidate||"",parser:"generic",category:"",subcategory:""};
+}
+function identifierAfterLabel(lines,labelPattern){
+  for(let i=0;i<lines.length;i++){
+    const line=lines[i];
+    if(!labelPattern.test(line))continue;
+    const sameLine=line.replace(labelPattern,"").replace(/^[\s:#-]+/,"").trim();
+    const sameMatch=sameLine.match(/([A-Z0-9][A-Z0-9\/.-]{3,})/i);
+    if(sameMatch&&!/^(DETAILS?|NUMBER|NO)$/i.test(sameMatch[1]))return cleanReceiptIdentifier(sameMatch[1]);
+    const next=lines[i+1]||"";
+    const nextMatch=next.match(/^\s*([A-Z0-9][A-Z0-9\/.-]{3,})\s*$/i);
+    if(nextMatch)return cleanReceiptIdentifier(nextMatch[1]);
+  }
+  return "";
 }
 function extractReceiptNumber(text){
+  const lines=ocrLines(text);
   const priorities=[
-    /invoice\s*(?:number|no\.?|#)\s*(?:details)?\s*[:#]?\s*([A-Z0-9][A-Z0-9\/.-]{3,})/i,
-    /tax\s*invoice\s*(?:number|no\.?|#)?\s*(?:details)?\s*[:#]?\s*([A-Z0-9][A-Z0-9\/.-]{3,})/i,
-    /receipt\s*(?:number|no\.?|#)\s*[:#]?\s*([A-Z0-9][A-Z0-9\/.-]{3,})/i,
-    /docket\s*(?:number|no\.?|#)\s*[:#]?\s*([A-Z0-9][A-Z0-9\/.-]{3,})/i,
-    /invoice\s*#\s*([A-Z0-9][A-Z0-9\/.-]{3,})/i,
-    /transaction\s*(?:id|number|no\.?|#)\s*[:#]?\s*([A-Z0-9][A-Z0-9\/.-]{3,})/i,
-    /order\s*(?:number|no\.?|#)\s*[:#]?\s*([A-Z0-9][A-Z0-9\/.-]{3,})/i,
-    /job\s*(?:number|no\.?|#)\s*[:#]?\s*([A-Z0-9][A-Z0-9\/.-]{3,})/i
+    /invoice\s*(?:number|no\.?|#)\s*(?:details)?/i,
+    /tax\s*invoice\s*(?:number|no\.?|#)?\s*(?:details)?/i,
+    /receipt\s*(?:number|no\.?|#)/i,
+    /docket\s*(?:number|no\.?|#)/i,
+    /transaction\s*(?:id|number|no\.?|#)/i,
+    /order\s*(?:number|no\.?|#)/i,
+    /job\s*(?:number|no\.?|#)/i
   ];
-  return cleanReceiptIdentifier(firstCaptured(text,priorities));
+  for(const label of priorities){
+    const value=identifierAfterLabel(lines,label);
+    if(value)return value;
+  }
+  return "";
 }
 function extractReceiptDateTime(text){
   const dateMatch=text.match(/\b(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})\b|\b(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{2,4})\b/i);
@@ -687,33 +814,79 @@ function extractReceiptDateTime(text){
     time:timeMatch?timeMatch[1].replace(/\s+/g," ").toUpperCase():""
   };
 }
-function extractReceiptTotal(text){
-  const labelled=[
-    /(?:grand\s*total|amount\s*paid|total\s*paid|balance\s*due)\s*[:$ ]+\$?\s*([0-9,]+\.\d{2})/ig,
-    /^\s*total\s*[:$ ]+\$?\s*([0-9,]+\.\d{2})\s*$/igm,
-    /(?:card|eftpos|visa|mastercard|powerpass)\s*[:$ ]+\$?\s*([0-9,]+\.\d{2})/ig
-  ];
-  let values=[];
-  for(const pattern of labelled){
-    values.push(...[...text.matchAll(pattern)].map(match=>Number(match[1].replace(/,/g,""))));
-  }
-  values=values.filter(value=>value>0&&value<100000);
-  if(values.length)return Math.max(...values);
+function amountConsensus(lines,{merchant=""}={}){
+  const scores=new Map();
+  const counts=new Map();
+  const add=(value,score)=>{
+    if(!(value>0&&value<100000))return;
+    const key=value.toFixed(2);
+    scores.set(key,(scores.get(key)||0)+score);
+    counts.set(key,(counts.get(key)||0)+1);
+  };
 
-  const all=[...text.matchAll(/\$\s*([0-9,]+\.\d{2})/g)]
-    .map(match=>Number(match[1].replace(/,/g,"")))
-    .filter(value=>value>0&&value<100000);
-  return all.length?Math.max(...all):0;
+  for(let i=0;i<lines.length;i++){
+    const line=lines[i];
+    const values=moneyValues(line);
+    if(!values.length)continue;
+    const upperLine=upper(line);
+    const previous=upper(lines[i-1]||"");
+    const next=upper(lines[i+1]||"");
+    const context=`${previous} ${upperLine} ${next}`;
+
+    for(const value of values){
+      let score=1;
+      if(/\bGRAND\s*TOTAL\b|\bAMOUNT\s*PAID\b|\bTOTAL\s*PAID\b|\bBALANCE\s*DUE\b/.test(upperLine))score+=100;
+      else if(/^\s*TOTAL\b/.test(upperLine)||/\bTOTAL\s*\$/.test(upperLine))score+=85;
+      else if(/\bSUB\s*TOTAL\b|\bSUBTOTAL\b/.test(upperLine))score+=52;
+      else if(/\bPOWERPASS\b|\bEFTPOS\b|\bVISA\b|\bMASTERCARD\b|\bCARD\b/.test(upperLine))score+=45;
+
+      if(/\bGST\b|\bTAX\s*AMOUNT\b/.test(upperLine))score-=80;
+      if(/\bSAVINGS?\b|\bDISCOUNT\b|\bDISC\b|\bCHANGE\b|\bROUNDING\b/.test(upperLine))score-=70;
+      if(/@\s*\$?\s*[0-9]+\.\d{2}/.test(line)||/\bEACH\b|\bUNIT\b/.test(upperLine))score-=25;
+
+      if(merchant==="Bunnings Warehouse"){
+        if(/\bPOWERPASS\b/.test(context)&&!/\bSAVINGS?\b/.test(upperLine))score+=12;
+        if(/\bGST INCLUDED IN THE TOTAL\b/.test(context)&&value<10)score-=70;
+      }
+      add(value,score);
+    }
+  }
+
+  // Repetition is a powerful correction signal when OCR misreads one labelled total.
+  for(const [key,count] of counts){
+    if(count>=2)scores.set(key,(scores.get(key)||0)+count*28);
+    if(count>=3)scores.set(key,(scores.get(key)||0)+30);
+  }
+
+  const ranked=[...scores.entries()]
+    .map(([key,score])=>({value:Number(key),score,count:counts.get(key)||0}))
+    .filter(item=>item.score>0)
+    .sort((a,b)=>b.score-a.score||b.count-a.count||b.value-a.value);
+
+  return {value:ranked[0]?.value||0,candidates:ranked.slice(0,6)};
+}
+function extractReceiptTotal(text,merchant=""){
+  return amountConsensus(ocrLines(text),{merchant}).value;
 }
 function extractReceiptGst(text,total=0){
-  const direct=firstCaptured(text,[
-    /GST\s+INCLUDED\s+IN\s+THE\s+TOTAL[\s:$]*\$?\s*([0-9,]+\.\d{2})/i,
-    /GST\s+INCLUDED[\s:$]*\$?\s*([0-9,]+\.\d{2})/i,
-    /(?:GST|TAX)\s*(?:AMOUNT)?\s*[:$ ]+\$?\s*([0-9,]+\.\d{2})/i
-  ]);
-  if(direct)return Number(direct.replace(/,/g,""));
-
-  if(total>0&&/GST\s+INCLUDED/i.test(text))return Number((total/11).toFixed(2));
+  const lines=ocrLines(text);
+  for(let i=0;i<lines.length;i++){
+    const line=lines[i];
+    if(!/\bGST\b|\bTAX\s*AMOUNT\b/i.test(line))continue;
+    const same=moneyValues(line);
+    if(same.length){
+      const plausible=same.find(value=>!total||value<total*.35);
+      if(plausible)return plausible;
+    }
+    const next=moneyValues(lines[i+1]||"");
+    if(next.length){
+      const plausible=next.find(value=>!total||value<total*.35);
+      if(plausible)return plausible;
+    }
+  }
+  if(total>0&&/GST\s+INCLUDED(?:\s+IN\s+THE\s+TOTAL)?/i.test(text)){
+    return Number((total/11).toFixed(2));
+  }
   return 0;
 }
 function detectReceiptPaymentMethod(text){
@@ -721,15 +894,44 @@ function detectReceiptPaymentMethod(text){
   if(/\b(POWERPASS|EFTPOS|VISA|MASTERCARD|CARD NO|CARD)\b/i.test(text))return "Card";
   return "";
 }
-
+function parseBunningsReceipt(text,base){
+  const lines=ocrLines(text);
+  const consensus=amountConsensus(lines,{merchant:"Bunnings Warehouse"});
+  const branch=firstCaptured(text,[
+    /BUNNINGS\s+WAREHOUSE\s*\n\s*([A-Z][A-Z'’ -]{2,})/i,
+    /\b(O['’]?CONNOR|CANNINGTON|BALCATTA|MIDLAND|ARMADALE|MORLEY|JOONDALUP)\b/i
+  ]);
+  return {
+    ...base,
+    branch,
+    total:consensus.value,
+    gst:extractReceiptGst(text,consensus.value),
+    receiptNumber:extractReceiptNumber(text),
+    paymentMethod:detectReceiptPaymentMethod(text),
+    parser:"Bunnings",
+    amountCandidates:consensus.candidates
+  };
+}
+function parseGenericReceipt(text,base){
+  const total=extractReceiptTotal(text,base.merchant);
+  return {
+    ...base,
+    total,
+    gst:extractReceiptGst(text,total),
+    receiptNumber:extractReceiptNumber(text),
+    paymentMethod:detectReceiptPaymentMethod(text),
+    parser:"Generic"
+  };
+}
 function receiptFieldConfidence(parsed,rawText){
   const text=normaliseOcrText(rawText);
+  const repeatedTop=parsed.amountCandidates?.[0]?.count>=2;
   const scores={
-    merchant:parsed.merchant?(/BUNNINGS|WOOLWORTHS|COLES|OFFICEWORKS|JB\s*HI|SUPERCHEAP|REPCO|BCF|KMART|TARGET|ALDI/i.test(text)?98:72):0,
+    merchant:parsed.merchant?(/BUNNINGS|WOOLWORTHS|COLES|OFFICEWORKS|JB\s*HI|SUPERCHEAP|REPCO|BCF|KMART|TARGET|ALDI|AMPOL|SHELL/i.test(text)?98:72):0,
     date:parsed.date?92:0,
-    total:parsed.total?95:0,
-    gst:parsed.gst?90:0,
-    receiptNumber:parsed.receiptNumber?(/invoice\s*(?:number|no\.?|#)/i.test(text)?96:78):0,
+    total:parsed.total?(repeatedTop?98:88):0,
+    gst:parsed.gst?92:0,
+    receiptNumber:parsed.receiptNumber?(/invoice\s*(?:number|no\.?|#)/i.test(text)?97:80):0,
     paymentMethod:parsed.paymentMethod?88:0
   };
   const present=Object.values(scores).filter(Boolean);
@@ -749,36 +951,83 @@ function receiptImageQuality(text){
   return Math.max(0,Math.min(100,score));
 }
 
+function parseSupermarketReceipt(text,base){
+  const total=extractReceiptTotal(text,base.merchant);
+  return {
+    ...base,
+    total,
+    gst:extractReceiptGst(text,total),
+    receiptNumber:extractReceiptNumber(text),
+    paymentMethod:detectReceiptPaymentMethod(text),
+    parser:"Supermarket"
+  };
+}
+function parseRetailReceipt(text,base){
+  const total=extractReceiptTotal(text,base.merchant);
+  return {
+    ...base,
+    total,
+    gst:extractReceiptGst(text,total),
+    receiptNumber:extractReceiptNumber(text),
+    paymentMethod:detectReceiptPaymentMethod(text),
+    parser:"Retail"
+  };
+}
+function parseAutomotiveReceipt(text,base){
+  const total=extractReceiptTotal(text,base.merchant);
+  return {
+    ...base,
+    total,
+    gst:extractReceiptGst(text,total),
+    receiptNumber:extractReceiptNumber(text),
+    paymentMethod:detectReceiptPaymentMethod(text),
+    parser:"Automotive"
+  };
+}
+function parseFuelReceipt(text,base){
+  const total=extractReceiptTotal(text,base.merchant);
+  return {
+    ...base,
+    total,
+    gst:extractReceiptGst(text,total),
+    receiptNumber:extractReceiptNumber(text),
+    paymentMethod:detectReceiptPaymentMethod(text),
+    parser:"Fuel"
+  };
+}
+function runMerchantParser(profile,text,base){
+  switch(profile?.parser){
+    case "bunnings": return parseBunningsReceipt(text,base);
+    case "supermarket": return parseSupermarketReceipt(text,base);
+    case "retail": return parseRetailReceipt(text,base);
+    case "automotive": return parseAutomotiveReceipt(text,base);
+    case "fuel": return parseFuelReceipt(text,base);
+    default: return parseGenericReceipt(text,base);
+  }
+}
+
 function parseAustralianReceipt(rawText){
   const text=normaliseOcrText(rawText);
   const lines=ocrLines(text);
   const merchantInfo=detectKnownMerchant(text,lines);
   const dateTime=extractReceiptDateTime(text);
-  const total=extractReceiptTotal(text);
-  const gst=extractReceiptGst(text,total);
-  const receiptNumber=extractReceiptNumber(text);
-  const paymentMethod=detectReceiptPaymentMethod(text);
-
-  let branch="";
-  if(merchantInfo.merchant==="Bunnings Warehouse"){
-    branch=firstCaptured(text,[
-      /BUNNINGS\s+WAREHOUSE\s*\n\s*([A-Z][A-Z' -]{2,})/i,
-      /\b(O['’]?CONNOR|CANNINGTON|BALCATTA|MIDLAND|ARMADALE|MORLEY|JOONDALUP)\b/i
-    ]);
-  }
-
-  const parsed={
+  const base={
     merchant:merchantInfo.merchant,
-    branch,
+    branch:"",
     category:merchantInfo.category,
     subcategory:merchantInfo.subcategory,
     date:dateTime.date,
     time:dateTime.time,
-    total,
-    gst,
-    receiptNumber,
-    paymentMethod
+    total:0,
+    gst:0,
+    receiptNumber:"",
+    paymentMethod:"",
+    parser:"Generic"
   };
+
+  let parsed=runMerchantParser(merchantInfo,text,base);
+  parsed.merchantProfile=merchantInfo.id||"generic";
+
   parsed.confidence=receiptFieldConfidence(parsed,text);
   parsed.imageQuality=receiptImageQuality(text);
   return parsed;
@@ -808,6 +1057,8 @@ runOcrBtn.onclick=async()=>{
       `Scanned from ${pendingReceiptPages.length} section${pendingReceiptPages.length===1?'':'s'}.`,
       parsed.branch?`Branch: ${parsed.branch}.`:"",
       parsed.time?`Receipt time: ${parsed.time}.`:"",
+      parsed.parser?`Parser: ${parsed.parser}.`:"",
+      parsed.merchantProfile?`Merchant profile: ${parsed.merchantProfile}.`:"",
       parsed.confidence?`Extraction confidence: ${parsed.confidence.overall}%.`:"",
       Number.isFinite(parsed.imageQuality)?`OCR quality: ${parsed.imageQuality}%.`:""
     ].filter(Boolean).join(" ");
