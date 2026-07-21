@@ -1,5 +1,12 @@
-BalanceIQ v7.5
-Build 2026.07.21.023
+BalanceIQ v7.6 — Bunnings Footer Invoice Recovery
+
+- Recovers Bunnings receipt numbers from partial barcode/footer references such as #019-78347-2052 even when the following year/date is merged or corrupted.
+- Prevents product barcodes from being reconstructed as receipt numbers.
+- Restricts digit-based invoice reconstruction to text immediately associated with an Invoice Number label.
+- Retains all v7.5 total, GST and date improvements.
+
+BalanceIQ v7.6
+Build 2026.07.21.024
 
 - A printed two-decimal amount on an explicitly labelled Total line is now authoritative.
 - Repeated item prices from overlapping OCR crops can no longer outrank the labelled receipt total.

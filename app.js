@@ -149,7 +149,7 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_VERSION="7.5";
+const APP_VERSION="7.6";
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 const defaultCategories=["Alcohol","Bills & Direct Debits","Cafes","Cash","Child Support","Dining Out","Education","Entertainment","Fuel","Groceries","Health & Fitness","Home & Maintenance","Income","Insurance","Loans & Finance","Loans & Mortgages","Medical","Personal Care","Pets","Refunds","Shopping","Subscriptions","Take Away","Transfers","Transport","Travel","Uncategorised","Vehicles"];
 const subcategoriesByCategory={
@@ -1745,7 +1745,7 @@ function safeReceiptTotal(channels,merchant=""){
     return {value:authoritativeTotal.value,candidates:ranked.slice(0,10),trusted:true};
   }
 
-  // v7.5: some Bunnings layouts print the word "Total" on the left and the
+  // v7.6: some Bunnings layouts print the word "Total" on the left and the
   // amount in a separate right-hand column. OCR can therefore preserve the
   // label but lose its amount association. When the same clear two-decimal
   // value is independently read as both SubTotal and card/EFT payment, and a
@@ -1888,6 +1888,29 @@ function footerInvoiceHints(text){
       store:match[3],
       invoice:`${match[3]}/${suffix}`,
       confidence:92
+    });
+  }
+
+  // v7.6: partial Bunnings footer recovery. The barcode line often preserves
+  // #019-78347-2052 even when the following year/date is merged or damaged,
+  // for example #019-78347-20522096 07-07. The first two groups are the
+  // eight-digit invoice suffix and the third group is the four-digit store.
+  for(const match of text.matchAll(/[#H§]\s*([0-9]{3})\s*[-–—]\s*([0-9]{5})\s*[-–—]\s*([0-9]{4})(?=\D|20\d{2}|\d{4})/gi)){
+    hints.push({
+      suffix:`${match[1]}${match[2]}`,
+      store:match[3],
+      invoice:`${match[3]}/${match[1]}${match[2]}`,
+      confidence:98
+    });
+  }
+
+  // Accept a lightly damaged prefix marker or spaces in place of the first hyphen.
+  for(const match of text.matchAll(/(?:^|\s)[#H§]?\s*([0-9]{3})\s+([0-9]{5})\s*[-–—]\s*([0-9]{4})(?=\D|20\d{2}|\d{4})/gi)){
+    hints.push({
+      suffix:`${match[1]}${match[2]}`,
+      store:match[3],
+      invoice:`${match[3]}/${match[1]}${match[2]}`,
+      confidence:88
     });
   }
 
@@ -2168,33 +2191,34 @@ function chooseRecoveredDate(channels){
 }
 
 function reconstructBunningsInvoice(text){
-  const cleaned=String(text||"").replace(/[^\d]/g,"");
-  // Bunnings invoice format: 4-digit store + 8-digit invoice.
-  // Search around OCR labels first, then fall back to any 12-digit run.
-  const labelled=String(text||"").match(/(?:invoice|number|details|deters|deteyis)[^\d]{0,20}(\d{11,13})/i);
-  const candidates=[];
-  if(labelled)candidates.push(labelled[1]);
-  candidates.push(...(String(text||"").match(/\b\d{11,13}\b/g)||[]));
-  // OCR may attach punctuation or letters around the identifier.
-  candidates.push(...[...String(text||"").matchAll(/(?:^|\D)(\d{11,13})(?=\D|$)/g)].map(match=>match[1]));
+  const body=String(text||"");
+  // v7.6 safety: only reconstruct from an Invoice Number-labelled context.
+  // Never use arbitrary 12/13-digit runs because Bunnings product barcodes
+  // (for example 9320090113802) look like invoice numbers after truncation.
+  const labelled=[];
+  for(const match of body.matchAll(/(?:invoice|invnice|invaice|number\s+details|details)[^\n\r]{0,45}/gi)){
+    labelled.push(match[0]);
+  }
 
-  for(const raw of candidates){
-    const digits=raw.replace(/\D/g,"");
-    if(digits.length===12)return `${digits.slice(0,4)}/${digits.slice(4)}`;
-    if(digits.length===13){
-      if(digits[0]==="0")return `${digits.slice(1,5)}/${digits.slice(5)}`;
-      // OCR sometimes inserts one extra digit immediately after the four-digit store code.
-      // Prefer removal that leaves a Bunnings-style invoice beginning with 00.
+  for(const fragment of labelled){
+    const digits=fragment.replace(/\D/g,"");
+    // A labelled line may contain the 12-digit store+invoice identifier.
+    for(let i=0;i<=digits.length-12;i++){
+      const run=digits.slice(i,i+12);
+      if(/^\d{12}$/.test(run))return `${run.slice(0,4)}/${run.slice(4)}`;
+    }
+    // OCR sometimes inserts one extra digit. Remove only around the join.
+    for(let i=0;i<=digits.length-13;i++){
+      const run=digits.slice(i,i+13);
       for(let removeAt=4;removeAt<=6;removeAt++){
-        const repaired=digits.slice(0,removeAt)+digits.slice(removeAt+1);
-        if(repaired.length===12&&/^\d{4}00\d{6}$/.test(repaired)){
-          return `${repaired.slice(0,4)}/${repaired.slice(4)}`;
-        }
+        const repaired=run.slice(0,removeAt)+run.slice(removeAt+1);
+        if(/^\d{12}$/.test(repaired))return `${repaired.slice(0,4)}/${repaired.slice(4)}`;
       }
     }
   }
   return "";
 }
+
 function recoverPartialAustralianDate(channels){
   const all=[channels.date,channels.full,channels.header].filter(Boolean).join("\n");
   const footer=extractFooterDate(combinedReceiptText(channels));
