@@ -1,7 +1,7 @@
 {
   "name": "BalanceIQ",
   "short_name": "BalanceIQ",
-  "description": "BalanceIQ 6.8 \u2014 currency reconstruction and financial-role consensus.",
+  "description": "BalanceIQ 6.9 \u2014 whole-sequence currency reconstruction and footer-validated receipt identification.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#071d3b",

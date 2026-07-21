@@ -1,14 +1,15 @@
-BALANCEIQ v6.8
-Build 2026.07.21.016
+BALANCEIQ v6.9
+Build 2026.07.21.017
 
-Fixed from the supplied Belmont receipt:
-- PowerPass 23693 is reconstructed as $236.93.
-- $2.36 is no longer selected as the total.
-- Corrupted subtotal $736.93 cannot override the payment amount.
-- Date 07/07/2026 and invoice 2052/01978347 remain correct.
+Fixed from the supplied Belmont retest:
+- $236 . 9. 3 and $236 93 resolve to $236.93.
+- $2.36 cannot be created from a substring inside the full amount.
+- poverPase is recognised as PowerPass/payment evidence.
+- Footer reference H019-T8347-2052-2026-07-07 validates invoice 2052/01978347.
+- $21.5) can be recovered as GST $21.55.
 
-Added:
-- Compact currency reconstruction.
-- One-decimal-loss candidates.
-- Repair-quality scoring.
-- Stronger financial-role consensus.
+Retained:
+- Receipt geometry
+- Date validation
+- Subtotal conflict rejection
+- GST plausibility limits

@@ -1,23 +1,28 @@
-BALANCEIQ v6.8 — CURRENCY RECONSTRUCTION RELEASE
+BALANCEIQ v6.9 — SEQUENCE RECONSTRUCTION RELEASE
 
-CURRENCY REPAIR
-- Compact payment values such as 23693 are reconstructed as $236.93.
-- Spaced decimals such as $91. 06 are reconstructed as $91.06.
-- One-decimal OCR such as 236.9 is retained as a weaker $236.90 candidate.
-- Every repaired value records the repair method in OCR diagnostics.
+WHOLE-SEQUENCE CURRENCY PARSING
+- Complete damaged currency strings are parsed before shorter substrings.
+- $236 . 9. 3 becomes $236.93.
+- $236 93 becomes $236.93.
+- $91. 06 becomes $91.06.
+- Compact parsing cannot extract $2.36 from inside a larger $236.xx sequence.
+- OCR closing parenthesis can be interpreted as a final 5 in GST context:
+  $21.5) becomes $21.55.
 
-FINANCIAL-ROLE CONSENSUS
-- Payment lines (PowerPass, EFT, EFTPOS, Card, Visa, Mastercard) have the strongest weight.
-- Payment values that agree with Total or GST-inclusive total evidence receive a large bonus.
-- Corrupted subtotals are penalised when they conflict with payment evidence.
-- Tiny values caused by incorrect decimal insertion are rejected when a larger payment candidate exists.
-- Item prices, discounts, savings, change and barcodes remain excluded.
+PAYMENT RECOGNITION
+- Additional damaged PowerPass variants such as poverPase and PousrPass are treated
+  as payment evidence.
 
-GST
-- Plausible printed GST remains preferred.
-- Total ÷ 11 is retained as a fallback for GST-inclusive receipts.
-- GST must remain below 20% of the selected total.
+INVOICE VALIDATION
+- Standard footer references remain supported.
+- OCR footer variants such as H019-T8347-2052-2026-07-07 reconstruct and validate
+  invoice 2052/01978347.
+- Footer-validated invoice candidates outrank conflicting header/full-pass readings.
+
+GST RECOVERY
+- GST extraction uses the same whole-sequence currency engine.
+- Printed plausible GST remains preferred over arithmetic fallback.
 
 INSTALLATION
-Replace every hosted file, unregister the previous service worker or uninstall the PWA,
-clear cached files, hard-refresh, and reinstall if needed.
+Replace every hosted file, unregister the prior service worker or uninstall the PWA,
+clear cached files, hard-refresh, and reinstall if required.

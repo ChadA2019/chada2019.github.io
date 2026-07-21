@@ -149,7 +149,7 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_VERSION="6.8";
+const APP_VERSION="6.9";
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 const defaultCategories=["Alcohol","Bills & Direct Debits","Cafes","Cash","Child Support","Dining Out","Education","Entertainment","Fuel","Groceries","Health & Fitness","Home & Maintenance","Income","Insurance","Loans & Finance","Loans & Mortgages","Medical","Personal Care","Pets","Refunds","Shopping","Subscriptions","Take Away","Transfers","Transport","Travel","Uncategorised","Vehicles"];
 const subcategoriesByCategory={
@@ -878,6 +878,9 @@ function normaliseOcrText(text){
     .replace(/\bBUN\s+ING\b/gi,"BUNNINGS")
     .replace(/\bP(?:U|O|OY)S?R?PASS\b/gi,"PowerPass")
     .replace(/\bPOYSRPASS\b/gi,"PowerPass")
+    .replace(/\bPOVERPASE\b/gi,"PowerPass")
+    .replace(/\bPOUSR?PASS\b/gi,"PowerPass")
+    .replace(/\bPOVERP?ASS?E?\b/gi,"PowerPass")
     .replace(/\bPOUSRPass\b/gi,"PowerPass")
     .replace(/\bFOOTED\b/gi,"Total")
     .trim();
@@ -1404,7 +1407,8 @@ function isItemOrNoiseLine(line){
 function currencyCandidates(line,{labelled=false}={}){
   const text=String(line||"");
   const candidates=[];
-  const add=(value,quality,reason,raw)=>{
+  const consumed=[];
+  const add=(value,quality,reason,raw,start=0,end=0)=>{
     value=Number(value);
     if(!(value>0&&value<5000))return;
     candidates.push({
@@ -1413,38 +1417,72 @@ function currencyCandidates(line,{labelled=false}={}){
       reason,
       raw:String(raw||"")
     });
+    if(end>start)consumed.push([start,end]);
   };
+  const overlapsConsumed=(start,end)=>consumed.some(([a,b])=>start<b&&end>a);
 
-  // Clear two-decimal values are strongest.
+  if(labelled){
+    // Parse complete damaged sequences before any substring matching.
+    // $236 . 9. 3 -> digits 23693 -> $236.93
+    for(const match of text.matchAll(/\$\s*(\d{1,4})\s*\.\s*(\d)\s*\.\s*(\d)\b/g)){
+      const digits=`${match[1]}${match[2]}${match[3]}`;
+      add(Number(`${digits.slice(0,-2)}.${digits.slice(-2)}`),98,"fragmented-decimal-sequence",match[0],match.index,match.index+match[0].length);
+    }
+
+    // $236 93 -> $236.93
+    for(const match of text.matchAll(/\$\s*(\d{1,4})\s+(\d{2})\b/g)){
+      add(Number(`${match[1]}.${match[2]}`),96,"spaced-cents",match[0],match.index,match.index+match[0].length);
+    }
+
+    // $91. 06 -> $91.06
+    for(const match of text.matchAll(/\$\s*(\d{1,4})\.\s+(\d{2})\b/g)){
+      add(Number(`${match[1]}.${match[2]}`),96,"spaced-decimal",match[0],match.index,match.index+match[0].length);
+    }
+
+    // OCR often recognises the final digit 5 as a closing parenthesis: $21.5) -> $21.55.
+    for(const match of text.matchAll(/\$\s*(\d{1,4})\.(\d)\s*\)/g)){
+      add(Number(`${match[1]}.${match[2]}5`),91,"closing-paren-as-five",match[0],match.index,match.index+match[0].length);
+    }
+  }
+
+  // Clear two-decimal values.
   for(const match of text.matchAll(/\$?\s*([0-9]{1,5}(?:,[0-9]{3})*\.\d{2})\b/g)){
-    add(parseMoneyToken(match[1]),100,"exact-decimal",match[0]);
+    const start=match.index,end=start+match[0].length;
+    if(!overlapsConsumed(start,end)){
+      add(parseMoneyToken(match[1]),100,"exact-decimal",match[0],start,end);
+    }
   }
 
   if(labelled){
-    // One decimal digit: likely lost final cents digit. Keep x.y0 as a weaker candidate.
-    for(const match of text.matchAll(/\$?\s*([0-9]{1,4})\.(\d)\b/g)){
-      add(Number(`${match[1]}.${match[2]}0`),52,"one-decimal-pad",match[0]);
-    }
-
-    // Compact values on labelled financial lines: 23693 -> 236.93.
-    // Accept with or without a dollar sign only when the line has a financial role.
-    for(const match of text.matchAll(/(?:\$|\b)([0-9]{3,6})\b/g)){
-      const digits=match[1];
-      if(/^\d{4}$/.test(digits)&&/^\d{1,2}(?:00|05|10|15|20|25|30|35|40|45|50|55)$/.test(digits)){
-        // Ambiguous round quantities receive lower quality.
-        add(Number(`${digits.slice(0,-2)}.${digits.slice(-2)}`),46,"compact-ambiguous",match[0]);
-      }else{
-        add(Number(`${digits.slice(0,-2)}.${digits.slice(-2)}`),82,"compact-currency",match[0]);
+    // One decimal digit, only after complete sequences have been consumed.
+    for(const match of text.matchAll(/\$?\s*([0-9]{1,4})\.(\d)(?![\d.\s]*\d)/g)){
+      const start=match.index,end=start+match[0].length;
+      if(!overlapsConsumed(start,end)){
+        add(Number(`${match[1]}.${match[2]}0`),48,"one-decimal-pad",match[0],start,end);
       }
     }
 
-    // Spaced cents: "$91. 06" -> 91.06.
-    for(const match of text.matchAll(/\$?\s*(\d{1,4})\.\s+(\d{2})\b/g)){
-      add(Number(`${match[1]}.${match[2]}`),88,"spaced-decimal",match[0]);
+    // Compact values such as 23693. Do not match a substring of a larger damaged sequence.
+    for(const match of text.matchAll(/(?:\$|\b)([0-9]{3,6})\b/g)){
+      const start=match.index,end=start+match[0].length;
+      if(overlapsConsumed(start,end))continue;
+
+      const before=text.slice(Math.max(0,start-3),start);
+      const after=text.slice(end,Math.min(text.length,end+6));
+      if(/[.\d]\s*$/.test(before)||/^\s*[.\d]/.test(after))continue;
+
+      const digits=match[1];
+      add(
+        Number(`${digits.slice(0,-2)}.${digits.slice(-2)}`),
+        digits.length>=5?86:58,
+        "compact-currency",
+        match[0],
+        start,
+        end
+      );
     }
   }
 
-  // Deduplicate, retaining the highest-quality interpretation for each value.
   const best=new Map();
   for(const candidate of candidates){
     const key=candidate.value.toFixed(2);
@@ -1485,7 +1523,7 @@ function safeReceiptTotal(channels,merchant=""){
       if(!candidates.length)continue;
 
       const isTotal=/^\s*(?:TOTAL|FOTAL|FOOTED)\b|\bAMOUNT\s+PAID\b/i.test(line);
-      const isPayment=/\bPOWERPASS\b|\bEFTPOS\b|\bEFT\b|\bVISA\b|\bMASTERCARD\b|\bCARD\b/i.test(line);
+      const isPayment=/\bPOWERPASS\b|\bPOVERPASE\b|\bPOUSR?PASS\b|\bEFTPOS\b|\bEFT\b|\bVISA\b|\bMASTERCARD\b|\bCARD\b/i.test(line);
       const isSubtotal=/\bSUB\s*TOTAL\b|\bSUBTOTAL\b|\bSUBTOTAR\b|\bSUBLOTAI\b/i.test(line);
       const isGst=/\bGST\b|\bBST\b|\bTAX\s*AMOUNT\b/i.test(line);
       const isIncludedTotal=fuzzyIncludedTotalEvidence(line);
@@ -1620,13 +1658,36 @@ function invoiceCandidatesFromText(text,source,weight){
     .map(match=>({value:match[1],source,weight}));
 }
 function footerInvoiceHints(text){
-  return [...text.matchAll(/#([0-9]{3}-[0-9]{5})-([0-9]{4})-(20\d{2})-[0-9]{2}-[0-9]{2}/g)]
-    .map(match=>({suffix:match[1].replace("-",""),store:match[2]}));
+  const hints=[];
+
+  // Standard footer: #019-78347-2052-2026-07-07
+  for(const match of text.matchAll(/[#H]?\s*([0-9]{3})[-\s]([0-9]{5})[-\s]([0-9]{4})[-\s](20\d{2})[-\s][0-9]{2}[-\s][0-9]{2}/gi)){
+    hints.push({
+      suffix:`${match[1]}${match[2]}`,
+      store:match[3],
+      invoice:`${match[3]}/${match[1]}${match[2]}`,
+      confidence:100
+    });
+  }
+
+  // OCR variant: H019-T8347-2052-2026-07-07, where T is a damaged 7.
+  for(const match of text.matchAll(/[H#]?\s*([0-9]{3})[-\s][T7]([0-9]{4})[-\s]([0-9]{4})[-\s](20\d{2})[-\s][0-9A-Z]{2}[-\s][0-9A-Z]{2}/gi)){
+    const suffix=`${match[1]}7${match[2]}`;
+    hints.push({
+      suffix,
+      store:match[3],
+      invoice:`${match[3]}/${suffix}`,
+      confidence:92
+    });
+  }
+
+  return hints;
 }
 function chooseReceiptNumber(text,merchant=""){
   if(merchant!=="Bunnings Warehouse"){
     return {value:extractReceiptNumber(text,merchant),candidates:[]};
   }
+
   const passes=splitOcrPasses(text);
   const candidates=[
     ...invoiceCandidatesFromText(passes.full,"full",100),
@@ -1635,44 +1696,64 @@ function chooseReceiptNumber(text,merchant=""){
     ...invoiceCandidatesFromText(text,"combined",25)
   ];
   const hints=footerInvoiceHints(text);
+  for(const hint of hints){
+    candidates.push({value:hint.invoice,source:"footer",weight:160});
+  }
+
   const scores=new Map();
-  for(const c of candidates){
-    let score=c.weight;
-    const [store,number]=c.value.split("/");
+  for(const candidate of candidates){
+    let score=candidate.weight;
+    const [store,number]=candidate.value.split("/");
+
     for(const hint of hints){
-      if(store===hint.store)score+=40;
+      if(candidate.value===hint.invoice)score+=220;
+      if(store===hint.store)score+=45;
+
       const tail=number.slice(-hint.suffix.length);
-      if(tail===hint.suffix)score+=90;
+      if(tail===hint.suffix)score+=120;
       else{
         let distance=0;
         for(let i=0;i<Math.min(tail.length,hint.suffix.length);i++){
           if(tail[i]!==hint.suffix[i])distance++;
         }
         if(distance===1)score+=35;
+        if(distance>=3)score-=40;
       }
     }
-    scores.set(c.value,(scores.get(c.value)||0)+score);
+
+    scores.set(candidate.value,(scores.get(candidate.value)||0)+score);
   }
+
   const ranked=[...scores.entries()]
     .map(([value,score])=>({value,score}))
     .sort((a,b)=>b.score-a.score);
+
   return {value:ranked[0]?.value||"",candidates:ranked};
 }
 function gstCandidatesFromText(text){
   const passes=splitOcrPasses(text);
   const sources=[
     ["full",passes.full,100],
-    ["totals",passes.totals,70],
+    ["totals",passes.totals,80],
     ["header",passes.header,10],
     ["combined",text,20]
   ];
   const out=[];
+
   for(const [source,body,weight] of sources){
     const lines=ocrLines(body);
     for(let i=0;i<lines.length;i++){
-      if(!/\bGST\b|\bBST\b|\bTAX\s*AMOUNT\b/i.test(lines[i]))continue;
-      for(const value of moneyValues(lines[i]))out.push({value,source,weight});
-      for(const value of moneyValues(lines[i+1]||""))out.push({value,source,weight:weight-10});
+      const line=lines[i];
+      const next=lines[i+1]||"";
+      const gstContext=/\bGST\b|\bBST\b|\bTAX\s*AMOUNT\b|INCLUDED\s+IN\s+THE\s+TOTAL|THE\s+TOTAL/i.test(line);
+      if(!gstContext)continue;
+
+      for(const candidate of currencyCandidates(line,{labelled:true})){
+        out.push({value:candidate.value,source,weight:weight+candidate.quality,repair:candidate.reason});
+      }
+      for(const candidate of currencyCandidates(next,{labelled:true})){
+        out.push({value:candidate.value,source,weight:weight-15+candidate.quality,repair:candidate.reason});
+      }
     }
   }
   return out;

@@ -95,3 +95,5 @@ body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-ser
 .ocr-diagnostic .diagnostic-summary{box-shadow:0 1px 0 rgba(0,0,0,.04)}
 
 .ocr-diagnostic .diagnostic-summary{outline:1px solid transparent}
+
+.ocr-diagnostic .diagnostic-summary{overflow-wrap:anywhere}
