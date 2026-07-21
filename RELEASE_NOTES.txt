@@ -1,9 +1,8 @@
-BALANCEIQ v7.0
-Build 2026.07.21.018
+BALANCEIQ v7.1
+Build 2026.07.21.019
 
-Fixed from the supplied Belmont v6.9 test:
-- CARD NO: 903601-369 cannot produce $3.69.
-- Exact Total $236.93 wins.
-- Tuesday 07/07/2006 is corrected to 07/07/2026 using weekday validation.
-- Dedicated footer OCR supports invoice 2052/01978347.
-- Dedicated GST OCR improves distinction between $21.55 and nearby OCR variants.
+Fixed for the supplied Belmont v7.0 result:
+- Total $236 . 93 resolves to $236.93.
+- Conflicting PowerPass $236.43 no longer overrides the clear Total.
+- Printed GST $21.55 from the dedicated totals/GST column outranks arithmetic fallback.
+- Date 07/07/2026 and invoice 2052/01978347 remain protected.

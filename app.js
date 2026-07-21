@@ -149,7 +149,7 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_VERSION="7.0";
+const APP_VERSION="7.1";
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 const defaultCategories=["Alcohol","Bills & Direct Debits","Cafes","Cash","Child Support","Dining Out","Education","Entertainment","Fuel","Groceries","Health & Fitness","Home & Maintenance","Income","Insurance","Loans & Finance","Loans & Mortgages","Medical","Personal Care","Pets","Refunds","Shopping","Subscriptions","Take Away","Transfers","Transport","Travel","Uncategorised","Vehicles"];
 const subcategoriesByCategory={
@@ -698,6 +698,37 @@ async function cropReceiptRegion(dataUrl,startRatio,endRatio,{threshold=false,sc
     for(let i=0;i<data.length;i+=4){
       const gray=.299*data[i]+.587*data[i+1]+.114*data[i+2];
       const value=gray>Math.max(140,mean*.9)?255:0;
+      data[i]=data[i+1]=data[i+2]=value;
+    }
+    ctx.putImageData(image,0,0);
+  }
+  return canvas.toDataURL("image/png");
+}
+
+
+async function cropReceiptBox(dataUrl,leftRatio,topRatio,rightRatio,bottomRatio,{threshold=false,scale=2.4}={}){
+  const img=await loadImage(dataUrl);
+  const sx=Math.max(0,Math.floor(img.width*leftRatio));
+  const sy=Math.max(0,Math.floor(img.height*topRatio));
+  const sw=Math.max(1,Math.floor(img.width*(rightRatio-leftRatio)));
+  const sh=Math.max(1,Math.floor(img.height*(bottomRatio-topRatio)));
+  const canvas=document.createElement("canvas");
+  canvas.width=Math.max(1,Math.round(sw*scale));
+  canvas.height=Math.max(1,Math.round(sh*scale));
+  const ctx=canvas.getContext("2d",{willReadFrequently:true});
+  ctx.imageSmoothingEnabled=true;
+  ctx.imageSmoothingQuality="high";
+  ctx.drawImage(img,sx,sy,sw,sh,0,0,canvas.width,canvas.height);
+
+  if(threshold){
+    const image=ctx.getImageData(0,0,canvas.width,canvas.height);
+    const data=image.data;
+    let sum=0;
+    for(let i=0;i<data.length;i+=4)sum+=.299*data[i]+.587*data[i+1]+.114*data[i+2];
+    const mean=sum/(data.length/4);
+    for(let i=0;i<data.length;i+=4){
+      const gray=.299*data[i]+.587*data[i+1]+.114*data[i+2];
+      const value=gray>Math.max(142,mean*.92)?255:0;
       data[i]=data[i+1]=data[i+2]=value;
     }
     ctx.putImageData(image,0,0);
@@ -1349,7 +1380,8 @@ function buildReceiptChannels(input){
       full:cleanOcrPassText(input.full||""),
       date:cleanOcrPassText(input.date||""),
       footer:cleanOcrPassText(input.footer||""),
-      gst:cleanOcrPassText(input.gst||"")
+      gst:cleanOcrPassText(input.gst||""),
+      totalsRight:cleanOcrPassText(input.totalsRight||"")
     };
   }
   const split=splitOcrPasses(String(input||""));
@@ -1359,11 +1391,12 @@ function buildReceiptChannels(input){
     full:cleanOcrPassText(split.full||String(input||"")),
     date:"",
     footer:"",
-    gst:""
+    gst:"",
+    totalsRight:""
   };
 }
 function combinedReceiptText(channels){
-  return [channels.full,channels.date,channels.footer,channels.gst,channels.header,channels.totals].filter(Boolean).join("\n");
+  return [channels.full,channels.date,channels.footer,channels.gst,channels.totalsRight,channels.header,channels.totals].filter(Boolean).join("\n");
 }
 function bunningsEvidenceScore(text){
   const upperText=upper(text);
@@ -1438,9 +1471,9 @@ function currencyCandidates(line,{labelled=false}={}){
       add(Number(`${match[1]}.${match[2]}`),96,"spaced-cents",match[0],match.index,match.index+match[0].length);
     }
 
-    // $91. 06 -> $91.06
-    for(const match of text.matchAll(/\$\s*(\d{1,4})\.\s+(\d{2})\b/g)){
-      add(Number(`${match[1]}.${match[2]}`),96,"spaced-decimal",match[0],match.index,match.index+match[0].length);
+    // $236 . 93 or $91. 06 -> normal decimal.
+    for(const match of text.matchAll(/\$\s*(\d{1,4})\s*\.\s*(\d{2})\b/g)){
+      add(Number(`${match[1]}.${match[2]}`),99,"spaced-both-sides-decimal",match[0],match.index,match.index+match[0].length);
     }
 
     // OCR often recognises the final digit 5 as a closing parenthesis: $21.5) -> $21.55.
@@ -1540,6 +1573,7 @@ function safeReceiptTotal(channels,merchant=""){
   };
 
   const sources=[
+    ["totals-right",channels.totalsRight||"",155],
     ["full",channels.full,100],
     ["totals",channels.totals,80],
     ["header",channels.header,15]
@@ -1567,8 +1601,8 @@ function safeReceiptTotal(channels,merchant=""){
 
       for(const candidate of candidates){
         let score=baseWeight;
-        if(role==="payment")score+=185;
-        else if(role==="total")score+=155;
+        if(role==="payment")score+=165;
+        else if(role==="total")score+=225;
         else if(role==="included-total")score+=105;
         else if(role==="subtotal")score+=12;
         else score-=75;
@@ -1599,6 +1633,17 @@ function safeReceiptTotal(channels,merchant=""){
     .sort((a,b)=>b.score-a.score||b.count-a.count||a.value-b.value);
 
   const paymentCandidate=ranked.find(item=>item.roles.includes("payment"));
+  const exactTotalCandidate=ranked.find(item=>
+    item.roles.includes("total") &&
+    item.repairs.some(repair=>["exact-decimal","spaced-both-sides-decimal","fragmented-decimal-sequence"].includes(repair))
+  );
+  if(paymentCandidate&&exactTotalCandidate){
+    const difference=Math.abs(paymentCandidate.value-exactTotalCandidate.value);
+    if(difference>0&&difference<=1){
+      exactTotalCandidate.score+=260;
+      paymentCandidate.score-=90;
+    }
+  }
   if(paymentCandidate){
     for(const item of ranked){
       if(item.roles.every(role=>role==="subtotal")&&
@@ -1613,6 +1658,7 @@ function safeReceiptTotal(channels,merchant=""){
     ranked=ranked.sort((a,b)=>b.score-a.score||b.count-a.count||a.value-b.value);
   }
 
+  ranked=ranked.sort((a,b)=>b.score-a.score||b.count-a.count||a.value-b.value);
   const best=ranked[0];
   const second=ranked[1];
   const trusted=!!best &&
@@ -1771,12 +1817,12 @@ function chooseReceiptNumber(text,merchant=""){
 
   return {value:ranked[0]?.value||"",candidates:ranked};
 }
-function gstCandidatesFromText(text){
-  const passes=splitOcrPasses(text);
+function gstCandidatesFromText(text,channels={}){
   const sources=[
-    ["full",passes.full,100],
-    ["totals",passes.totals,80],
-    ["header",passes.header,10],
+    ["gst-right",channels.gst||"",210],
+    ["totals-right",channels.totalsRight||"",165],
+    ["full",channels.full||text,100],
+    ["totals",channels.totals||"",80],
     ["combined",text,20]
   ];
   const out=[];
@@ -1786,40 +1832,44 @@ function gstCandidatesFromText(text){
     for(let i=0;i<lines.length;i++){
       const line=lines[i];
       const next=lines[i+1]||"";
-      const gstContext=/\bGST\b|\bBST\b|\bTAX\s*AMOUNT\b|INCLUDED\s+IN\s+THE\s+TOTAL|THE\s+TOTAL/i.test(line);
+      const gstContext=/\bGST\b|\bBST\b|\[ST\b|INCLUDED\s+IN\s+THE\s+TOTAL|THE\s+TOTAL/i.test(line);
       if(!gstContext)continue;
 
       for(const candidate of currencyCandidates(line,{labelled:true})){
-        out.push({value:candidate.value,source,weight:weight+candidate.quality,repair:candidate.reason});
+        out.push({value:candidate.value,source,weight:weight+candidate.quality,repair:candidate.reason,printed:true});
       }
       for(const candidate of currencyCandidates(next,{labelled:true})){
-        out.push({value:candidate.value,source,weight:weight-15+candidate.quality,repair:candidate.reason});
+        out.push({value:candidate.value,source,weight:weight-20+candidate.quality,repair:candidate.reason,printed:true});
       }
     }
   }
   return out;
 }
-function chooseGst(text,total){
+function chooseGst(text,total,channels={}){
   const expected=total>0?Number((total/11).toFixed(2)):0;
-  const candidates=gstCandidatesFromText(text)
-    .filter(c=>c.value>0&&c.value<total*.20&&Math.abs(c.value-total)>.01);
+  const candidates=gstCandidatesFromText(text,channels)
+    .filter(candidate=>candidate.value>0&&candidate.value<total*.20&&Math.abs(candidate.value-total)>.01);
   const scores=new Map();
 
-  for(const c of candidates){
-    let score=c.weight;
-    const diff=Math.abs(c.value-expected);
-    if(diff<=.02)score+=155;
-    else if(diff<=.05)score+=95;
-    else if(diff<=.12)score+=30;
-    else score-=90;
-    const key=c.value.toFixed(2);
+  for(const candidate of candidates){
+    let score=candidate.weight;
+    const difference=Math.abs(candidate.value-expected);
+
+    // Printed GST is authoritative when it is plausible, even if Total/11 differs slightly.
+    if(candidate.source==="gst-right")score+=180;
+    else if(candidate.source==="totals-right")score+=120;
+
+    if(difference<=.03)score+=120;
+    else if(difference<=.15)score+=65;
+    else if(difference<=1.00)score+=10;
+    else score-=100;
+
+    const key=candidate.value.toFixed(2);
     scores.set(key,(scores.get(key)||0)+score);
   }
 
   if(total>0&&fuzzyIncludedTotalEvidence(text)){
-    // Use arithmetic only as a fallback. Receipts can contain non-taxable items,
-    // so a clear printed GST value should remain stronger evidence.
-    scores.set(expected.toFixed(2),(scores.get(expected.toFixed(2))||0)+220);
+    scores.set(expected.toFixed(2),(scores.get(expected.toFixed(2))||0)+160);
   }
 
   const ranked=[...scores.entries()]
@@ -2078,7 +2128,7 @@ function parseReceiptChannels(input){
       dateChoice.candidates=[{value:partial,score:80,source:"partial-plus-footer"}];
     }
   }
-  const gstChoice=totalChoice.trusted?chooseGst(text,totalChoice.value):{value:0,candidates:[],expected:0};
+  const gstChoice=totalChoice.trusted?chooseGst(text,totalChoice.value,channels):{value:0,candidates:[],expected:0};
 
   const base={
     merchant:merchantInfo.merchant||"",
@@ -2297,9 +2347,12 @@ runOcrBtn.onclick=async()=>{
       const totals=await cropReceiptRegion(full,.40,.80,{threshold:true,scale:1.9});
       const footer=await cropReceiptRegion(full,.72,.97,{threshold:true,scale:2.2});
       const gst=await cropReceiptRegion(full,.60,.79,{threshold:true,scale:2.5});
+      const totalsRight=await cropReceiptBox(full,.48,.57,.98,.78,{threshold:false,scale:2.8});
+      const totalsRightThreshold=await cropReceiptBox(full,.48,.57,.98,.78,{threshold:true,scale:2.8});
+      const gstRight=await cropReceiptBox(full,.53,.62,.98,.72,{threshold:true,scale:3.2});
       const dateVariants=await makeDateStripVariants(full);
 
-      for(const [label,image] of [["full",full],["header",header],["totals",totals],["footer",footer],["gst",gst]]){
+      for(const [label,image] of [["full",full],["header",header],["totals",totals],["footer",footer],["gst",gst],["totals-right",totalsRight],["totals-right-threshold",totalsRightThreshold],["gst-right",gstRight]]){
         const report=await recogniseScanPass(image,label,section,m=>{
           if(m.status==="recognizing text")ocrStatus.textContent=`Section ${section} ${label}: ${Math.round(m.progress*100)}%`;
         });
@@ -2333,7 +2386,8 @@ runOcrBtn.onclick=async()=>{
       full:sectionReports.filter(r=>r.pass==="full").map(r=>r.text).join("\n"),
       date:sectionReports.filter(r=>r.pass.startsWith("date-")).map(r=>r.text).join("\n"),
       footer:sectionReports.filter(r=>r.pass==="footer").map(r=>r.text).join("\n"),
-      gst:sectionReports.filter(r=>r.pass==="gst").map(r=>r.text).join("\n")
+      gst:sectionReports.filter(r=>r.pass==="gst"||r.pass==="gst-right").map(r=>r.text).join("\n"),
+      totalsRight:sectionReports.filter(r=>r.pass.startsWith("totals-right")).map(r=>r.text).join("\n")
     };
     const parsed=parseReceiptChannels(channels);
     const ocrAverage=Math.round(sectionReports.reduce((s,r)=>s+r.confidence,0)/Math.max(1,sectionReports.length));
