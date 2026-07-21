@@ -1,15 +1,13 @@
-BALANCEIQ v6.4
-Build 2026.07.21.012
-
-Fixed:
-- Diagnostic pass labels cannot become the merchant.
-- Item-line OCR such as 8550.35 cannot become the receipt total.
-- GST is not calculated from an implausible or untrusted total.
-- Bunnings detection survives damaged text when PowerPass, ABN and invoice evidence exist.
-- OCR channels are parsed independently rather than concatenated for business logic.
+BALANCEIQ v6.5
+Build 2026.07.21.013
 
 Added:
-- Merchant evidence scoring.
-- Safe labelled-money parser.
-- Total trust threshold.
-- Isolated channel parser.
+- Dedicated upper-receipt date strip.
+- Three date image variants: grayscale, thresholded and sharpened.
+- Enlarged date OCR with restricted character set.
+- Date-specific OCR channel.
+- Australian date candidate consensus across date, full, header and footer evidence.
+
+Retained:
+- Blank date when evidence is insufficient.
+- Parser isolation and receipt-value safeguards.

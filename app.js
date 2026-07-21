@@ -149,7 +149,7 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_VERSION="6.4";
+const APP_VERSION="6.5";
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 const defaultCategories=["Alcohol","Bills & Direct Debits","Cafes","Cash","Child Support","Dining Out","Education","Entertainment","Fuel","Groceries","Health & Fitness","Home & Maintenance","Income","Insurance","Loans & Finance","Loans & Mortgages","Medical","Personal Care","Pets","Refunds","Shopping","Subscriptions","Take Away","Transfers","Transport","Travel","Uncategorised","Vehicles"];
 const subcategoriesByCategory={
@@ -587,6 +587,87 @@ async function processScanPage(dataUrl,rotation=0){
   return canvas.toDataURL('image/jpeg',.88);
 }
 
+
+async function makeDateStripVariants(dataUrl){
+  const img=await loadImage(dataUrl);
+  // Bunnings date/time is normally between the store header and invoice number.
+  const y=Math.max(0,Math.floor(img.height*.11));
+  const h=Math.max(1,Math.floor(img.height*.22));
+  const scale=2.4;
+  const width=Math.round(img.width*scale);
+  const height=Math.round(h*scale);
+
+  const drawBase=()=>{
+    const canvas=document.createElement("canvas");
+    canvas.width=width;
+    canvas.height=height;
+    const ctx=canvas.getContext("2d",{willReadFrequently:true});
+    ctx.imageSmoothingEnabled=true;
+    ctx.imageSmoothingQuality="high";
+    ctx.drawImage(img,0,y,img.width,h,0,0,width,height);
+    return canvas;
+  };
+
+  const grayscale=drawBase();
+  {
+    const ctx=grayscale.getContext("2d",{willReadFrequently:true});
+    const image=ctx.getImageData(0,0,width,height);
+    const data=image.data;
+    for(let i=0;i<data.length;i+=4){
+      const gray=.299*data[i]+.587*data[i+1]+.114*data[i+2];
+      const value=Math.max(0,Math.min(255,(gray-128)*1.65+150));
+      data[i]=data[i+1]=data[i+2]=value;
+    }
+    ctx.putImageData(image,0,0);
+  }
+
+  const threshold=drawBase();
+  {
+    const ctx=threshold.getContext("2d",{willReadFrequently:true});
+    const image=ctx.getImageData(0,0,width,height);
+    const data=image.data;
+    let sum=0;
+    for(let i=0;i<data.length;i+=4)sum+=.299*data[i]+.587*data[i+1]+.114*data[i+2];
+    const mean=sum/(data.length/4);
+    for(let i=0;i<data.length;i+=4){
+      const gray=.299*data[i]+.587*data[i+1]+.114*data[i+2];
+      const value=gray>Math.max(142,mean*.91)?255:0;
+      data[i]=data[i+1]=data[i+2]=value;
+    }
+    ctx.putImageData(image,0,0);
+  }
+
+  const sharpened=drawBase();
+  {
+    const ctx=sharpened.getContext("2d",{willReadFrequently:true});
+    const source=ctx.getImageData(0,0,width,height);
+    const out=ctx.createImageData(width,height);
+    const s=source.data,d=out.data;
+    const kernel=[0,-1,0,-1,5,-1,0,-1,0];
+    for(let yy=1;yy<height-1;yy++){
+      for(let xx=1;xx<width-1;xx++){
+        for(let c=0;c<3;c++){
+          let value=0,k=0;
+          for(let ky=-1;ky<=1;ky++){
+            for(let kx=-1;kx<=1;kx++){
+              value+=s[((yy+ky)*width+(xx+kx))*4+c]*kernel[k++];
+            }
+          }
+          d[(yy*width+xx)*4+c]=Math.max(0,Math.min(255,value));
+        }
+        d[(yy*width+xx)*4+3]=255;
+      }
+    }
+    ctx.putImageData(out,0,0);
+  }
+
+  return [
+    {label:"date-gray",image:grayscale.toDataURL("image/png")},
+    {label:"date-threshold",image:threshold.toDataURL("image/png")},
+    {label:"date-sharpen",image:sharpened.toDataURL("image/png")}
+  ];
+}
+
 async function cropScanRegion(dataUrl,startRatio,endRatio,{threshold=false}={}){
   const img=await loadImage(dataUrl);
   const y=Math.floor(img.height*startRatio);
@@ -619,6 +700,22 @@ async function recogniseScanPass(image,label,section,logger){
     image
   };
 }
+
+async function recogniseDatePass(image,label,section,logger){
+  const result=await Tesseract.recognize(image,"eng",{
+    logger,
+    tessedit_char_whitelist:"0123456789/-:AMPampMonTueWedThuFriSatSun "
+  });
+  return {
+    section,
+    pass:label,
+    confidence:Math.round(Number(result.data.confidence)||0),
+    characters:(result.data.text||"").length,
+    text:result.data.text||"",
+    image
+  };
+}
+
 
 async function rebuildReceiptPreview(){
   if(!pendingReceiptPages.length){pendingReceiptImage='';receiptPreview.style.display='none';receiptPreviewEmpty.style.display='grid';scanPageStrip.innerHTML='';return}
@@ -1127,18 +1224,20 @@ function buildReceiptChannels(input){
     return {
       header:cleanOcrPassText(input.header||""),
       totals:cleanOcrPassText(input.totals||""),
-      full:cleanOcrPassText(input.full||"")
+      full:cleanOcrPassText(input.full||""),
+      date:cleanOcrPassText(input.date||"")
     };
   }
   const split=splitOcrPasses(String(input||""));
   return {
     header:cleanOcrPassText(split.header),
     totals:cleanOcrPassText(split.totals),
-    full:cleanOcrPassText(split.full||String(input||""))
+    full:cleanOcrPassText(split.full||String(input||"")),
+    date:""
   };
 }
 function combinedReceiptText(channels){
-  return [channels.full,channels.header,channels.totals].filter(Boolean).join("\n");
+  return [channels.full,channels.date,channels.header,channels.totals].filter(Boolean).join("\n");
 }
 function bunningsEvidenceScore(text){
   const upperText=upper(text);
@@ -1395,12 +1494,101 @@ function chooseGst(text,total){
 }
 
 
+
+function normaliseDateOcrText(text){
+  return String(text||"")
+    .replace(/[OQ]/g,"0")
+    .replace(/[Il|]/g,"1")
+    .replace(/\bPH\b/gi,"PM")
+    .replace(/[^\w\/:\-\s]/g," ")
+    .replace(/\s+/g," ")
+    .trim();
+}
+function recoverDateCandidates(channels){
+  const sources=[
+    ["date",channels.date||"",130],
+    ["full",channels.full||"",95],
+    ["header",channels.header||"",50],
+    ["totals",channels.totals||"",15]
+  ];
+  const out=[];
+  for(const [source,raw,weight] of sources){
+    const text=normaliseDateOcrText(raw);
+
+    for(const match of text.matchAll(/\b([0-3]?\d)[\/\-]([01]?\d)[\/\-](20\d{2}|\d{2})\b/g)){
+      const value=isoAustralianDate(match[1],match[2],match[3]);
+      if(value)out.push({value,source,weight,raw:match[0]});
+    }
+
+    for(const match of text.matchAll(/\b(20\d{2})[\/\-](0?[1-9]|1[0-2])[\/\-](0?[1-9]|[12]\d|3[01])\b/g)){
+      out.push({
+        value:`${match[1]}-${String(match[2]).padStart(2,"0")}-${String(match[3]).padStart(2,"0")}`,
+        source:`${source}-footer`,
+        weight:weight+25,
+        raw:match[0]
+      });
+    }
+
+    // Repair separated date tokens such as "10 07 2026".
+    for(const match of text.matchAll(/\b([0-3]?\d)\s+([01]?\d)\s+(20\d{2})\b/g)){
+      const value=isoAustralianDate(match[1],match[2],match[3]);
+      if(value)out.push({value,source,weight:weight-15,raw:match[0]});
+    }
+
+    // Repair badly segmented patterns such as "T0/00 2026" only when footer evidence
+    // can provide the missing month/day.
+  }
+
+  // Footer/barcode fragments in Bunnings commonly end with YYYY-MM-DD.
+  const combined=combinedReceiptText(channels);
+  for(const match of combined.matchAll(/(?:#|R\d+\s+P\d+.*?)(20\d{2})[-\/](0?[1-9]|1[0-2])[-\/](0?[1-9]|[12]\d|3[01])/g)){
+    out.push({
+      value:`${match[1]}-${String(match[2]).padStart(2,"0")}-${String(match[3]).padStart(2,"0")}`,
+      source:"footer-reference",
+      weight:170,
+      raw:match[0]
+    });
+  }
+
+  return out;
+}
+function chooseRecoveredDate(channels){
+  const candidates=recoverDateCandidates(channels);
+  const scores=new Map();
+  for(const candidate of candidates){
+    scores.set(candidate.value,(scores.get(candidate.value)||0)+candidate.weight);
+  }
+
+  // Merge likely year errors when day/month agree.
+  const groups={};
+  for(const candidate of candidates){
+    const [year,month,day]=candidate.value.split("-");
+    const key=`${month}-${day}`;
+    (groups[key]||=[]).push({...candidate,year:Number(year)});
+  }
+  for(const group of Object.values(groups)){
+    const preferred=Math.max(...group.map(item=>item.year));
+    const preferredValue=group.find(item=>item.year===preferred)?.value;
+    for(const item of group){
+      if(preferredValue&&preferred-item.year>=10){
+        scores.set(preferredValue,(scores.get(preferredValue)||0)+Math.round(item.weight*.8));
+      }
+    }
+  }
+
+  const ranked=[...scores.entries()]
+    .map(([value,score])=>({value,score}))
+    .sort((a,b)=>b.score-a.score);
+
+  return {value:ranked[0]?.value||"",candidates:ranked,rawCandidates:candidates};
+}
+
 function parseReceiptChannels(input){
   const channels=buildReceiptChannels(input);
   const text=combinedReceiptText(channels);
   const lines=ocrLines(text);
   const merchantInfo=detectMerchantAcrossChannels(channels);
-  const dateChoice=chooseReceiptDate(text);
+  const dateChoice=chooseRecoveredDate(channels);
   const dateTime=extractReceiptDateTime(text);
 
   const totalChoice=safeReceiptTotal(channels,merchantInfo.merchant);
@@ -1422,6 +1610,7 @@ function parseReceiptChannels(input){
     merchantProfile:merchantInfo.id||"generic",
     amountCandidates:totalChoice.candidates,
     dateCandidates:dateChoice.candidates,
+    rawDateCandidates:dateChoice.rawCandidates,
     receiptNumberCandidates:receiptChoice.candidates,
     gstCandidates:gstChoice.candidates,
     expectedGst:gstChoice.expected,
@@ -1620,9 +1809,18 @@ runOcrBtn.onclick=async()=>{
       const full=await processScanPage(pendingReceiptPages[i].original,pendingReceiptPages[i].rotation||0);
       const header=await cropScanRegion(full,0,.43,{threshold:true});
       const totals=await cropScanRegion(full,.42,.78,{threshold:true});
+      const dateVariants=await makeDateStripVariants(full);
+
       for(const [label,image] of [["full",full],["header",header],["totals",totals]]){
         const report=await recogniseScanPass(image,label,section,m=>{
           if(m.status==="recognizing text")ocrStatus.textContent=`Section ${section} ${label}: ${Math.round(m.progress*100)}%`;
+        });
+        sectionReports.push(report);
+      }
+
+      for(const variant of dateVariants){
+        const report=await recogniseDatePass(variant.image,variant.label,section,m=>{
+          if(m.status==="recognizing text")ocrStatus.textContent=`Section ${section} ${variant.label}: ${Math.round(m.progress*100)}%`;
         });
         sectionReports.push(report);
       }
@@ -1634,7 +1832,8 @@ runOcrBtn.onclick=async()=>{
     const channels={
       header:sectionReports.filter(r=>r.pass==="header").map(r=>r.text).join("\n"),
       totals:sectionReports.filter(r=>r.pass==="totals").map(r=>r.text).join("\n"),
-      full:sectionReports.filter(r=>r.pass==="full").map(r=>r.text).join("\n")
+      full:sectionReports.filter(r=>r.pass==="full").map(r=>r.text).join("\n"),
+      date:sectionReports.filter(r=>r.pass.startsWith("date-")).map(r=>r.text).join("\n")
     };
     const parsed=parseReceiptChannels(channels);
     const ocrAverage=Math.round(sectionReports.reduce((s,r)=>s+r.confidence,0)/Math.max(1,sectionReports.length));

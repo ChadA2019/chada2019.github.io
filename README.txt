@@ -1,28 +1,32 @@
-BALANCEIQ v6.4 — PARSER ISOLATION & SAFETY RELEASE
+BALANCEIQ v6.5 — DATE RECOVERY RELEASE
 
-STRUCTURAL FIX
-The business parser no longer consumes diagnostic marker text. Header, totals and full OCR
-results are passed as separate channels.
+NEW OCR PASSES
+Each receipt section now receives three dedicated date-strip OCR passes:
+- Enlarged grayscale
+- Enlarged adaptive black-and-white
+- Enlarged sharpened
 
-MERCHANT SAFETY
-- Bunnings is detected using combined evidence: damaged name variants, PowerPass, ABN,
-  Tax Invoice wording and Bunnings-format invoice numbers.
-- Diagnostic labels can never become the merchant.
-- Weak generic merchant guesses beginning with separators are rejected.
+The date strip is cropped from the upper receipt area where Australian retailers commonly
+print the transaction date and time. Date OCR restricts recognition to digits, slashes,
+hyphens, time punctuation, AM/PM and weekday letters.
 
-TOTAL SAFETY
-- Only values on labelled Total, PowerPass, Card, EFTPOS, Visa, Mastercard or Subtotal
-  lines are considered.
-- Item, quantity, discount, barcode, savings, change and rounding lines are heavily penalised.
-- Implausible values over $5,000 are rejected.
-- GST is never calculated from an untrusted total.
-- Missing decimal repair is allowed only on labelled financial lines.
+DATE CONSENSUS
+- Date-strip OCR has the highest candidate weight.
+- Full and header OCR remain supporting evidence.
+- Australian numeric dates use DD/MM/YYYY.
+- Footer/barcode dates in YYYY-MM-DD format remain strong evidence.
+- Likely year errors such as 2006 instead of 2026 are merged when day/month agree.
+- Separated OCR tokens such as “10 07 2026” are recoverable.
+- If no defensible date exists, the field remains blank.
 
-RECEIPT SAFETY
-- Invoice extraction runs even when merchant detection is imperfect.
-- Existing Bunnings invoice consensus and footer validation are retained.
-- Low-evidence fields stay blank.
+RETAINED
+- Parser isolation
+- Bunnings merchant evidence scoring
+- Trusted total selection
+- GST arithmetic recovery
+- Strict invoice-number handling
+- OCR diagnostics and JSON export
 
 INSTALLATION
-Replace all files, unregister the previous service worker or uninstall the old PWA, clear
-cached files, hard-refresh, and reinstall if required.
+Replace every hosted file, unregister the previous service worker or uninstall the old PWA,
+clear cached files, hard-refresh, and reinstall if needed.
