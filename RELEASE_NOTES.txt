@@ -1,16 +1,14 @@
-BALANCEIQ v6.6
-Build 2026.07.21.014
+BALANCEIQ v6.7
+Build 2026.07.21.015
+
+Fixed from the supplied Busselton receipt:
+- 01/01/2026 is selected instead of 01/01/2028.
+- $91.06 EFT/payment value is selected instead of corrupted $391.06 subtotal.
+- GST is recovered as $8.28 rather than $91.06.
+- Invoice 2063/01184341 remains correctly extracted.
 
 Added:
-- Automatic receipt bounding-box detection.
-- Receipt-relative regional OCR.
-- Geometry metadata in diagnostics.
-- Digit-only Bunnings invoice reconstruction.
-- Partial-date recovery with footer corroboration.
-- Fuzzy included-total phrase recognition.
-
-Retained:
-- Parser isolation.
-- Implausible-total rejection.
-- GST trust gate.
-- Low-confidence blank fields.
+- Future-date rejection.
+- Full-pass date preference.
+- Payment-versus-subtotal arbitration.
+- GST percentage plausibility checks.

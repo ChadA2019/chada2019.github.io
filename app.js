@@ -149,7 +149,7 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_VERSION="6.6";
+const APP_VERSION="6.7";
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 const defaultCategories=["Alcohol","Bills & Direct Debits","Cafes","Cash","Child Support","Dining Out","Education","Entertainment","Fuel","Groceries","Health & Fitness","Home & Maintenance","Income","Insurance","Loans & Finance","Loans & Mortgages","Medical","Personal Care","Pets","Refunds","Shopping","Subscriptions","Take Away","Transfers","Transport","Travel","Uncategorised","Vehicles"];
 const subcategoriesByCategory={
@@ -1209,7 +1209,7 @@ function extractReceiptGst(text,total=0){
 }
 function detectReceiptPaymentMethod(text){
   if(/\bCASH\b/i.test(text)&&!/CASHIER/i.test(text))return "Cash";
-  if(/\b(POWERPASS|EFTPOS|VISA|MASTERCARD|CARD NO|CARD)\b/i.test(text))return "Card";
+  if(/\b(POWERPASS|EFTPOS|EFT|VISA|MASTERCARD|CARD NO|CARD)\b/i.test(text))return "Card";
   return "";
 }
 function parseBunningsReceipt(text,base){
@@ -1405,13 +1405,14 @@ function labelledMoneyValues(line){
 }
 function safeReceiptTotal(channels,merchant=""){
   const scored=new Map();
-  const add=(value,score,source)=>{
+  const add=(value,score,source,role)=>{
     if(!(value>0&&value<=5000))return;
     const key=value.toFixed(2);
-    const current=scored.get(key)||{value,score:0,count:0,sources:[]};
+    const current=scored.get(key)||{value,score:0,count:0,sources:[],roles:[]};
     current.score+=score;
     current.count++;
     current.sources.push(source);
+    current.roles.push(role);
     scored.set(key,current);
   };
 
@@ -1425,44 +1426,75 @@ function safeReceiptTotal(channels,merchant=""){
     const lines=ocrLines(text);
     for(let i=0;i<lines.length;i++){
       const line=lines[i];
-      const u=upper(line);
       const values=labelledMoneyValues(line);
       if(!values.length)continue;
 
       const isTotal=/^\s*(?:TOTAL|FOTAL|FOOTED)\b|\bAMOUNT\s+PAID\b/i.test(line);
-      const isPayment=/\bPOWERPASS\b|\bEFTPOS\b|\bVISA\b|\bMASTERCARD\b|\bCARD\b/i.test(line);
-      const isSubtotal=/\bSUB\s*TOTAL\b|\bSUBTOTAL\b/i.test(line);
+      const isPayment=/\bPOWERPASS\b|\bEFTPOS\b|\bEFT\b|\bVISA\b|\bMASTERCARD\b|\bCARD\b/i.test(line);
+      const isSubtotal=/\bSUB\s*TOTAL\b|\bSUBTOTAL\b|\bSUBTOTAR\b|\bSUBLOTAI\b/i.test(line);
       const isGst=/\bGST\b|\bBST\b|\bTAX\s*AMOUNT\b/i.test(line);
       const isIncludedTotal=fuzzyIncludedTotalEvidence(line);
 
+      let role="other";
+      if(isPayment)role="payment";
+      else if(isTotal)role="total";
+      else if(isIncludedTotal)role="included-total";
+      else if(isSubtotal)role="subtotal";
+      else if(isGst)role="gst";
+
       for(const value of values){
         let score=baseWeight;
-        if(isTotal)score+=130;
-        else if(isPayment)score+=115;
-        else if(isIncludedTotal)score+=92;
-        else if(isSubtotal)score+=35;
-        else score-=50;
+        if(role==="payment")score+=160;
+        else if(role==="total")score+=145;
+        else if(role==="included-total")score+=120;
+        else if(role==="subtotal")score+=20;
+        else score-=65;
 
-        if(isGst&&!isIncludedTotal)score-=180;
-        if(isItemOrNoiseLine(line)&&!isTotal&&!isPayment)score-=170;
-        if(value>1000)score-=200;
-        add(value,score,`${source}:${line.trim()}`);
+        if(role==="gst")score-=220;
+        if(isItemOrNoiseLine(line)&&!["total","payment","included-total"].includes(role))score-=180;
+        if(value>1000)score-=220;
+        add(value,score,`${source}:${line.trim()}`,role);
       }
     }
   }
 
   for(const item of scored.values()){
+    const uniqueRoles=new Set(item.roles);
     if(item.count>=2)item.score+=item.count*55;
     if(item.count>=3)item.score+=70;
+    if(uniqueRoles.has("payment")&&
+       (uniqueRoles.has("total")||uniqueRoles.has("included-total")))item.score+=150;
+    if(uniqueRoles.has("payment"))item.score+=85;
+    if(uniqueRoles.size>=2)item.score+=45;
   }
 
-  const ranked=[...scored.values()]
+  let ranked=[...scored.values()]
     .filter(item=>item.score>0)
     .sort((a,b)=>b.score-a.score||b.count-a.count||a.value-b.value);
 
+  // A subtotal cannot beat a plausible payment/total candidate when they differ materially.
+  const paymentCandidate=ranked.find(item=>item.roles.includes("payment"));
+  if(paymentCandidate){
+    for(const item of ranked){
+      if(item.roles.every(role=>role==="subtotal")&&
+         item.value>paymentCandidate.value*1.20){
+        item.score-=260;
+      }
+    }
+    ranked=ranked.sort((a,b)=>b.score-a.score||b.count-a.count||a.value-b.value);
+  }
+
   const best=ranked[0];
   const second=ranked[1];
-  const trusted=!!best && best.score>=160 && (!second||best.score>=second.score*1.08||best.count>=2);
+  const trusted=!!best &&
+    best.score>=180 &&
+    (
+      best.roles.includes("payment") ||
+      best.roles.includes("total") ||
+      best.roles.includes("included-total")
+    ) &&
+    (!second||best.score>=second.score*1.06||best.count>=2);
+
   return {value:trusted?best.value:0,candidates:ranked.slice(0,8),trusted};
 }
 
@@ -1586,32 +1618,36 @@ function gstCandidatesFromText(text){
 }
 function chooseGst(text,total){
   const expected=total>0?Number((total/11).toFixed(2)):0;
-  const candidates=gstCandidatesFromText(text).filter(c=>c.value>0&&c.value<total*.35);
+  const candidates=gstCandidatesFromText(text)
+    .filter(c=>c.value>0&&c.value<total*.20&&Math.abs(c.value-total)>.01);
   const scores=new Map();
 
   for(const c of candidates){
     let score=c.weight;
     const diff=Math.abs(c.value-expected);
-    if(diff<=.01)score+=120;
-    else if(diff<=.03)score+=70;
-    else if(diff<=.08)score+=20;
-    else score-=50;
+    if(diff<=.01)score+=150;
+    else if(diff<=.03)score+=90;
+    else if(diff<=.08)score+=25;
+    else score-=80;
     const key=c.value.toFixed(2);
     scores.set(key,(scores.get(key)||0)+score);
   }
 
-  // For an Australian GST-inclusive receipt, arithmetic consistency is decisive
-  // when OCR candidates disagree around the expected value.
   if(total>0&&fuzzyIncludedTotalEvidence(text)){
-    scores.set(expected.toFixed(2),(scores.get(expected.toFixed(2))||0)+320);
+    scores.set(expected.toFixed(2),(scores.get(expected.toFixed(2))||0)+380);
   }
 
   const ranked=[...scores.entries()]
     .map(([value,score])=>({value:Number(value),score}))
     .sort((a,b)=>b.score-a.score);
-  return {value:ranked[0]?.value||0,candidates:ranked,expected};
-}
 
+  const best=ranked[0];
+  return {
+    value:best&&best.value<total*.20?best.value:0,
+    candidates:ranked,
+    expected
+  };
+}
 
 
 function normaliseDateOcrText(text){
@@ -1674,23 +1710,52 @@ function recoverDateCandidates(channels){
 function chooseRecoveredDate(channels){
   const candidates=recoverDateCandidates(channels);
   const scores=new Map();
+  const now=new Date();
+  const currentYear=now.getFullYear();
+  const todayIso=`${currentYear}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+
   for(const candidate of candidates){
-    scores.set(candidate.value,(scores.get(candidate.value)||0)+candidate.weight);
+    const year=Number(candidate.value.slice(0,4));
+    let weight=candidate.weight;
+
+    // Reject impossible future years. Same-year future dates are allowed only within 7 days.
+    if(year>currentYear)continue;
+    if(candidate.value>todayIso){
+      const candidateDate=new Date(`${candidate.value}T00:00:00`);
+      const todayDate=new Date(`${todayIso}T00:00:00`);
+      const days=(candidateDate-todayDate)/86400000;
+      if(days>7)continue;
+      weight-=45;
+    }
+
+    // Two-digit/truncated OCR years are substantially weaker than a clear four-digit year.
+    if(candidate.raw&&/\b\d{1,2}[\/-]\d{1,2}[\/-]\d{2}\b/.test(candidate.raw)){
+      weight-=70;
+    }
+
+    // Full receipt evidence is more reliable than a conflicting low-confidence date strip.
+    if(candidate.source==="full")weight+=35;
+    if(candidate.source==="date"&&year<currentYear-2)weight-=35;
+
+    scores.set(candidate.value,(scores.get(candidate.value)||0)+Math.max(1,weight));
   }
 
-  // Merge likely year errors when day/month agree.
   const groups={};
   for(const candidate of candidates){
     const [year,month,day]=candidate.value.split("-");
     const key=`${month}-${day}`;
     (groups[key]||=[]).push({...candidate,year:Number(year)});
   }
+
   for(const group of Object.values(groups)){
-    const preferred=Math.max(...group.map(item=>item.year));
-    const preferredValue=group.find(item=>item.year===preferred)?.value;
-    for(const item of group){
-      if(preferredValue&&preferred-item.year>=10){
-        scores.set(preferredValue,(scores.get(preferredValue)||0)+Math.round(item.weight*.8));
+    const plausible=group.filter(item=>item.year<=currentYear);
+    if(!plausible.length)continue;
+    const sourcePreferred=plausible.find(item=>item.source==="full");
+    const preferred=sourcePreferred||plausible.sort((a,b)=>b.year-a.year)[0];
+    if(!preferred)continue;
+    for(const item of plausible){
+      if(preferred.year-item.year>=10){
+        scores.set(preferred.value,(scores.get(preferred.value)||0)+Math.round(item.weight*.5));
       }
     }
   }
@@ -1701,7 +1766,6 @@ function chooseRecoveredDate(channels){
 
   return {value:ranked[0]?.value||"",candidates:ranked,rawCandidates:candidates};
 }
-
 
 function reconstructBunningsInvoice(text){
   const cleaned=String(text||"").replace(/[^\d]/g,"");
@@ -1764,7 +1828,10 @@ function fuzzyIncludedTotalEvidence(text){
     compact.includes("LHCLUDEDIRHEYOTAI") ||
     compact.includes("THCLUDEDINTHETOTAL") ||
     compact.includes("USTTHLLUUEDTHHKTUTHL") ||
-    compact.includes("INCLUDEDIRHEYOTAI")
+    compact.includes("INCLUDEDIRHEYOTAI") ||
+    compact.includes("GSTINCLUCEDJHTHETOTAL") ||
+    compact.includes("GSTINCLUOEDJNT HETOTAL".replace(/ /g,"")) ||
+    compact.includes("WSUTHUBBEFUKTUVA")
   );
 }
 

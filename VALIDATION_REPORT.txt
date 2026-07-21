@@ -1,26 +1,26 @@
-BALANCEIQ v6.6 VALIDATION
+BALANCEIQ v6.7 VALIDATION
 
 JavaScript syntax: PASS
-Receipt geometry pipeline present: PASS
-Receipt-relative regions present: PASS
-Digit-only invoice reconstruction: PASS
-Partial date recovery safeguards: PASS
-Fuzzy included-total recovery: PASS
-Latest damaged-receipt parser regression: PASS
-Clean baseline regression: PASS
+Future-date rejection: PASS
+Full-pass date arbitration: PASS
+EFT/payment total arbitration: PASS
+Subtotal conflict penalty: PASS
+GST percentage validation: PASS
+Busselton supplied-case regression: PASS
+Mirrabooka baseline regression: PASS
 
-latest damaged receipt {"merchant":"Bunnings Warehouse","branch":"","category":"Home & Maintenance","subcategory":"Hardware","date":"","time":"11:07:15 ","total":77.26,"gst":7.02,"receiptNumber":"2163/00737706","paymentMethod":"Card","parser":"Bunnings","merchantProfile":"bunnings","amountCandidates":[{"value":77.26,"score":512,"count":2,"sources":["full:LHCLUDED IR (HE YOTAI $77.26","totals:Total $77.26"]}],"dateCandidates":[],"rawDateCandidates":[],"receiptNumberCandidates":[{"value":"2163/00737706","score":72,"source":"digit-reconstruction"}],"gstCandidates":[{"value":7.02,"score":320}],"expectedGst":7.02,"totalTrusted":true,"confidence":{"overall":95,"fields":{"merchant":98,"date":0,"total":98,"gst":92,"receiptNumber":98,"paymentMethod":88}},"imageQuality":70}
-clean baseline {"merchant":"Bunnings Warehouse","branch":"","category":"Home & Maintenance","subcategory":"Hardware","date":"2026-07-21","time":"08:30:45 AM","total":68.64,"gst":6.24,"receiptNumber":"2402/01719325","paymentMethod":"Card","parser":"Bunnings","merchantProfile":"bunnings","amountCandidates":[{"value":68.64,"score":515,"count":2,"sources":["totals:Total $68.64","totals:PowerPass $68.64"]},{"value":6.24,"score":172,"count":1,"sources":["totals:GST INCLUDED IN THE TOTAL $6.24"]}],"dateCandidates":[{"value":"2026-07-21","score":130}],"rawDateCandidates":[{"value":"2026-07-21","source":"date","weight":130,"raw":"21/07/2026"}],"receiptNumberCandidates":[{"value":"2402/01719325","score":25}],"gstCandidates":[{"value":6.24,"score":460}],"expectedGst":6.24,"totalTrusted":true,"confidence":{"overall":94,"fields":{"merchant":98,"date":92,"total":98,"gst":92,"receiptNumber":98,"paymentMethod":88}},"imageQuality":30}
+Busselton candidate validation {"merchant":"Bunnings Warehouse","branch":"","category":"Home & Maintenance","subcategory":"Hardware","date":"2026-01-01","time":"12:29:18 ","total":91.06,"gst":8.28,"receiptNumber":"2063/01184341","paymentMethod":"Card","parser":"Bunnings","merchantProfile":"bunnings","amountCandidates":[{"value":91.06,"score":1235,"count":3,"sources":["full:GST INCLUCED JH THE TOTAL $91.06","full:EFT $91.06","totals:EFT $91.06"],"roles":["included-total","payment","payment"]},{"value":391.06,"score":70,"count":2,"sources":["full:18 subTotar 391.06","totals:1a SubTotal: Co 391.06"],"roles":["subtotal","subtotal"]}],"dateCandidates":[{"value":"2026-01-01","score":130},{"value":"2020-01-01","score":25}],"rawDateCandidates":[{"value":"2028-01-01","source":"date","weight":130,"raw":"01/01/2028"},{"value":"2020-01-01","source":"date","weight":130,"raw":"01/01/20"},{"value":"2026-01-01","source":"full","weight":95,"raw":"01/01/2026"}],"receiptNumberCandidates":[{"value":"2063/01184341","score":50}],"gstCandidates":[{"value":8.28,"score":380}],"expectedGst":8.28,"totalTrusted":true,"confidence":{"overall":94,"fields":{"merchant":98,"date":92,"total":98,"gst":92,"receiptNumber":98,"paymentMethod":88}},"imageQuality":95}
+Mirrabooka baseline {"merchant":"Bunnings Warehouse","branch":"","category":"Home & Maintenance","subcategory":"Hardware","date":"2026-07-10","time":"11:02:15 AM","total":77.26,"gst":7.02,"receiptNumber":"2163/00737706","paymentMethod":"Card","parser":"Bunnings","merchantProfile":"bunnings","amountCandidates":[{"value":77.26,"score":855,"count":2,"sources":["totals:Total $77.26","totals:PowerPass $77.26"],"roles":["total","payment"]}],"dateCandidates":[{"value":"2026-07-10","score":130}],"rawDateCandidates":[{"value":"2026-07-10","source":"date","weight":130,"raw":"10/07/2026"}],"receiptNumberCandidates":[{"value":"2163/00737706","score":25}],"gstCandidates":[{"value":7.02,"score":380}],"expectedGst":7.02,"totalTrusted":true,"confidence":{"overall":94,"fields":{"merchant":98,"date":92,"total":98,"gst":92,"receiptNumber":98,"paymentMethod":88}},"imageQuality":30}
 
 SHA-256
-9cf0bb96b80e20537388d60a353fe412473ea6937eff4a1bdb2d92ee2cf35870  README.txt
-0427f6081482fabbb9c8a29393553ee371ed108d44935af10bb243e072fc0270  RELEASE_NOTES.txt
+a2e6597481888789b72c816d403b04660a2646d86f98a23857d6e0ba84fe9e56  README.txt
+c5980c682e359a7e15c618dfd93255e26bc6fcdf7608c72b62762df5a1b6ec38  RELEASE_NOTES.txt
 2a4306ec9e7ea225280588c90a6066657848c5249a16ecf0ff0bfa2e239a824f  VERSION_HISTORY.txt
-093f48869727e33d70bc4db104344a29213c44807d163dcc26c815bd90b09656  app.js
+b3a7101e34afb34a5478cdcb1d69ff522192447a242195c8a4e1c28619c51471  app.js
 73a13cb30f08fd802651a6e6bf841c565e1eb516d2e1685a8fec49fda20f5fc7  cloud-sync.js
 4fbd70da51025b02abb500d21a8220b103fa590ba09c5260f2c78c7dbc3d8c9f  icon.svg
-43cf6890da4827676cc9b096d415e55622dd63de1f428883d556a8f5e5d6ffc9  index.html
-ac691d7e00d6ac70e2f5c8a5c8d03c3849d96b0855f82db22c70662f73f911d9  manifest.webmanifest
-9a785aa4ac4ac2b4ad8daff51a087f20141b6ca6e56267439ae9230eac4c0433  service-worker.js
-f30d46965803b412a26376ae16667f784044bd23b99eab827416b0e169e3be51  styles.css
+823dbc9df52a90c08352d377c653747862a23b7e09e4ae53119dc3636e373329  index.html
+d6382e0555af10da7a4ea3c540b422ced75d9dc054b0e238bca81246d8c9b2f7  manifest.webmanifest
+6c1e181281518ef16ba006fb29706e87437155b6fc33cf11dc10269eb8262a8a  service-worker.js
+2d1300df56e5db2d13820ed80d1a9c82bb1238af0aa28a4c25a5affbb4417588  styles.css
 b98d03e0b916aac8ab1004bb8d5ccee343d142b39d7785cf2c5f0ed4f37035c2  supabase_setup.sql

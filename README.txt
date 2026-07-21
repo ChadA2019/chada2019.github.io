@@ -1,28 +1,25 @@
-BALANCEIQ v6.6 — RECEIPT GEOMETRY & RECOVERY
+BALANCEIQ v6.7 — CANDIDATE VALIDATION RELEASE
 
-RECEIPT GEOMETRY
-- Detects the bright, low-saturation receipt area inside the camera image.
-- Crops OCR processing to the detected receipt bounds.
-- Header, date and totals regions are now measured relative to the receipt rather than
-  the full photograph.
-- Geometry confidence and bounds are included in OCR diagnostics.
+DATE VALIDATION
+- Future receipt years are rejected.
+- A clear full-receipt date receives more weight than a conflicting date-strip result.
+- Two-digit or truncated years receive a strong penalty.
+- Same-year dates more than seven days in the future are rejected.
+- Year disagreement lowers trust instead of selecting the largest year.
 
-DATE RECOVERY
-- Dedicated date-strip OCR now runs on the detected receipt.
-- Existing Australian DD/MM/YYYY, footer date and year-correction logic remains active.
-- Partial date fragments can be completed only when matching footer evidence exists.
-- Weak dates remain blank.
+TOTAL VALIDATION
+- EFT is recognised as a payment label.
+- Payment values receive stronger evidence than subtotals.
+- A payment value matching a Total or GST-inclusive total line receives a consensus bonus.
+- Subtotals that differ materially from the payment amount are penalised.
+- A candidate must have a trusted financial role before it can populate Total Paid.
 
-INVOICE RECOVERY
-- Bunnings invoice numbers can be reconstructed from digit-only OCR such as
-  2163700737706 → 2163/00737706.
-- Standard invoice and footer consensus remains preferred.
-
-TOTAL AND GST RECOVERY
-- Fuzzy “included in the total” OCR variants can support a total candidate.
-- GST arithmetic recovery recognizes damaged versions of the GST-included phrase.
-- Existing trusted-total and item-line safety rules remain active.
+GST VALIDATION
+- GST values equal to the total are rejected.
+- GST candidates above 20% of the total are rejected.
+- On GST-inclusive receipts, Total ÷ 11 is preferred when OCR GST values are implausible.
+- Additional damaged GST-included wording is recognised.
 
 INSTALLATION
-Replace every hosted file, unregister the old service worker or uninstall the old PWA,
+Replace every hosted file, unregister the previous service worker or uninstall the PWA,
 clear cached files, hard-refresh, and reinstall if required.
