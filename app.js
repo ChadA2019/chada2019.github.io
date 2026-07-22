@@ -83,8 +83,13 @@ const {
   previewDialog,
   previewMeta,
   receiptAccount,
+  receiptAddAssetBtn,
   receiptAddCategoryBtn,
   receiptAddSubcategoryBtn,
+  receiptAsset,
+  receiptEditAssetBtn,
+  receiptEditCategoryBtn,
+  receiptEditSubcategoryBtn,
   receiptAmount,
   receiptAwaiting,
   receiptCategory,
@@ -136,8 +141,12 @@ const {
   transactions,
   transactionsBody,
   txAmount,
+  txAddAssetBtn,
   txAddCategoryBtn,
   txAddSubcategoryBtn,
+  txEditAssetBtn,
+  txEditCategoryBtn,
+  txEditSubcategoryBtn,
   txAsset,
   txCategory,
   txDate,
@@ -147,13 +156,21 @@ const {
   txSubcategory,
   txTag,
   txTax,
-  usageMode
+  usageMode,
+  nameManagerDialog,
+  nameManagerForm,
+  nameManagerTitle,
+  nameManagerDescription,
+  nameManagerInput,
+  nameManagerLabel,
+  nameManagerError,
+  nameManagerSaveBtn
 }=Object.fromEntries(
-  ["addAssetBtn","addRuleBtn","addTransactionBtn","applyReviewsBtn","assetFilter","assetList","assetListData","assetSummary","autoRate","backupInput","cashflowChart","categoryBars","categoryFilter","categoryList","clearBtn","cloudAnonKey","cloudEmail","cloudPassphrase","cloudSaveConfigBtn","cloudSignInBtn","cloudSignOutBtn","cloudStatus","cloudSyncBtn","cloudUrl","confirmPdfImportBtn","csvInput","currencySetting","dashFrom","dashTo","dashboard","enhanceScan","exportBtn","exportCsvBtn","finishOnboardingBtn","fyExpense","fyIncome","fySelect","fyTax","greeting","heroScanBtn","importSummary","installBtn","kpiExpense","kpiIncome","kpiNet","kpiReceiptMatch","kpiReview","largestExpenses","loadSampleDataBtn","newAssetName","ocrStatus","onboardingAsset","onboardingCurrency","onboardingDialog","onboardingForm","onboardingSample","onboardingTheme","onboardingUsage","pdfInput","periodExpense","periodIncome","periodNet","previewBody","previewDialog","previewMeta","receiptAccount","receiptAddCategoryBtn","receiptAddSubcategoryBtn","receiptAmount","receiptAwaiting","receiptCategory","receiptDate","receiptDialog","receiptForm","receiptGst","receiptImageInput","receiptList","receiptMatched","receiptMerchant","receiptMoreInput","receiptNotes","receiptNumber","receiptPaymentMethod","receiptPreview","receiptPreviewEmpty","receiptSubcategory","receiptSuggested","receipts","removeScanBtn","reports","review","reviewList","rotateScanBtn","ruleAsset","ruleCategory","ruleCount","ruleDialog","ruleForm","rulePattern","ruleSubcategory","rules","rulesBody","runOcrBtn","runSetupBtn","savePreferencesBtn","saveReceiptBtn","saveRuleBtn","saveTransactionBtn","scanPageStrip","settings","themeBtn","transactionCount","transactionDialog","transactionDialogTitle","transactionForm","transactionSearch","transactions","transactionsBody","txAmount","txAddCategoryBtn","txAddSubcategoryBtn","txAsset","txCategory","txDate","txDescription","txIndex","txNotes","txSubcategory","txTag","txTax","usageMode"].map(id=>[id,byId(id)])
+  ["addAssetBtn","addRuleBtn","addTransactionBtn","applyReviewsBtn","assetFilter","assetList","assetListData","assetSummary","autoRate","backupInput","cashflowChart","categoryBars","categoryFilter","categoryList","clearBtn","cloudAnonKey","cloudEmail","cloudPassphrase","cloudSaveConfigBtn","cloudSignInBtn","cloudSignOutBtn","cloudStatus","cloudSyncBtn","cloudUrl","confirmPdfImportBtn","csvInput","currencySetting","dashFrom","dashTo","dashboard","enhanceScan","exportBtn","exportCsvBtn","finishOnboardingBtn","fyExpense","fyIncome","fySelect","fyTax","greeting","heroScanBtn","importSummary","installBtn","kpiExpense","kpiIncome","kpiNet","kpiReceiptMatch","kpiReview","largestExpenses","loadSampleDataBtn","newAssetName","ocrStatus","onboardingAsset","onboardingCurrency","onboardingDialog","onboardingForm","onboardingSample","onboardingTheme","onboardingUsage","pdfInput","periodExpense","periodIncome","periodNet","previewBody","previewDialog","previewMeta","receiptAccount","receiptAddAssetBtn","receiptAddCategoryBtn","receiptAddSubcategoryBtn","receiptAmount","receiptAsset","receiptEditAssetBtn","receiptEditCategoryBtn","receiptEditSubcategoryBtn","receiptAwaiting","receiptCategory","receiptDate","receiptDialog","receiptForm","receiptGst","receiptImageInput","receiptList","receiptMatched","receiptMerchant","receiptMoreInput","receiptNotes","receiptNumber","receiptPaymentMethod","receiptPreview","receiptPreviewEmpty","receiptSubcategory","receiptSuggested","receipts","removeScanBtn","reports","review","reviewList","rotateScanBtn","ruleAsset","ruleCategory","ruleCount","ruleDialog","ruleForm","rulePattern","ruleSubcategory","rules","rulesBody","runOcrBtn","runSetupBtn","savePreferencesBtn","saveReceiptBtn","saveRuleBtn","saveTransactionBtn","scanPageStrip","settings","themeBtn","transactionCount","transactionDialog","transactionDialogTitle","transactionForm","transactionSearch","transactions","transactionsBody","txAmount","txAddAssetBtn","txAddCategoryBtn","txAddSubcategoryBtn","txAsset","txEditAssetBtn","txEditCategoryBtn","txEditSubcategoryBtn","txCategory","txDate","txDescription","txIndex","txNotes","txSubcategory","txTag","txTax","usageMode","nameManagerDialog","nameManagerForm","nameManagerTitle","nameManagerDescription","nameManagerInput","nameManagerLabel","nameManagerError","nameManagerSaveBtn"].map(id=>[id,byId(id)])
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_INFO=Object.freeze({version:"9.6",build:"2026.07.22.006",release:"Version 9.6 adds category and sub-category creation in Settings, transaction entry, receipt review and merchant review."});
+const APP_INFO=Object.freeze({version:"9.6.1",build:"2026.07.23.001",release:"Version 9.6.1 adds in-context create and rename controls for assets, categories and sub-categories across transaction entry, receipt review and merchant review."});
 const APP_VERSION=APP_INFO.version;
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 function applyAppInfo(){
@@ -236,27 +253,95 @@ function fillCategorySelect(categoryEl,subcategoryEl,selected="Uncategorised",se
   categoryEl.value=categories.includes(selected)?selected:"Uncategorised";
   fillSubcategorySelect(categoryEl,subcategoryEl,selectedSub);
 }
+let pendingNameManager=null;
+function openNameManager({title,description="",label="Name",value="",saveText="Save",onSave}){
+  pendingNameManager=onSave;
+  nameManagerTitle.textContent=title;
+  nameManagerDescription.textContent=description;
+  nameManagerDescription.classList.toggle("hidden",!description);
+  nameManagerLabel.childNodes[0].nodeValue=`${label}`;
+  nameManagerInput.value=value;
+  nameManagerError.textContent="";
+  nameManagerError.classList.add("hidden");
+  nameManagerSaveBtn.textContent=saveText;
+  nameManagerDialog.showModal();
+  setTimeout(()=>{nameManagerInput.focus();nameManagerInput.select();},30);
+}
+function nameManagerFail(message){nameManagerError.textContent=message;nameManagerError.classList.remove("hidden");nameManagerInput.focus();}
+nameManagerForm.addEventListener("submit",e=>{
+  e.preventDefault();
+  const value=norm(nameManagerInput.value);
+  if(!value)return nameManagerFail("Enter a name.");
+  try{
+    const result=pendingNameManager?.(value);
+    if(result===false)return;
+    nameManagerDialog.close();
+    pendingNameManager=null;
+  }catch(error){nameManagerFail(error?.message||"This item could not be saved.");}
+});
+nameManagerDialog.addEventListener("close",()=>{pendingNameManager=null;nameManagerError.classList.add("hidden");});
+
 function createCategoryInteractive(categoryEl,subcategoryEl){
-  const name=norm(prompt("New category name",""));
-  if(!name)return null;
-  const existing=state.categoryDefinitions.find(x=>upper(x.name)===upper(name));
-  if(existing){alert("That category already exists. It has been selected.");fillCategorySelect(categoryEl,subcategoryEl,existing.name,"");return existing.name;}
-  state.categoryDefinitions.push({name,subcategories:[]});
-  state.categoryDefinitions.sort((a,b)=>a.name.localeCompare(b.name));
-  saveState();fillCategorySelect(categoryEl,subcategoryEl,name,"");renderCategoryManager();renderCategoriesAssets();
-  showNotice(`Created category ${name}.`);return name;
+  openNameManager({title:"Create category",description:"Create a category without leaving this transaction.",label:"Category name",saveText:"Create",onSave:name=>{
+    const existing=state.categoryDefinitions.find(x=>upper(x.name)===upper(name));
+    if(existing){fillCategorySelect(categoryEl,subcategoryEl,existing.name,"");showNotice(`Selected existing category ${existing.name}.`);return true;}
+    state.categoryDefinitions.push({name,subcategories:[]});
+    state.categoryDefinitions.sort((a,b)=>a.name.localeCompare(b.name));
+    saveState();fillCategorySelect(categoryEl,subcategoryEl,name,"");renderCategoryManager();renderCategoriesAssets();
+    showNotice(`Created category ${name}.`);return true;
+  }});
 }
 function createSubcategoryInteractive(categoryEl,subcategoryEl){
-  const category=categoryEl.value||"Uncategorised";
-  const definition=categoryDefinition(category);
-  if(!definition){alert("Select or create a category first.");return null;}
-  const name=norm(prompt(`New sub-category for ${category}`,""));
-  if(!name)return null;
-  const existing=definition.subcategories.find(x=>upper(x)===upper(name));
-  if(existing){alert("That sub-category already exists. It has been selected.");fillSubcategorySelect(categoryEl,subcategoryEl,existing);return existing;}
-  definition.subcategories.push(name);definition.subcategories.sort((a,b)=>a.localeCompare(b));
-  saveState();fillSubcategorySelect(categoryEl,subcategoryEl,name);renderCategoryManager();
-  showNotice(`Created ${name} under ${category}.`);return name;
+  const category=categoryEl.value||"Uncategorised",definition=categoryDefinition(category);
+  if(!definition){alert("Select or create a category first.");return;}
+  openNameManager({title:"Create sub-category",description:`Add a sub-category under ${category}.`,label:"Sub-category name",saveText:"Create",onSave:name=>{
+    const existing=definition.subcategories.find(x=>upper(x)===upper(name));
+    if(existing){fillSubcategorySelect(categoryEl,subcategoryEl,existing);showNotice(`Selected existing sub-category ${existing}.`);return true;}
+    definition.subcategories.push(name);definition.subcategories.sort((a,b)=>a.localeCompare(b));
+    saveState();fillSubcategorySelect(categoryEl,subcategoryEl,name);renderCategoryManager();
+    showNotice(`Created ${name} under ${category}.`);return true;
+  }});
+}
+function updateAssetReferences(oldName,newName){
+  for(const collection of [state.transactions,state.receipts,state.rules])for(const item of collection)if(item.asset===oldName)item.asset=newName;
+  for(const q of state.reviewQueue)if(q.asset===oldName)q.asset=newName;
+}
+function createAssetInteractive(assetEl){
+  openNameManager({title:"Create asset",description:"Add an asset and select it for this entry.",label:"Asset name",saveText:"Create",onSave:name=>{
+    const existing=state.assets.find(x=>upper(x)===upper(name));
+    if(existing){fillAssetSelect(assetEl,existing);showNotice(`Selected existing asset ${existing}.`);return true;}
+    state.assets.push(name);state.assets.sort((a,b)=>a.localeCompare(b));
+    saveState();renderAll();fillAssetSelect(assetEl,name);showNotice(`Created asset ${name}.`);return true;
+  }});
+}
+function renameAssetInteractive(assetEl){
+  const oldName=assetEl.value;if(!oldName)return alert("Select an asset to rename first.");
+  openNameManager({title:"Rename asset",description:"Existing transactions, receipts and merchant rules will be updated.",label:"Asset name",value:oldName,saveText:"Rename",onSave:newName=>{
+    if(newName===oldName)return true;
+    if(state.assets.some(x=>x!==oldName&&upper(x)===upper(newName)))return nameManagerFail("That asset already exists."),false;
+    state.assets[state.assets.indexOf(oldName)]=newName;state.assets.sort((a,b)=>a.localeCompare(b));updateAssetReferences(oldName,newName);
+    saveState();renderAll();fillAssetSelect(assetEl,newName);showNotice(`Renamed ${oldName} to ${newName}.`);return true;
+  }});
+}
+function renameCategoryInteractive(categoryEl,subcategoryEl){
+  const oldName=categoryEl.value;if(!oldName)return alert("Select a category to rename first.");
+  const definition=categoryDefinition(oldName);if(!definition)return alert("This category cannot be renamed here.");
+  openNameManager({title:"Rename category",description:"Existing entries and merchant rules will be updated.",label:"Category name",value:oldName,saveText:"Rename",onSave:newName=>{
+    if(newName===oldName)return true;
+    if(state.categoryDefinitions.some(x=>x!==definition&&upper(x.name)===upper(newName)))return nameManagerFail("That category already exists."),false;
+    definition.name=newName;updateCategoryReferences(oldName,newName);saveState();renderAll();fillCategorySelect(categoryEl,subcategoryEl,newName,subcategoryEl.value);showNotice(`Renamed ${oldName} to ${newName}.`);return true;
+  }});
+}
+function renameSubcategoryInteractive(categoryEl,subcategoryEl){
+  const category=categoryEl.value,oldName=subcategoryEl.value,definition=categoryDefinition(category);
+  if(!definition||!oldName)return alert("Select a sub-category to rename first.");
+  openNameManager({title:"Rename sub-category",description:`Rename ${oldName} under ${category}. Existing entries will be updated.`,label:"Sub-category name",value:oldName,saveText:"Rename",onSave:newName=>{
+    if(newName===oldName)return true;
+    if(definition.subcategories.some(x=>x!==oldName&&upper(x)===upper(newName)))return nameManagerFail("That sub-category already exists."),false;
+    const i=definition.subcategories.indexOf(oldName);if(i<0)return nameManagerFail("This sub-category is not managed by the selected category."),false;
+    definition.subcategories[i]=newName;definition.subcategories.sort((a,b)=>a.localeCompare(b));updateSubcategoryReferences(category,oldName,newName);
+    saveState();renderAll();fillCategorySelect(categoryEl,subcategoryEl,category,newName);showNotice(`Renamed ${oldName} to ${newName}.`);return true;
+  }});
 }
 function fillAssetSelect(el,selected=""){
   const assets=[...state.assets];
@@ -531,13 +616,15 @@ function renderReview(){
         <label>Suggested<input value="${esc(q.category)}" disabled></label><label>Confidence<input value="${pct(q.confidence)}" disabled></label>
         <label>Chosen category<div class="select-create-row"><select data-i="${i}" data-k="chosenCategory">${categoryOptions}</select><button type="button" class="inline-add-btn review-add-category" data-i="${i}" aria-label="Create category">＋</button></div></label>
         <label>Subcategory<div class="select-create-row"><select data-i="${i}" data-k="chosenSubcategory">${subOptions}</select><button type="button" class="inline-add-btn review-add-subcategory" data-i="${i}" aria-label="Create sub-category">＋</button></div></label>
-        <label>Asset<select data-i="${i}" data-k="asset"><option value="">Unassigned</option>${state.assets.map(a=>`<option value="${esc(a)}"${a===(q.asset||"")?" selected":""}>${esc(a)}</option>`).join("")}</select></label>
+        <label>Asset<div class="select-manage-row"><select data-i="${i}" data-k="asset"><option value="">Unassigned</option>${state.assets.map(a=>`<option value="${esc(a)}"${a===(q.asset||"")?" selected":""}>${esc(a)}</option>`).join("")}</select><button type="button" class="inline-add-btn review-add-asset" data-i="${i}" aria-label="Create asset">＋</button><button type="button" class="inline-edit-btn review-edit-asset" data-i="${i}" aria-label="Rename selected asset">✎</button></div></label>
         <label>Accept<select data-i="${i}" data-k="accept"><option value="false"${!q.accept?" selected":""}>No</option><option value="true"${q.accept?" selected":""}>Yes</option></select></label>
       </div></article>`;
   }).join(""):"<div class='panel'><p>No merchants need review.</p></div>";
   document.querySelectorAll("#reviewList select[data-i]").forEach(el=>el.onchange=e=>{const q=state.reviewQueue[+e.target.dataset.i],k=e.target.dataset.k;q[k]=k==="accept"?e.target.value==="true":e.target.value;if(k==="chosenCategory"){const available=getSubcategories(q.chosenCategory);q.chosenSubcategory=available[0]||"";saveState();renderReview();return;}saveState();});
-  document.querySelectorAll(".review-add-category").forEach(btn=>btn.onclick=()=>{const i=+btn.dataset.i,q=state.reviewQueue[i],name=norm(prompt("New category name",""));if(!name)return;let def=state.categoryDefinitions.find(x=>upper(x.name)===upper(name));if(!def){def={name,subcategories:[]};state.categoryDefinitions.push(def);}q.chosenCategory=def.name;q.chosenSubcategory=def.subcategories[0]||"";saveState();renderAll();});
-  document.querySelectorAll(".review-add-subcategory").forEach(btn=>btn.onclick=()=>{const i=+btn.dataset.i,q=state.reviewQueue[i],category=q.chosenCategory||q.category||"Uncategorised",def=categoryDefinition(category);if(!def)return alert("Select or create a category first.");const name=norm(prompt(`New sub-category for ${category}`,""));if(!name)return;const existing=def.subcategories.find(x=>upper(x)===upper(name));if(!existing)def.subcategories.push(name);q.chosenSubcategory=existing||name;saveState();renderAll();});
+  document.querySelectorAll(".review-add-category").forEach(btn=>btn.onclick=()=>{const i=+btn.dataset.i,q=state.reviewQueue[i];openNameManager({title:"Create category",description:"Create and select a category for this merchant rule.",label:"Category name",saveText:"Create",onSave:name=>{let def=state.categoryDefinitions.find(x=>upper(x.name)===upper(name));if(!def){def={name,subcategories:[]};state.categoryDefinitions.push(def);state.categoryDefinitions.sort((a,b)=>a.name.localeCompare(b.name));}q.chosenCategory=def.name;q.chosenSubcategory=def.subcategories[0]||"";saveState();renderAll();return true;}});});
+  document.querySelectorAll(".review-add-subcategory").forEach(btn=>btn.onclick=()=>{const i=+btn.dataset.i,q=state.reviewQueue[i],category=q.chosenCategory||q.category||"Uncategorised",def=categoryDefinition(category);if(!def)return alert("Select or create a category first.");openNameManager({title:"Create sub-category",description:`Add a sub-category under ${category}.`,label:"Sub-category name",saveText:"Create",onSave:name=>{const existing=def.subcategories.find(x=>upper(x)===upper(name));if(!existing){def.subcategories.push(name);def.subcategories.sort((a,b)=>a.localeCompare(b));}q.chosenSubcategory=existing||name;saveState();renderAll();return true;}});});
+  document.querySelectorAll(".review-add-asset").forEach(btn=>btn.onclick=()=>{const i=+btn.dataset.i,q=state.reviewQueue[i];openNameManager({title:"Create asset",description:"Create and select an asset for this merchant rule.",label:"Asset name",saveText:"Create",onSave:name=>{const existing=state.assets.find(x=>upper(x)===upper(name));if(!existing){state.assets.push(name);state.assets.sort((a,b)=>a.localeCompare(b));}q.asset=existing||name;saveState();renderAll();return true;}});});
+  document.querySelectorAll(".review-edit-asset").forEach(btn=>btn.onclick=()=>{const select=btn.parentElement.querySelector("select");renameAssetInteractive(select);});
 }
 function renderRules(){rulesBody.innerHTML=state.rules.map((r,i)=>`<tr><td>${esc(r.pattern)}</td><td>${esc(r.category)}</td><td>${esc(r.subcategory||"")}</td><td>${esc(r.asset||"")}</td><td><button class="link-btn danger-link del-rule" data-i="${i}">Delete</button></td></tr>`).join("");document.querySelectorAll(".del-rule").forEach(b=>b.onclick=()=>{state.rules.splice(+b.dataset.i,1);saveState();renderAll()})}
 function renderReports(){
@@ -563,15 +650,10 @@ function renderReports(){
 function renderCategoriesAssets(){const cats=allCategories();categoryList.innerHTML=cats.map(c=>`<option value="${esc(c)}">`).join("");const cv=categoryFilter.value;categoryFilter.innerHTML=`<option value="">All categories</option>`+cats.map(c=>`<option value="${esc(c)}"${c===cv?" selected":""}>${esc(c)}</option>`).join("");assetListData.innerHTML=state.assets.map(a=>`<option value="${esc(a)}">`).join("");const av=assetFilter.value;assetFilter.innerHTML=`<option value="">All assets</option>`+state.assets.map(a=>`<option value="${esc(a)}"${a===av?" selected":""}>${esc(a)}</option>`).join("")}
 function renderAssetSettings(){
   assetList.innerHTML=state.assets.length
-    ? state.assets.map((a,i)=>`<span class="chip">${esc(a)} <button class="link-btn danger-link del-asset" data-i="${i}">×</button></span>`).join("")
+    ? state.assets.map((a,i)=>`<span class="chip asset-chip"><span>${esc(a)}</span><button class="link-btn rename-asset" data-i="${i}" aria-label="Rename ${esc(a)}">✎</button><button class="link-btn danger-link del-asset" data-i="${i}" aria-label="Delete ${esc(a)}">×</button></span>`).join("")
     : `<div class="empty-assets"><strong>No assets yet</strong><span>Add one when you are ready.</span></div>`;
-  document.querySelectorAll(".del-asset").forEach(button=>{
-    button.onclick=()=>{
-      state.assets.splice(+button.dataset.i,1);
-      saveState();
-      renderAll();
-    };
-  });
+  document.querySelectorAll(".rename-asset").forEach(button=>button.onclick=()=>{const oldName=state.assets[+button.dataset.i];const temp=document.createElement("select");fillAssetSelect(temp,oldName);renameAssetInteractive(temp);});
+  document.querySelectorAll(".del-asset").forEach(button=>button.onclick=()=>{const i=+button.dataset.i,name=state.assets[i];if(!confirm(`Delete “${name}”? Existing entries will become Unassigned.`))return;updateAssetReferences(name,"");state.assets.splice(i,1);saveState();renderAll();});
 }
 function updateCategoryReferences(oldName,newName){
   for(const collection of [state.transactions,state.receipts,state.rules])for(const item of collection)if(item.category===oldName)item.category=newName;
@@ -592,9 +674,9 @@ function renderCategoryManager(){
   const list=document.getElementById("categoryManagerList");if(!list)return;
   renderSelectedSubcategories();
   list.innerHTML=state.categoryDefinitions.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(category=>{const originalIndex=state.categoryDefinitions.indexOf(category);return `<article class="category-manager-card" data-category-index="${originalIndex}"><div class="category-manager-head"><div><strong>${esc(category.name)}</strong><span>${category.subcategories.length} sub-categor${category.subcategories.length===1?"y":"ies"}</span></div><div class="category-card-actions"><button type="button" class="secondary rename-category" data-i="${originalIndex}">Rename</button>${category.name!=="Uncategorised"?`<button type="button" class="danger-link delete-category" data-i="${originalIndex}">Delete</button>`:""}</div></div><div class="subcategory-chip-list">${category.subcategories.length?category.subcategories.slice().sort((a,b)=>a.localeCompare(b)).map(sub=>{const subIndex=category.subcategories.indexOf(sub);return `<span class="subcategory-chip"><span>${esc(sub)}</span><button type="button" class="rename-subcategory" data-i="${originalIndex}" data-s="${subIndex}" aria-label="Rename ${esc(sub)}">✎</button><button type="button" class="delete-subcategory" data-i="${originalIndex}" data-s="${subIndex}" aria-label="Delete ${esc(sub)}">×</button></span>`}).join(""):"<span class=\"subcategory-empty\">No sub-categories yet. Use the Create a sub-category form above.</span>"}</div></article>`}).join("");
-  list.querySelectorAll(".rename-category").forEach(btn=>btn.onclick=()=>{const i=+btn.dataset.i,oldName=state.categoryDefinitions[i].name,newName=norm(prompt("Rename category",oldName));if(!newName||newName===oldName)return;if(state.categoryDefinitions.some((x,j)=>j!==i&&upper(x.name)===upper(newName)))return alert("That category already exists.");state.categoryDefinitions[i].name=newName;updateCategoryReferences(oldName,newName);saveState();renderAll();});
+  list.querySelectorAll(".rename-category").forEach(btn=>btn.onclick=()=>{const category=state.categoryDefinitions[+btn.dataset.i],categoryEl=document.createElement("select"),subEl=document.createElement("select");fillCategorySelect(categoryEl,subEl,category.name,category.subcategories[0]||"");renameCategoryInteractive(categoryEl,subEl);});
   list.querySelectorAll(".delete-category").forEach(btn=>btn.onclick=()=>{const i=+btn.dataset.i,name=state.categoryDefinitions[i].name;if(!confirm(`Delete “${name}”? Existing entries will move to Uncategorised.`))return;updateCategoryReferences(name,"Uncategorised");state.categoryDefinitions.splice(i,1);saveState();renderAll();});
-  list.querySelectorAll(".rename-subcategory").forEach(btn=>btn.onclick=()=>{const i=+btn.dataset.i,s=+btn.dataset.s,category=state.categoryDefinitions[i],oldName=category.subcategories[s],newName=norm(prompt("Rename sub-category",oldName));if(!newName||newName===oldName)return;if(category.subcategories.some((x,j)=>j!==s&&upper(x)===upper(newName)))return alert("That sub-category already exists.");category.subcategories[s]=newName;updateSubcategoryReferences(category.name,oldName,newName);saveState();renderAll();});
+  list.querySelectorAll(".rename-subcategory").forEach(btn=>btn.onclick=()=>{const category=state.categoryDefinitions[+btn.dataset.i],oldName=category.subcategories[+btn.dataset.s],categoryEl=document.createElement("select"),subEl=document.createElement("select");fillCategorySelect(categoryEl,subEl,category.name,oldName);renameSubcategoryInteractive(categoryEl,subEl);});
   list.querySelectorAll(".delete-subcategory").forEach(btn=>btn.onclick=()=>{const i=+btn.dataset.i,s=+btn.dataset.s,category=state.categoryDefinitions[i],name=category.subcategories[s];if(!confirm(`Delete “${name}”? Existing entries will use Other.`))return;updateSubcategoryReferences(category.name,name,"Other");category.subcategories.splice(s,1);if(!category.subcategories.includes("Other"))category.subcategories.push("Other");saveState();renderAll();});
 }
 const categoryAddForm=document.getElementById("categoryAddForm");
@@ -1077,7 +1159,7 @@ async function addReceiptFiles(files,reset=false){
 async function openReceiptCapture(fileOrFiles){
   const files=fileOrFiles instanceof FileList||Array.isArray(fileOrFiles)?fileOrFiles:[fileOrFiles];
   await addReceiptFiles(files,true);
-  receiptDate.value="";receiptMerchant.value="";receiptAmount.value="";fillCategorySelect(receiptCategory,receiptSubcategory,"Uncategorised","Review Required");receiptAccount.value="";receiptPaymentMethod.value="Card";receiptNumber.value="";receiptGst.value="";receiptNotes.value="";ocrStatus.textContent=`${pendingReceiptPages.length} section${pendingReceiptPages.length===1?'':'s'} ready`;receiptDialog.showModal();
+  receiptDate.value="";receiptMerchant.value="";receiptAmount.value="";fillCategorySelect(receiptCategory,receiptSubcategory,"Uncategorised","Review Required");fillAssetSelect(receiptAsset,"");receiptAccount.value="";receiptPaymentMethod.value="Card";receiptNumber.value="";receiptGst.value="";receiptNotes.value="";ocrStatus.textContent=`${pendingReceiptPages.length} section${pendingReceiptPages.length===1?'':'s'} ready`;receiptDialog.showModal();
 }
 receiptImageInput.onchange=e=>{if(e.target.files.length)openReceiptCapture(e.target.files);e.target.value=""};heroScanBtn.onclick=()=>receiptImageInput.click();
 receiptMoreInput.onchange=async e=>{if(e.target.files.length){await addReceiptFiles(e.target.files);ocrStatus.textContent=`${pendingReceiptPages.length} sections ready`}e.target.value=''};
@@ -1089,8 +1171,16 @@ txCategory.onchange=()=>fillSubcategorySelect(txCategory,txSubcategory,"");
 ruleCategory.onchange=()=>fillSubcategorySelect(ruleCategory,ruleSubcategory,"");
 txAddCategoryBtn.onclick=()=>createCategoryInteractive(txCategory,txSubcategory);
 txAddSubcategoryBtn.onclick=()=>createSubcategoryInteractive(txCategory,txSubcategory);
+txAddAssetBtn.onclick=()=>createAssetInteractive(txAsset);
+txEditCategoryBtn.onclick=()=>renameCategoryInteractive(txCategory,txSubcategory);
+txEditSubcategoryBtn.onclick=()=>renameSubcategoryInteractive(txCategory,txSubcategory);
+txEditAssetBtn.onclick=()=>renameAssetInteractive(txAsset);
 receiptAddCategoryBtn.onclick=()=>createCategoryInteractive(receiptCategory,receiptSubcategory);
 receiptAddSubcategoryBtn.onclick=()=>createSubcategoryInteractive(receiptCategory,receiptSubcategory);
+receiptAddAssetBtn.onclick=()=>createAssetInteractive(receiptAsset);
+receiptEditCategoryBtn.onclick=()=>renameCategoryInteractive(receiptCategory,receiptSubcategory);
+receiptEditSubcategoryBtn.onclick=()=>renameSubcategoryInteractive(receiptCategory,receiptSubcategory);
+receiptEditAssetBtn.onclick=()=>renameAssetInteractive(receiptAsset);
 
 function normaliseOcrText(text){
   return String(text||"")
@@ -2785,10 +2875,10 @@ runOcrBtn.onclick=async()=>{
   }
 };
 
-saveReceiptBtn.onclick=e=>{e.preventDefault();const receipt={id:crypto.randomUUID?crypto.randomUUID():`r-${Date.now()}`,merchant:norm(receiptMerchant.value),date:receiptDate.value,amount:Number(receiptAmount.value),category:receiptCategory.value||'Uncategorised',subcategory:receiptSubcategory.value,account:norm(receiptAccount.value),paymentMethod:receiptPaymentMethod.value,receiptNumber:norm(receiptNumber.value),gst:Number(receiptGst.value)||0,notes:receiptNotes.value,image:pendingReceiptImage,createdAt:new Date().toISOString(),status:receiptPaymentMethod.value==='Cash'?'cash':'awaiting'};if(!receipt.merchant||!receipt.date||!receipt.amount)return;const fingerprint=receiptFingerprint(receipt);if(state.receipts.some(r=>receiptFingerprint(r)===fingerprint))return alert('This receipt appears to have already been saved.');state.receipts.unshift(receipt);state.transactions.push(applyRule({date:receipt.date,description:receipt.merchant,merchant:receipt.merchant,amount:-Math.abs(receipt.amount),source:'Receipt',receiptId:receipt.id,reconciliationStatus:receipt.status,account:receipt.account,category:receipt.category,subcategory:receipt.subcategory,notes:receipt.notes,taxDeductible:false}));saveState();receiptDialog.close();pendingReceiptImage='';pendingReceiptPages=[];rebuildReviewQueue();renderAll();showNotice('Receipt saved. BalanceIQ will look for the matching bank transaction on future imports.')};
+saveReceiptBtn.onclick=e=>{e.preventDefault();const receipt={id:crypto.randomUUID?crypto.randomUUID():`r-${Date.now()}`,merchant:norm(receiptMerchant.value),date:receiptDate.value,amount:Number(receiptAmount.value),category:receiptCategory.value||'Uncategorised',subcategory:receiptSubcategory.value,asset:receiptAsset.value,account:norm(receiptAccount.value),paymentMethod:receiptPaymentMethod.value,receiptNumber:norm(receiptNumber.value),gst:Number(receiptGst.value)||0,notes:receiptNotes.value,image:pendingReceiptImage,createdAt:new Date().toISOString(),status:receiptPaymentMethod.value==='Cash'?'cash':'awaiting'};if(!receipt.merchant||!receipt.date||!receipt.amount)return;const fingerprint=receiptFingerprint(receipt);if(state.receipts.some(r=>receiptFingerprint(r)===fingerprint))return alert('This receipt appears to have already been saved.');state.receipts.unshift(receipt);state.transactions.push(applyRule({date:receipt.date,description:receipt.merchant,merchant:receipt.merchant,amount:-Math.abs(receipt.amount),source:'Receipt',receiptId:receipt.id,reconciliationStatus:receipt.status,account:receipt.account,category:receipt.category,subcategory:receipt.subcategory,asset:receipt.asset||"",notes:receipt.notes,taxDeductible:false}));saveState();receiptDialog.close();pendingReceiptImage='';pendingReceiptPages=[];rebuildReviewQueue();renderAll();showNotice('Receipt saved. BalanceIQ will look for the matching bank transaction on future imports.')};
 addTransactionBtn.onclick=()=>openTransaction();saveTransactionBtn.onclick=e=>{e.preventDefault();const t={date:txDate.value,amount:+txAmount.value,description:txDescription.value,category:txCategory.value,subcategory:txSubcategory.value,asset:txAsset.value,taxDeductible:txTax.value==="true",tag:txTag.value,notes:txNotes.value,reviewed:true,auto:false,source:"Manual"};const i=txIndex.value;if(i==="")state.transactions.push(t);else state.transactions[+i]={...state.transactions[+i],...t};rebuildReviewQueue();saveState();transactionDialog.close();renderAll()};
 addRuleBtn.onclick=()=>{ruleForm.reset();fillCategorySelect(ruleCategory,ruleSubcategory,"Uncategorised","Review Required");fillAssetSelect(ruleAsset,"");ruleDialog.showModal()};saveRuleBtn.onclick=e=>{e.preventDefault();state.rules.unshift({pattern:upper(rulePattern.value),category:ruleCategory.value,subcategory:ruleSubcategory.value,asset:ruleAsset.value});ruleForm.reset();ruleDialog.close();saveState();renderAll()};
-addAssetBtn.onclick=()=>{const a=norm(newAssetName.value);if(a&&!state.assets.includes(a))state.assets.push(a);newAssetName.value="";saveState();renderAll()};
+addAssetBtn.onclick=()=>{const a=norm(newAssetName.value);if(!a)return;const existing=state.assets.find(x=>upper(x)===upper(a));if(existing)return alert("That asset already exists.");state.assets.push(a);state.assets.sort((x,y)=>x.localeCompare(y));newAssetName.value="";saveState();renderAll();showNotice(`Added asset ${a}.`)};
 exportBtn.onclick=()=>{const a=document.createElement("a"),blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});a.href=URL.createObjectURL(blob);a.download=`balanceiq-backup-${localDateValue()}.json`;a.click();URL.revokeObjectURL(a.href)};
 exportCsvBtn.onclick=()=>{const cols=["date","description","amount","category","subcategory","asset","taxDeductible","tag","notes"],lines=[cols.join(",")];for(const t of state.transactions)lines.push(cols.map(c=>`"${String(t[c]??"").replaceAll('"','""')}"`).join(","));const a=document.createElement("a"),blob=new Blob([lines.join("\n")],{type:"text/csv"});a.href=URL.createObjectURL(blob);a.download="finance-transactions.csv";a.click();URL.revokeObjectURL(a.href)};
 backupInput.onchange=async e=>{const f=e.target.files[0];if(!f)return;try{state=JSON.parse(await f.text());state.categoryDefinitions=normaliseCategoryDefinitions(state.categoryDefinitions);state.transactions||=[];state.receipts||=[];state.rules||=[];state.reviewQueue||=[];state.assets||=[];saveState();renderAll();showNotice("Backup restored.")}catch{alert("Could not read backup.")}e.target.value=""};

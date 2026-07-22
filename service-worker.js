@@ -1,4 +1,4 @@
-const CACHE="balanceiq-v9-6-20260722-006";
+const CACHE="balanceiq-v9-6-1-20260723-001";
 const ASSETS=["./","index.html","styles.css","app.js","manifest.webmanifest","cloud-sync.js"];
 self.addEventListener("install",e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS))));
 self.addEventListener("activate",e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))));

@@ -109,3 +109,11 @@ body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-ser
 
 /* BalanceIQ 9.6 contextual category creation */
 .category-settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}.category-settings-block{border:1px solid var(--border);border-radius:14px;padding:1rem;background:var(--light)}.category-settings-block h3{margin:.05rem 0 .75rem}.subcategory-add-row{grid-template-columns:minmax(150px,.7fr) minmax(0,1fr) auto}.selected-subcategory-list{display:grid;gap:.55rem;margin-top:.75rem}.select-create-row{display:grid;grid-template-columns:minmax(0,1fr) 44px;gap:.45rem;align-items:center}.inline-add-btn{width:44px;height:44px;padding:0;display:grid;place-items:center;border-radius:10px;font-size:1.35rem;line-height:1}.review-grid .select-create-row select{min-width:0}@media(max-width:760px){.category-settings-grid{grid-template-columns:1fr}.subcategory-add-row{grid-template-columns:1fr}.subcategory-add-row button{width:100%}}
+
+/* v9.6.1 in-context data management */
+.select-manage-row{display:grid;grid-template-columns:minmax(0,1fr) 44px 44px;gap:.45rem;align-items:center}
+.inline-edit-btn{width:44px;height:44px;padding:0;display:grid;place-items:center;border-radius:10px;font-size:1.05rem;line-height:1;background:var(--surface);color:var(--blue);border:1px solid var(--border)}
+.inline-edit-btn:hover{background:var(--light)}
+.name-manager-dialog{max-width:480px}.name-manager-dialog form{gap:.85rem}.name-manager-dialog h2{margin:.1rem 0}.asset-chip{padding-right:.35rem}.asset-chip .rename-asset,.asset-chip .del-asset{padding:.12rem .25rem}
+.review-grid .select-manage-row select{min-width:0}
+@media(max-width:520px){.select-manage-row{grid-template-columns:minmax(0,1fr) 42px 42px}.inline-add-btn,.inline-edit-btn{width:42px;height:42px}}

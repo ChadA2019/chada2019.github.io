@@ -12,7 +12,7 @@
 <header class="app-header">
   <div class="brand-lockup">
     <div class="brand-mark" aria-hidden="true"><span></span></div>
-    <div><div class="brand-title-row"><h1>Balance<span>IQ</span></h1><small id="appVersionBadge" class="app-version">v9.3</small></div><p>Smarter money clarity, without losing control of your data.</p></div>
+    <div><div class="brand-title-row"><h1>Balance<span>IQ</span></h1><small id="appVersionBadge" class="app-version">v9.6.1</small></div><p>Smarter money clarity, without losing control of your data.</p></div>
   </div>
   <div class="header-actions">
     <button id="themeBtn" class="secondary" title="Toggle dark mode">🌙</button>
@@ -305,9 +305,9 @@
     <label>Date<input id="txDate" type="date" required></label>
     <label>Amount<input id="txAmount" type="number" step="0.01" required></label>
     <label class="wide">Description<input id="txDescription" required></label>
-    <label>Category<div class="select-create-row"><select id="txCategory" required></select><button id="txAddCategoryBtn" type="button" class="inline-add-btn" aria-label="Create category">＋</button></div></label>
-    <label>Subcategory<div class="select-create-row"><select id="txSubcategory"></select><button id="txAddSubcategoryBtn" type="button" class="inline-add-btn" aria-label="Create sub-category">＋</button></div></label>
-    <label>Asset<select id="txAsset"></select></label>
+    <label>Category<div class="select-manage-row"><select id="txCategory" required></select><button id="txAddCategoryBtn" type="button" class="inline-add-btn" aria-label="Create category" title="Create category">＋</button><button id="txEditCategoryBtn" type="button" class="inline-edit-btn" aria-label="Rename selected category" title="Rename selected category">✎</button></div></label>
+    <label>Subcategory<div class="select-manage-row"><select id="txSubcategory"></select><button id="txAddSubcategoryBtn" type="button" class="inline-add-btn" aria-label="Create sub-category" title="Create sub-category">＋</button><button id="txEditSubcategoryBtn" type="button" class="inline-edit-btn" aria-label="Rename selected sub-category" title="Rename selected sub-category">✎</button></div></label>
+    <label>Asset<div class="select-manage-row"><select id="txAsset"></select><button id="txAddAssetBtn" type="button" class="inline-add-btn" aria-label="Create asset" title="Create asset">＋</button><button id="txEditAssetBtn" type="button" class="inline-edit-btn" aria-label="Rename selected asset" title="Rename selected asset">✎</button></div></label>
     <label>Tax deductible<select id="txTax"><option value="false">No</option><option value="true">Yes</option></select></label>
     <label>Tag<input id="txTag" placeholder="e.g. Work, Holiday"></label>
     <label class="wide">Notes<textarea id="txNotes" rows="3"></textarea></label>
@@ -350,8 +350,9 @@
       <label class="wide">Merchant<input id="receiptMerchant" required placeholder="e.g. Bunnings Belmont"></label>
       <label>Receipt date<input id="receiptDate" type="date" required></label>
       <label>Total paid<input id="receiptAmount" type="number" step="0.01" min="0" required></label>
-      <label>Category<div class="select-create-row"><select id="receiptCategory"></select><button id="receiptAddCategoryBtn" type="button" class="inline-add-btn" aria-label="Create category">＋</button></div></label>
-      <label>Subcategory<div class="select-create-row"><select id="receiptSubcategory"></select><button id="receiptAddSubcategoryBtn" type="button" class="inline-add-btn" aria-label="Create sub-category">＋</button></div></label>
+      <label>Category<div class="select-manage-row"><select id="receiptCategory"></select><button id="receiptAddCategoryBtn" type="button" class="inline-add-btn" aria-label="Create category" title="Create category">＋</button><button id="receiptEditCategoryBtn" type="button" class="inline-edit-btn" aria-label="Rename selected category" title="Rename selected category">✎</button></div></label>
+      <label>Subcategory<div class="select-manage-row"><select id="receiptSubcategory"></select><button id="receiptAddSubcategoryBtn" type="button" class="inline-add-btn" aria-label="Create sub-category" title="Create sub-category">＋</button><button id="receiptEditSubcategoryBtn" type="button" class="inline-edit-btn" aria-label="Rename selected sub-category" title="Rename selected sub-category">✎</button></div></label>
+      <label>Asset<div class="select-manage-row"><select id="receiptAsset"></select><button id="receiptAddAssetBtn" type="button" class="inline-add-btn" aria-label="Create asset" title="Create asset">＋</button><button id="receiptEditAssetBtn" type="button" class="inline-edit-btn" aria-label="Rename selected asset" title="Rename selected asset">✎</button></div></label>
       <label>Paid from<input id="receiptAccount" placeholder="e.g. Suncorp Everyday"></label>
       <label>Payment method<select id="receiptPaymentMethod"><option>Card</option><option>Cash</option><option>Bank transfer</option><option>Other</option></select></label>
       <label>Receipt number<input id="receiptNumber"></label>
@@ -364,6 +365,16 @@
 </form>
 </dialog>
 
+
+<dialog id="nameManagerDialog" class="name-manager-dialog">
+<form method="dialog" id="nameManagerForm">
+  <h2 id="nameManagerTitle">Create item</h2>
+  <p id="nameManagerDescription" class="small-note"></p>
+  <label id="nameManagerLabel">Name<input id="nameManagerInput" maxlength="60" autocomplete="off" required></label>
+  <div id="nameManagerError" class="notice error hidden" role="alert"></div>
+  <div class="dialog-actions"><button id="nameManagerCancelBtn" value="cancel" class="secondary">Cancel</button><button id="nameManagerSaveBtn" value="default">Save</button></div>
+</form>
+</dialog>
 
 <dialog id="onboardingDialog" class="onboarding-dialog">
 <form method="dialog" id="onboardingForm">
