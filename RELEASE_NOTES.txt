@@ -1,15 +1,9 @@
-BalanceIQ v9.5
-Build 2026.07.22.004
+BalanceIQ v9.5.1 — Visible Sub-category Controls
+Build 2026.07.22.005
 
-NEW
-- Added a Categories & Sub-categories manager in Settings.
-- Categories and sub-categories can be added, renamed and deleted.
-- Existing transactions, receipts, review items and merchant rules follow renamed categories.
-- Deleted categories safely move existing entries to Uncategorised.
-- Added financial-year category and sub-category breakdown reporting.
-
-INCLUDED
-- Merchant learning stores category, sub-category and optional asset.
-- Read Receipt remains beside the scanned image for mobile convenience.
-- Fast local receipt scan and manual confirmation workflow.
-- No AI, external processing server or per-receipt cost.
+Changes
+- Adds a prominent “+ Add sub-category” button beneath every category.
+- Shows a clearer empty-state message when a category has no sub-categories.
+- Uses a simple name prompt so sub-categories can be added without hunting for a hidden field.
+- Keeps rename, delete, merchant learning, reporting and existing data migration behaviour.
+- Updates the service-worker cache and all visible version information.

@@ -1,8 +1,8 @@
-BalanceIQ v9.5 — Categories & Sub-categories
+BalanceIQ v9.5.1.1 — Categories & Sub-categories
 
 A private, browser-based finance app with fast assisted receipt entry.
 
-Version 9.5 adds:
+Version 9.5.1 adds:
 - User-created categories and unlimited sub-categories
 - Rename and delete controls with safe migration of existing entries
 - Merchant rules that remember category, sub-category and asset
@@ -12,3 +12,5 @@ Version 9.5 adds:
 
 Deployment:
 Replace all files in the GitHub Pages repository with this release.
+
+Version 9.5.1 makes the Add sub-category control clearly visible beneath every category.

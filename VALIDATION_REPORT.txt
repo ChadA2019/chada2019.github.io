@@ -1,15 +1,10 @@
-BalanceIQ v9.5 Validation Report
+BalanceIQ v9.5.1 Validation Report
+Build: 2026.07.22.005
 
-Checked:
-- JavaScript syntax
-- Required UI element IDs
-- Category definition migration for existing v9.x local data
-- Add, rename and delete category event handlers
-- Add, rename and delete sub-category event handlers
-- Merchant rule category/sub-category fields retained
-- Category/sub-category report container and renderer
-- Version, build, manifest and service-worker cache updates
-- ZIP archive integrity
-
-Important:
-Browser storage migrations occur locally when v9.5 first loads. Existing transactions and receipts are retained.
+PASS - JavaScript syntax validated with Node.js.
+PASS - Every category renders a visible Add sub-category button.
+PASS - Empty categories display clear guidance.
+PASS - Sub-category duplicate protection remains active.
+PASS - Rename and delete handlers remain connected.
+PASS - App version, manifest and service-worker cache updated.
+PASS - Release ZIP integrity verified.
