@@ -149,7 +149,7 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_INFO=Object.freeze({version:"9.3",build:"2026.07.22.002",release:"Version 9.3 centralises version information, keeps Quick Scan fast, and removes stale release labels."});
+const APP_INFO=Object.freeze({version:"9.4",build:"2026.07.22.003",release:"Version 9.4 places the receipt-reading action beside the scanned image for faster, easier access."});
 const APP_VERSION=APP_INFO.version;
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 function applyAppInfo(){

@@ -239,7 +239,7 @@
     </div>
     <details class="release-notes">
       <summary>What’s new</summary>
-      <p id="aboutReleaseSummary">Version 9.3 centralises version information, keeps Quick Scan fast, and removes stale release labels.</p>
+      <p id="aboutReleaseSummary">Version 9.4 places the receipt-reading action beside the scanned image for faster, easier access.</p>
     </details>
   </section>
 
@@ -301,7 +301,10 @@
   <div class="receipt-capture-grid">
     <div class="scanner-pane">
       <div class="receipt-preview-wrap"><img id="receiptPreview" alt="Scanned receipt preview"><div id="receiptPreviewEmpty">Scan the receipt in one or more sections</div></div>
-      <div id="scanPageStrip" class="scan-page-strip"></div>
+      <div class="scan-read-row">
+        <div id="scanPageStrip" class="scan-page-strip"></div>
+        <button id="runOcrBtn" type="button" class="scan-read-btn">✓ Read scanned receipt</button>
+      </div>
       <div class="scanner-tools">
         <label class="file-btn secondary">＋ Add another section<input id="receiptMoreInput" type="file" accept="image/*" capture="environment" multiple></label>
         <button id="rotateScanBtn" type="button" class="secondary">↻ Rotate last</button>
@@ -324,7 +327,7 @@
     </div>
   </div>
 
-  <div class="dialog-actions"><button value="cancel" class="secondary">Cancel</button><button id="runOcrBtn" type="button" class="secondary">Read scanned receipt</button><button id="saveReceiptBtn" value="default">Save expense</button></div>
+  <div class="dialog-actions"><button value="cancel" class="secondary">Cancel</button><button id="saveReceiptBtn" value="default">Save expense</button></div>
 </form>
 </dialog>
 

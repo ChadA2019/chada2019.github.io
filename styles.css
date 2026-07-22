@@ -91,3 +91,9 @@ body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-ser
 .scan-field-check input,.scan-field-check select{border-color:#d89b00;background:#fffdf2;box-shadow:0 0 0 2px rgba(216,155,0,.12)}
 .scan-field-check:after{content:"Please check";font-size:.72rem;color:#9a6800;font-weight:700}
 #runOcrBtn:disabled{opacity:.65;cursor:wait}
+/* BalanceIQ 9.4 scan action placement */
+.scan-read-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.75rem;align-items:center}
+.scan-read-row .scan-page-strip{min-width:0}
+.scan-read-btn{white-space:nowrap;background:linear-gradient(135deg,#0f766e,#2563eb);box-shadow:0 8px 18px rgba(15,47,87,.2);font-weight:800}
+.scan-read-btn:disabled{opacity:.62;box-shadow:none}
+@media(max-width:600px){.scan-read-row{grid-template-columns:72px minmax(0,1fr)}.scan-read-row .scan-page-strip{max-width:72px}.scan-read-btn{width:100%;padding:.78rem .75rem;font-size:.92rem}}

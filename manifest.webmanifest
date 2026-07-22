@@ -1,7 +1,7 @@
 {
   "name": "BalanceIQ",
   "short_name": "BalanceIQ",
-  "description": "BalanceIQ 9.3 — fast local assisted receipt entry with unified version information.",
+  "description": "BalanceIQ 9.4 — fast local assisted receipt entry with the scan action beside the receipt preview.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#071d3b",

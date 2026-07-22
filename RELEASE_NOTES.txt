@@ -1,10 +1,9 @@
-BalanceIQ v9.3 — Version Synchronisation & Cleanup
+BalanceIQ v9.4 — Faster Scan Action Access
 
-- Fixes the version beside the BalanceIQ logo so it now shows v9.3.
-- Fixes the About page so Version and Build show 9.3 and 2026.07.22.002.
-- Introduces one APP_INFO source for all visible in-app version and build labels.
-- Updates the browser title, manifest description and service-worker cache.
-- Replaces the stale About release description with the current release summary.
-- Keeps the fast single-pass local Tesseract Quick Scan and assisted manual review workflow.
-- Keeps the receipt scan debug and diagnostics interface removed.
+- Moves the “Read scanned receipt” button from the bottom of the receipt form to beside the scanned receipt preview.
+- Keeps the action visible near the image and thumbnail strip, reducing unnecessary scrolling on mobile.
+- Uses a prominent primary-style button while preserving the same fast local Tesseract Quick Scan workflow.
+- Keeps all receipt details editable and retains the “Please check the details before saving” review flow.
+- Updates the central app version to 9.4 and build to 2026.07.22.003.
+- Updates the About page, logo badge, manifest description and service-worker cache from the shared APP_INFO values.
 - No AI API, external processing server or per-receipt cost.

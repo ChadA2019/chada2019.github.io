@@ -1,14 +1,20 @@
-BalanceIQ v9.3 Validation Report
+BalanceIQ v9.4 Validation Report
 
-- Header version badge: reads APP_INFO.version
-- About version: reads APP_INFO.version
-- About build: reads APP_INFO.build
-- Browser title: generated from APP_INFO.version
-- Stale visible v9.0 and 8.0 strings: removed from active HTML/JavaScript
-- Receipt scan debug HTML: absent
-- OCR diagnostic handlers: absent
-- Service-worker cache: balanceiq-v9-3-20260722-002
-- Quick Scan workflow: retained
-- External AI/server requirement: none
-- JavaScript syntax: checked
-- ZIP integrity: checked
+Release focus
+- Reposition the receipt-reading action beside the scanned image and thumbnail strip.
+- Preserve the Version 9.3 fast assisted receipt-entry behaviour.
+
+Static validation performed
+- Confirmed exactly one element uses id="runOcrBtn".
+- Confirmed runOcrBtn remains type="button" and is still referenced by app.js.
+- Confirmed the button is located inside the scanner pane, immediately beside the page-thumbnail strip.
+- Confirmed Cancel and Save expense remain in the bottom dialog action row.
+- Confirmed central APP_INFO reports version 9.4 and build 2026.07.22.003.
+- Confirmed service-worker cache name is unique to Version 9.4.
+- Confirmed manifest JSON parses successfully.
+- Confirmed JavaScript syntax check passes.
+- Confirmed release ZIP integrity passes.
+
+Notes
+- The OCR engine and parsing logic are unchanged from Version 9.3.
+- Browser/device visual testing is still recommended after deployment, especially on narrow mobile screens.

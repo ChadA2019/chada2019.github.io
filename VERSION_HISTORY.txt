@@ -1,3 +1,8 @@
+BalanceIQ v9.4 — 22 July 2026
+- Moved “Read scanned receipt” beside the receipt preview.
+- Improved mobile scan workflow by eliminating the scroll to the bottom action bar.
+- Updated version/build to 9.4 / 2026.07.22.003.
+
 9.3  2026-07-22  Unified visible version/build source, corrected header and About labels, refreshed cache and release summary.
 BALANCEIQ VERSION HISTORY
 

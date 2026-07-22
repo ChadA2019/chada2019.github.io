@@ -1,3 +1,7 @@
+BalanceIQ v9.4 — Faster Scan Action Access
+
+The receipt-reading button now appears beside the scanned receipt preview, so mobile users can start the quick local scan without scrolling to the bottom of the form.
+
 BalanceIQ v9.3 — Version Synchronisation & Cleanup
 
 Deploy every file in this folder together.
