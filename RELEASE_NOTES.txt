@@ -1,9 +1,10 @@
-BalanceIQ v9.0 — Dual Local OCR Release
+BalanceIQ v9.1 — Fast Assisted Receipt Entry
 
-- Added official PaddleOCR.js PP-OCRv5 as the primary full-receipt reader.
-- Retained Tesseract.js multi-pass OCR for focused date, totals, GST and amount verification.
-- PaddleOCR word coordinates are reconstructed into visual rows before parsing.
-- Added dynamic PaddleOCR summary-row detection around Total, GST, EFT, Card, Change and related labels.
-- PaddleOCR and Tesseract evidence are merged into the existing receipt parser.
-- Graceful fallback: if PaddleOCR cannot load, Tesseract continues to work.
-- All inference occurs on the user's device. There is no paid API and no receipt-processing backend.
+- Replaces the slow dual-engine receipt workflow with one fast local Tesseract pass per receipt section.
+- PaddleOCR is no longer run during Quick Scan, greatly reducing processing time and memory use.
+- Quick Scan pre-fills plausible receipt details immediately.
+- A prominent review message reminds users to verify and correct details before saving.
+- High-confidence fields receive a subtle green indication. Other or missing fields are highlighted amber with “Please check”.
+- Scan failure no longer blocks receipt entry; users can continue manually.
+- OCR diagnostics remain available for troubleshooting.
+- No AI API, external processing server, or per-receipt cost.

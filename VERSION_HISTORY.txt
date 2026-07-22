@@ -28,3 +28,9 @@ Semantic field labels now outrank crop repetition; improved Bunnings footer rece
 Bunnings degraded payment-label total consensus and focused-pass invoice voting.
 
 8.0  2026-07-22  Tolerant tender matching, damaged-cents repair, shifted GST recovery, invoice completeness scoring, lower-summary OCR.
+
+
+9.1 — Fast Assisted Receipt Entry
+- Single-pass local Quick Scan.
+- Review-first workflow with confidence highlighting.
+- Manual entry remains available after uncertain or failed scans.

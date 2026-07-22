@@ -101,3 +101,14 @@ body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-ser
 .ocr-diagnostic .diagnostic-summary{max-width:100%}
 
 .ocr-diagnostic .diagnostic-summary{word-break:break-word}
+
+
+/* BalanceIQ 9.1 fast assisted receipt entry */
+.receipt-review-banner{display:flex;flex-direction:column;gap:.2rem;padding:.85rem 1rem;border-radius:12px;background:#fff7d6;border:1px solid #f2cf63;border-left:5px solid #d89b00;color:#5f4600}
+.receipt-review-banner strong{font-size:.98rem}.receipt-review-banner span{font-size:.88rem}
+.receipt-review-banner.hidden{display:none}
+.scan-field-good input,.scan-field-good select{border-color:#4da66b;box-shadow:0 0 0 2px rgba(77,166,107,.12)}
+.scan-field-good:after{content:"Likely correct";font-size:.72rem;color:#287545;font-weight:700}
+.scan-field-check input,.scan-field-check select{border-color:#d89b00;background:#fffdf2;box-shadow:0 0 0 2px rgba(216,155,0,.12)}
+.scan-field-check:after{content:"Please check";font-size:.72rem;color:#9a6800;font-weight:700}
+#runOcrBtn:disabled{opacity:.65;cursor:wait}

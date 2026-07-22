@@ -1,8 +1,11 @@
-BalanceIQ v9.0 — Dual Local OCR Release
+BalanceIQ v9.1 — Fast Assisted Receipt Entry
 
-This release uses PaddleOCR PP-OCRv5 and Tesseract.js together in the browser.
-No receipt image is sent to an OCR or AI processing server.
+Deploy every file in this folder together.
 
-Important: the OCR libraries and model files are downloaded from public CDNs on first use and then cached by the browser. The app remains free to operate, but an internet connection is needed for the first model load unless you later self-host those assets.
+Receipt workflow:
+1. Photograph or select the receipt.
+2. Select Quick Scan.
+3. BalanceIQ performs one fast local OCR pass and fills likely values.
+4. Check amber fields, correct anything inaccurate, then save.
 
-Deployment: replace every file in the existing GitHub Pages site with the files in this package.
+Quick Scan is intentionally assistive rather than exhaustive. It prioritises speed and easy manual correction over long multi-pass OCR processing. All OCR runs locally in the browser.

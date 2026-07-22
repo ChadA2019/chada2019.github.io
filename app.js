@@ -149,7 +149,7 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_VERSION="9.0";
+const APP_VERSION="9.1";
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 const defaultCategories=["Alcohol","Bills & Direct Debits","Cafes","Cash","Child Support","Dining Out","Education","Entertainment","Fuel","Groceries","Health & Fitness","Home & Maintenance","Income","Insurance","Loans & Finance","Loans & Mortgages","Medical","Personal Care","Pets","Refunds","Shopping","Subscriptions","Take Away","Transfers","Transport","Travel","Uncategorised","Vehicles"];
 const subcategoriesByCategory={
@@ -2734,141 +2734,111 @@ function shouldAutofillField(confidence,minimum=70){
 
 runOcrBtn.onclick=async()=>{
   if(!pendingReceiptPages.length)return alert("Scan or import at least one receipt section first.");
-  if(!window.Tesseract)return alert("Receipt reader is unavailable while offline. You can still enter the details manually.");
+  if(!window.Tesseract)return alert("Quick receipt scan is unavailable while offline. Enter the details manually instead.");
+  const reviewBanner=document.getElementById("receiptReviewBanner");
+  const fieldMap={
+    merchant:receiptMerchant,
+    date:receiptDate,
+    total:receiptAmount,
+    gst:receiptGst,
+    receiptNumber:receiptNumber,
+    paymentMethod:receiptPaymentMethod
+  };
+  const setReviewState=(field,confidence,hasValue)=>{
+    const input=fieldMap[field];
+    if(!input)return;
+    const label=input.closest("label");
+    if(!label)return;
+    label.classList.remove("scan-field-good","scan-field-check");
+    if(hasValue&&Number(confidence||0)>=85)label.classList.add("scan-field-good");
+    else label.classList.add("scan-field-check");
+  };
   try{
     receiptPreview.parentElement.classList.add("scanning");
+    runOcrBtn.disabled=true;
+    ocrStatus.textContent="Quick scan…";
+    reviewBanner?.classList.add("hidden");
+    Object.values(fieldMap).forEach(input=>input?.closest("label")?.classList.remove("scan-field-good","scan-field-check"));
+
     let combined="";
     const sectionReports=[];
     for(let i=0;i<pendingReceiptPages.length;i++){
       const section=i+1;
+      ocrStatus.textContent=`Quick scan ${section}/${pendingReceiptPages.length}`;
       const processed=await processScanPage(pendingReceiptPages[i].original,pendingReceiptPages[i].rotation||0);
       const geometry=await detectReceiptGeometry(processed);
-      const full=geometry.source;
-      const header=await cropReceiptRegion(full,0,.42,{threshold:true,scale:1.9});
-      const totals=await cropReceiptRegion(full,.40,.80,{threshold:true,scale:1.9});
-      const footer=await cropReceiptRegion(full,.72,.97,{threshold:true,scale:2.2});
-      const gst=await cropReceiptRegion(full,.60,.79,{threshold:true,scale:2.5});
-      // The totals block position varies with receipt length. Use a wider vertical band,
-      // plus a focused right-column pass so the final cents are not clipped or lost.
-      const totalsRight=await cropReceiptBox(full,.38,.43,.99,.74,{threshold:false,scale:3.2});
-      const totalsRightThreshold=await cropReceiptBox(full,.38,.43,.99,.74,{threshold:true,scale:3.2});
-      const amountColumn=await cropReceiptBox(full,.54,.43,.99,.69,{threshold:false,scale:4.0});
-      const amountColumnThreshold=await cropReceiptBox(full,.54,.43,.99,.69,{threshold:true,scale:4.0});
-      const gstRight=await cropReceiptBox(full,.43,.50,.99,.67,{threshold:true,scale:3.8});
-      // v8.0: dedicated lower-summary crops keep Total, GST, EFT and CARD rows
-      // together. This is more reliable than a narrow amount column when the
-      // receipt is long, skewed or photographed at an angle.
-      const totalsLower=await cropReceiptBox(full,.08,.60,.99,.86,{threshold:false,scale:3.5});
-      const totalsLowerThreshold=await cropReceiptBox(full,.08,.60,.99,.86,{threshold:true,scale:3.5});
-      const tenderLower=await cropReceiptBox(full,.38,.64,.99,.83,{threshold:true,scale:4.0});
-      const dateVariants=await makeDateStripVariants(full);
-
-      // v9.0 dual-engine OCR: PaddleOCR reads the corrected full receipt with
-      // word coordinates. Tesseract remains the detailed multi-crop verifier.
-      try{
-        ocrStatus.textContent=`Section ${section}: loading PaddleOCR`;
-        const paddleFull=await recognisePaddlePass(full,"paddle-full",section);
-        paddleFull.geometry={detected:geometry.detected,confidence:geometry.confidence,bounds:geometry.bounds};
-        sectionReports.push(paddleFull);
-        const paddleSummary={...paddleFull,pass:"paddle-summary",text:paddleFull.summaryText||""};
-        paddleSummary.characters=paddleSummary.text.length;
-        sectionReports.push(paddleSummary);
-      }catch(error){
-        console.warn("PaddleOCR unavailable; continuing with Tesseract",error);
-        sectionReports.push({section,pass:"paddle-status",engine:"PaddleOCR",confidence:0,characters:0,text:`PaddleOCR unavailable: ${String(error?.message||error)}`,geometry:{detected:geometry.detected,confidence:geometry.confidence,bounds:geometry.bounds}});
-      }
-
-      for(const [label,image] of [["full",full],["header",header],["totals",totals],["footer",footer],["gst",gst],["totals-right",totalsRight],["totals-right-threshold",totalsRightThreshold],["gst-right",gstRight],["totals-lower",totalsLower],["totals-lower-threshold",totalsLowerThreshold],["tender-lower",tenderLower]]){
-        const report=await recogniseScanPass(image,label,section,m=>{
-          if(m.status==="recognizing text")ocrStatus.textContent=`Section ${section} ${label}: ${Math.round(m.progress*100)}%`;
-        });
-        report.geometry={
-          detected:geometry.detected,
-          confidence:geometry.confidence,
-          bounds:geometry.bounds
-        };
-        sectionReports.push(report);
-      }
-
-      for(const [label,image] of [["amount-column",amountColumn],["amount-column-threshold",amountColumnThreshold]]){
-        const report=await recogniseMoneyPass(image,label,section,m=>{
-          if(m.status==="recognizing text")ocrStatus.textContent=`Section ${section} ${label}: ${Math.round(m.progress*100)}%`;
-        });
-        report.geometry={detected:geometry.detected,confidence:geometry.confidence,bounds:geometry.bounds};
-        sectionReports.push(report);
-      }
-
-      for(const variant of dateVariants){
-        const report=await recogniseDatePass(variant.image,variant.label,section,m=>{
-          if(m.status==="recognizing text")ocrStatus.textContent=`Section ${section} ${variant.label}: ${Math.round(m.progress*100)}%`;
-        });
-        report.geometry={
-          detected:geometry.detected,
-          confidence:geometry.confidence,
-          bounds:geometry.bounds
-        };
-        sectionReports.push(report);
-      }
-      for(const label of ["paddle-full","paddle-summary","header","totals","full"]){
-        const text=sectionReports.find(r=>r.section===section&&r.pass===label)?.text||"";
-        combined+=`\n--- ${label.toUpperCase()} PASS ---\n${text}`;
-      }
+      const report=await recogniseScanPass(geometry.source,"quick-full",section,m=>{
+        if(m.status==="recognizing text")ocrStatus.textContent=`Quick scan ${Math.round(m.progress*100)}%`;
+      });
+      report.geometry={detected:geometry.detected,confidence:geometry.confidence,bounds:geometry.bounds};
+      report.engine="Tesseract quick scan";
+      sectionReports.push(report);
+      combined+=`${combined?"\n\n":""}--- SECTION ${section} QUICK PASS ---\n${report.text}`;
     }
-    const channels={
-      header:sectionReports.filter(r=>r.pass==="header"||r.pass==="paddle-full").map(r=>r.text).join("\n"),
-      totals:sectionReports.filter(r=>r.pass==="totals"||r.pass.startsWith("totals-lower")||r.pass==="paddle-summary").map(r=>r.text).join("\n"),
-      full:sectionReports.filter(r=>r.pass==="full"||r.pass==="paddle-full").map(r=>r.text).join("\n"),
-      date:sectionReports.filter(r=>r.pass.startsWith("date-")||r.pass==="paddle-full").map(r=>r.text).join("\n"),
-      footer:sectionReports.filter(r=>r.pass==="footer"||r.pass==="paddle-full").map(r=>r.text).join("\n"),
-      gst:sectionReports.filter(r=>r.pass==="gst"||r.pass==="gst-right"||r.pass==="tender-lower"||r.pass==="paddle-summary").map(r=>r.text).join("\n"),
-      totalsRight:sectionReports.filter(r=>r.pass.startsWith("totals-right")||r.pass.startsWith("amount-column")||r.pass.startsWith("totals-lower")||r.pass==="tender-lower"||r.pass==="paddle-summary").map(r=>r.text).join("\n")
-    };
+
+    const quickText=sectionReports.map(r=>r.text).join("\n");
+    const channels={header:quickText,totals:quickText,full:quickText,date:quickText,footer:quickText,gst:quickText,totalsRight:quickText};
     const parsed=parseReceiptChannels(channels);
-    const scoredReports=sectionReports.filter(r=>r.pass!=="paddle-status");
-    const ocrAverage=Math.round(scoredReports.reduce((s,r)=>s+r.confidence,0)/Math.max(1,scoredReports.length));
+    const ocrAverage=Math.round(sectionReports.reduce((sum,r)=>sum+Number(r.confidence||0),0)/Math.max(1,sectionReports.length));
     parsed.ocrConfidence=ocrAverage;
     if(parsed.confidence){
       parsed.confidence.parserOverall=parsed.confidence.overall;
-      parsed.confidence.overall=Math.round(ocrAverage*.55+parsed.confidence.overall*.45);
+      parsed.confidence.overall=Math.round(ocrAverage*.45+parsed.confidence.overall*.55);
     }
     const fc=parsed.confidence?.fields||{};
-    receiptDate.value="";
-    receiptNumber.value="";
-    if(parsed.merchant&&shouldAutofillField(fc.merchant,70))receiptMerchant.value=parsed.merchant;
-    if(parsed.date&&shouldAutofillField(fc.date,70))receiptDate.value=parsed.date;
-    if(parsed.total&&shouldAutofillField(fc.total,75))receiptAmount.value=parsed.total.toFixed(2);
-    if(parsed.receiptNumber&&shouldAutofillField(fc.receiptNumber,75))receiptNumber.value=parsed.receiptNumber;
-    if(parsed.gst&&shouldAutofillField(fc.gst,70))receiptGst.value=parsed.gst.toFixed(2);
-    if(parsed.paymentMethod&&shouldAutofillField(fc.paymentMethod,70))receiptPaymentMethod.value=parsed.paymentMethod;
-    if(parsed.category&&shouldAutofillField(fc.merchant,70))fillCategorySelect(receiptCategory,receiptSubcategory,parsed.category,parsed.subcategory||"");
+
+    // A quick scan is an assistant, not an authority. Prefill any plausible result,
+    // then clearly mark every field that needs a human glance.
+    if(parsed.merchant)receiptMerchant.value=parsed.merchant;
+    if(parsed.date)receiptDate.value=parsed.date;
+    if(parsed.total>0)receiptAmount.value=parsed.total.toFixed(2);
+    if(parsed.receiptNumber)receiptNumber.value=parsed.receiptNumber;
+    if(parsed.gst>0)receiptGst.value=parsed.gst.toFixed(2);
+    if(parsed.paymentMethod)receiptPaymentMethod.value=parsed.paymentMethod;
+    if(parsed.category)fillCategorySelect(receiptCategory,receiptSubcategory,parsed.category,parsed.subcategory||"");
+
+    setReviewState("merchant",fc.merchant,!!receiptMerchant.value);
+    setReviewState("date",fc.date,!!receiptDate.value);
+    setReviewState("total",fc.total,Number(receiptAmount.value)>0);
+    setReviewState("gst",fc.gst,Number(receiptGst.value)>0);
+    setReviewState("receiptNumber",fc.receiptNumber,!!receiptNumber.value);
+    setReviewState("paymentMethod",fc.paymentMethod,!!receiptPaymentMethod.value);
+
     renderOcrDiagnostic({
       version:APP_VERSION,
+      mode:"quick-assisted-entry",
       createdAt:new Date().toISOString(),
       sections:sectionReports.map(({image,...rest})=>rest),
       rawText:combined.trim(),
       parsed
     });
+
     const notes=[
-      `Scanned from ${pendingReceiptPages.length} section${pendingReceiptPages.length===1?"":"s"}.`,
+      `Quick-scanned from ${pendingReceiptPages.length} section${pendingReceiptPages.length===1?"":"s"}.`,
       parsed.time?`Receipt time: ${parsed.time}.`:"",
-      parsed.parser?`Parser: ${parsed.parser}.`:"",
-      parsed.merchantProfile?`Merchant profile: ${parsed.merchantProfile}.`:"",
       `OCR confidence: ${ocrAverage}%.`,
-      sectionReports.some(r=>r.engine==="PaddleOCR"&&r.confidence>0)?"OCR engines: PaddleOCR + Tesseract.":"OCR engine: Tesseract (PaddleOCR unavailable).",
-      parsed.confidence?`Combined confidence: ${parsed.confidence.overall}%.`:""
+      "Please verify all receipt details before saving."
     ].filter(Boolean).join(" ");
     receiptNotes.value=(receiptNotes.value?receiptNotes.value+"\n":"")+notes;
-    ocrStatus.textContent=(parsed.confidence?.overall||0)<72
-      ?"Low confidence — review diagnostics"
-      :"Details extracted — please verify";
+    if(reviewBanner){
+      reviewBanner.innerHTML=`<strong>Please check the details before saving.</strong><span>${(parsed.confidence?.overall||0)>=80?"The quick scan filled the likely values. Amber fields need extra attention.":"The photo was difficult to read. Correct any missing or inaccurate fields manually."}</span>`;
+      reviewBanner.classList.remove("hidden");
+    }
+    ocrStatus.textContent="Quick scan complete — please check";
+    setTimeout(()=>receiptMerchant.focus(),50);
   }catch(err){
     console.error(err);
-    ocrStatus.textContent="Manual check needed";
-    alert("The scanned receipt could not be read reliably. Open OCR diagnostics and enter missing details manually.");
+    ocrStatus.textContent="Enter details manually";
+    if(reviewBanner){
+      reviewBanner.innerHTML="<strong>Quick scan could not read this receipt.</strong><span>Please enter or correct the details manually. You can still save the receipt normally.</span>";
+      reviewBanner.classList.remove("hidden");
+    }
   }finally{
+    runOcrBtn.disabled=false;
     receiptPreview.parentElement.classList.remove("scanning");
   }
 };
+
 saveReceiptBtn.onclick=e=>{e.preventDefault();const receipt={id:crypto.randomUUID?crypto.randomUUID():`r-${Date.now()}`,merchant:norm(receiptMerchant.value),date:receiptDate.value,amount:Number(receiptAmount.value),category:receiptCategory.value||'Uncategorised',subcategory:receiptSubcategory.value,account:norm(receiptAccount.value),paymentMethod:receiptPaymentMethod.value,receiptNumber:norm(receiptNumber.value),gst:Number(receiptGst.value)||0,notes:receiptNotes.value,image:pendingReceiptImage,createdAt:new Date().toISOString(),status:receiptPaymentMethod.value==='Cash'?'cash':'awaiting'};if(!receipt.merchant||!receipt.date||!receipt.amount)return;const fingerprint=receiptFingerprint(receipt);if(state.receipts.some(r=>receiptFingerprint(r)===fingerprint))return alert('This receipt appears to have already been saved.');state.receipts.unshift(receipt);state.transactions.push(applyRule({date:receipt.date,description:receipt.merchant,merchant:receipt.merchant,amount:-Math.abs(receipt.amount),source:'Receipt',receiptId:receipt.id,reconciliationStatus:receipt.status,account:receipt.account,category:receipt.category,subcategory:receipt.subcategory,notes:receipt.notes,taxDeductible:false}));saveState();receiptDialog.close();pendingReceiptImage='';pendingReceiptPages=[];rebuildReviewQueue();renderAll();showNotice('Receipt saved. BalanceIQ will look for the matching bank transaction on future imports.')};
 addTransactionBtn.onclick=()=>openTransaction();saveTransactionBtn.onclick=e=>{e.preventDefault();const t={date:txDate.value,amount:+txAmount.value,description:txDescription.value,category:txCategory.value,subcategory:txSubcategory.value,asset:txAsset.value,taxDeductible:txTax.value==="true",tag:txTag.value,notes:txNotes.value,reviewed:true,auto:false,source:"Manual"};const i=txIndex.value;if(i==="")state.transactions.push(t);else state.transactions[+i]={...state.transactions[+i],...t};rebuildReviewQueue();saveState();transactionDialog.close();renderAll()};
 addRuleBtn.onclick=()=>{ruleForm.reset();fillCategorySelect(ruleCategory,ruleSubcategory,"Uncategorised","Review Required");fillAssetSelect(ruleAsset,"");ruleDialog.showModal()};saveRuleBtn.onclick=e=>{e.preventDefault();state.rules.unshift({pattern:upper(rulePattern.value),category:ruleCategory.value,subcategory:ruleSubcategory.value,asset:ruleAsset.value});ruleForm.reset();ruleDialog.close();saveState();renderAll()};
