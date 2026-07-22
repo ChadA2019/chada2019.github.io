@@ -158,6 +158,11 @@
     </section>
   </div>
   <section class="panel">
+    <h2>Category &amp; Sub-category Breakdown</h2>
+    <p class="small-note">Expenses are grouped using your current category structure.</p>
+    <div id="subcategorySummary" class="subcategory-report"></div>
+  </section>
+  <section class="panel">
     <h2>Largest Expenses</h2>
     <div id="largestExpenses" class="table-wrap"></div>
   </section>
@@ -180,6 +185,20 @@
       <button id="addAssetBtn">Add Asset</button>
     </div>
     <div id="assetList" class="chips"></div>
+  </section>
+
+  <section class="panel category-manager-panel">
+    <div class="section-heading compact-heading">
+      <div>
+        <h2>Categories &amp; Sub-categories</h2>
+        <p>Create the labels that suit your household, assets or business. Merchant rules remember both levels.</p>
+      </div>
+    </div>
+    <form id="categoryAddForm" class="category-add-row">
+      <input id="newCategoryName" maxlength="60" placeholder="New category name" required>
+      <button id="addCategoryBtn" type="submit">Add Category</button>
+    </form>
+    <div id="categoryManagerList" class="category-manager-list"></div>
   </section>
 
   <section class="panel">

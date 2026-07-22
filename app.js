@@ -149,7 +149,7 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_INFO=Object.freeze({version:"9.4",build:"2026.07.22.003",release:"Version 9.4 places the receipt-reading action beside the scanned image for faster, easier access."});
+const APP_INFO=Object.freeze({version:"9.5",build:"2026.07.22.004",release:"Version 9.5 adds editable categories and sub-categories, merchant-learning integration, and category reporting."});
 const APP_VERSION=APP_INFO.version;
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 function applyAppInfo(){
@@ -164,8 +164,7 @@ function applyAppInfo(){
   if(summary)summary.textContent=APP_INFO.release;
 }
 
-const defaultCategories=["Alcohol","Bills & Direct Debits","Cafes","Cash","Child Support","Dining Out","Education","Entertainment","Fuel","Groceries","Health & Fitness","Home & Maintenance","Income","Insurance","Loans & Finance","Loans & Mortgages","Medical","Personal Care","Pets","Refunds","Shopping","Subscriptions","Take Away","Transfers","Transport","Travel","Uncategorised","Vehicles"];
-const subcategoriesByCategory={
+const DEFAULT_CATEGORY_DEFINITIONS={
   "Alcohol":["Bottle Shop / Winery","Bar / Pub","Other Alcohol"],
   "Bills & Direct Debits":["Utilities","Phone / Internet","Council / Rates","Other Bill"],
   "Cafes":["Cafe / Coffee","Bakery","Lunch Bar"],
@@ -195,13 +194,31 @@ const subcategoriesByCategory={
   "Uncategorised":["Review Required"],
   "Vehicles":["Registration / Insurance","Maintenance","Parts / Accessories","Loan","Fuel"]
 };
+function freshCategoryDefinitions(){
+  return Object.entries(DEFAULT_CATEGORY_DEFINITIONS).map(([name,subcategories])=>({name,subcategories:[...subcategories]}));
+}
+function normaliseCategoryDefinitions(value){
+  const defs=Array.isArray(value)?value:[];
+  const clean=[];
+  for(const item of defs){
+    const name=String(typeof item==="string"?item:item?.name||"").trim();
+    if(!name||clean.some(x=>String(x.name).toUpperCase()===String(name).toUpperCase()))continue;
+    const subs=Array.isArray(item?.subcategories)?item.subcategories.map(x=>String(x||"").trim()).filter(Boolean):[];
+    clean.push({name,subcategories:[...new Set(subs)]});
+  }
+  if(!clean.length)return freshCategoryDefinitions();
+  if(!clean.some(x=>x.name==="Uncategorised"))clean.push({name:"Uncategorised",subcategories:["Review Required"]});
+  return clean;
+}
+function categoryDefinition(name){return state.categoryDefinitions.find(x=>String(x.name).toUpperCase()===String(name).toUpperCase());}
 function getSubcategories(category,current=""){
-  const list=[...(subcategoriesByCategory[category]||[])];
-  if(current && !list.includes(current)) list.unshift(current);
-  return list;
+  const list=[...(categoryDefinition(category)?.subcategories||[])];
+  if(current&&!list.includes(current))list.unshift(current);
+  return [...new Set(list)];
 }
 function allCategories(){
-  return [...new Set([...defaultCategories,...state.rules.map(r=>r.category),...Object.keys(subcategoriesByCategory)])].filter(Boolean).sort();
+  const used=[...state.transactions.map(t=>t.category),...state.receipts.map(r=>r.category),...state.rules.map(r=>r.category)];
+  return [...new Set([...state.categoryDefinitions.map(x=>x.name),...used])].filter(Boolean).sort((a,b)=>a.localeCompare(b));
 }
 function fillSubcategorySelect(categoryEl,subcategoryEl,selected=""){
   const options=getSubcategories(categoryEl.value||"Uncategorised",selected);
@@ -244,6 +261,7 @@ function loadState(){
       rules:s.rules||[],
       reviewQueue:s.reviewQueue||[],
       assets:s.assets||[],
+      categoryDefinitions:normaliseCategoryDefinitions(s.categoryDefinitions),
       theme:s.theme||"light",
       currency:s.currency||"AUD",
       usageMode:s.usageMode||"personal",
@@ -256,6 +274,7 @@ function loadState(){
     rules:[],
     reviewQueue:[],
     assets:[],
+    categoryDefinitions:freshCategoryDefinitions(),
     theme:"light",
     currency:"AUD",
     usageMode:"personal",
@@ -450,7 +469,7 @@ function commitTransactions(txs,label){
 }
 function rebuildReviewQueue(){const g=new Map();for(const t of state.transactions.filter(x=>!x.reviewed)){const pattern=upper(t.merchant||t.description),q=g.get(pattern)||{pattern,description:t.description,total:0,count:0,...suggest(t.description),chosenCategory:"",chosenSubcategory:"",asset:"",accept:false};q.total+=Math.abs(t.amount);q.count++;g.set(pattern,q)}state.reviewQueue=[...g.values()].sort((a,b)=>b.total-a.total)}
 function learnAccepted(){const accepted=state.reviewQueue.filter(q=>q.accept&&(q.chosenCategory||q.category)!=="Uncategorised");for(const q of accepted){const rule={pattern:q.pattern,category:q.chosenCategory||q.category,subcategory:q.chosenSubcategory||q.subcategory,asset:q.asset||""};if(!state.rules.some(r=>upper(r.pattern)===upper(rule.pattern)))state.rules.unshift(rule);for(const t of state.transactions)if(upper(`${t.description} ${t.merchant||""}`).includes(upper(rule.pattern))){t.category=rule.category;t.subcategory=rule.subcategory;t.asset=rule.asset;t.reviewed=true}}rebuildReviewQueue();saveState();renderAll();showNotice(`Learned ${accepted.length} merchant rules.`)}
-function renderAll(){renderCategoriesAssets();renderDashboard();renderTransactions();renderReceipts();renderReview();renderRules();renderReports();renderAssetSettings()}
+function renderAll(){renderCategoriesAssets();renderDashboard();renderTransactions();renderReceipts();renderReview();renderRules();renderReports();renderAssetSettings();renderCategoryManager()}
 function dateFiltered(){const f=document.querySelector("#dashFrom").value,t=document.querySelector("#dashTo").value;return state.transactions.filter(x=>(!f||x.date>=f)&&(!t||x.date<=t))}
 function renderDashboard(){const all=state.transactions,inc=all.filter(x=>x.amount>0).reduce((s,x)=>s+x.amount,0),exp=all.filter(x=>x.amount<0).reduce((s,x)=>s+Math.abs(x.amount),0);kpiIncome.textContent=money(inc);kpiExpense.textContent=money(exp);kpiNet.textContent=money(inc-exp);kpiReview.textContent=state.reviewQueue.length; kpiReceiptMatch.textContent=state.receipts.filter(r=>r.status==="awaiting").length;transactionCount.textContent=all.length;ruleCount.textContent=state.rules.length;autoRate.textContent=all.length?pct(all.filter(x=>x.reviewed).length/all.length):"0%";const p=dateFiltered(),pi=p.filter(x=>x.amount>0).reduce((s,x)=>s+x.amount,0),pe=p.filter(x=>x.amount<0).reduce((s,x)=>s+Math.abs(x.amount),0);periodIncome.textContent=money(pi);periodExpense.textContent=money(pe);periodNet.textContent=money(pi-pe);const cats={};for(const x of p.filter(x=>x.amount<0))cats[x.category]=(cats[x.category]||0)+Math.abs(x.amount);const top=Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,10),max=top[0]?.[1]||1;categoryBars.innerHTML=top.length?top.map(([c,v])=>`<div class="bar-row"><span>${esc(c)}</span><div class="bar-track"><div class="bar-fill" style="width:${v/max*100}%"></div></div><strong>${money(v)}</strong></div>`).join(""):"<p>No transactions.</p>";drawCashflow()}
 function drawCashflow(){const c=cashflowChart,ctx=c.getContext("2d"),dpr=devicePixelRatio||1,w=c.clientWidth||900,h=320;c.width=w*dpr;c.height=h*dpr;ctx.scale(dpr,dpr);ctx.clearRect(0,0,w,h);const m={};for(const t of state.transactions){const k=t.date.slice(0,7);m[k]||={income:0,expense:0};t.amount>0?m[k].income+=t.amount:m[k].expense+=Math.abs(t.amount)}const labels=Object.keys(m).sort().slice(-12);if(!labels.length)return;const max=Math.max(...labels.flatMap(k=>[m[k].income,m[k].expense]),1),pad=40,step=(w-pad*2)/Math.max(labels.length-1,1),ch=h-pad*2;ctx.strokeStyle="#94a3b8";ctx.beginPath();ctx.moveTo(pad,pad);ctx.lineTo(pad,h-pad);ctx.lineTo(w-pad,h-pad);ctx.stroke();for(const [key,color] of [["income","#16a34a"],["expense","#dc2626"]]){ctx.strokeStyle=color;ctx.lineWidth=3;ctx.beginPath();labels.forEach((k,i)=>{const x=pad+i*step,y=h-pad-(m[k][key]/max)*ch;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke()}}
@@ -547,7 +566,26 @@ function renderReview(){
   });
 }
 function renderRules(){rulesBody.innerHTML=state.rules.map((r,i)=>`<tr><td>${esc(r.pattern)}</td><td>${esc(r.category)}</td><td>${esc(r.subcategory||"")}</td><td>${esc(r.asset||"")}</td><td><button class="link-btn danger-link del-rule" data-i="${i}">Delete</button></td></tr>`).join("");document.querySelectorAll(".del-rule").forEach(b=>b.onclick=()=>{state.rules.splice(+b.dataset.i,1);saveState();renderAll()})}
-function renderReports(){const years=[...new Set(state.transactions.map(t=>+t.date.slice(0,4)+(+(t.date.slice(5,7))>=7?1:0)))].sort((a,b)=>b-a);if(!years.length)years.push(new Date().getFullYear());const current=+fySelect.value||years[0];fySelect.innerHTML=years.map(y=>`<option value="${y}"${y===current?" selected":""}>${y-1}/${String(y).slice(-2)}</option>`).join("");const start=`${current-1}-07-01`,end=`${current}-06-30`,tx=state.transactions.filter(t=>t.date>=start&&t.date<=end),inc=tx.filter(t=>t.amount>0).reduce((s,t)=>s+t.amount,0),exp=tx.filter(t=>t.amount<0).reduce((s,t)=>s+Math.abs(t.amount),0),tax=tx.filter(t=>t.amount<0&&t.taxDeductible).reduce((s,t)=>s+Math.abs(t.amount),0);fyIncome.textContent=money(inc);fyExpense.textContent=money(exp);fyTax.textContent=money(tax);const assets={};for(const t of tx.filter(x=>x.amount<0)){const a=t.asset||"Unassigned";assets[a]=(assets[a]||0)+Math.abs(t.amount)}assetSummary.innerHTML=Object.entries(assets).sort((a,b)=>b[1]-a[1]).map(([a,v])=>`<div><span>${esc(a)}</span><strong>${money(v)}</strong></div>`).join("")||"<p>No asset data.</p>";const large=tx.filter(t=>t.amount<0).sort((a,b)=>a.amount-b.amount).slice(0,10);largestExpenses.innerHTML=`<table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Amount</th></tr></thead><tbody>${large.map(t=>`<tr><td>${t.date}</td><td>${esc(t.description)}</td><td>${esc(t.category)}</td><td>${money(Math.abs(t.amount))}</td></tr>`).join("")}</tbody></table>`}
+function renderReports(){
+  const years=[...new Set(state.transactions.map(t=>+t.date.slice(0,4)+(+(t.date.slice(5,7))>=7?1:0)))].sort((a,b)=>b-a);
+  if(!years.length)years.push(new Date().getFullYear());
+  const current=+fySelect.value||years[0];
+  fySelect.innerHTML=years.map(y=>`<option value="${y}"${y===current?" selected":""}>${y-1}/${String(y).slice(-2)}</option>`).join("");
+  const start=`${current-1}-07-01`,end=`${current}-06-30`,tx=state.transactions.filter(t=>t.date>=start&&t.date<=end);
+  const inc=tx.filter(t=>t.amount>0).reduce((s,t)=>s+t.amount,0),exp=tx.filter(t=>t.amount<0).reduce((s,t)=>s+Math.abs(t.amount),0),tax=tx.filter(t=>t.amount<0&&t.taxDeductible).reduce((s,t)=>s+Math.abs(t.amount),0);
+  fyIncome.textContent=money(inc);fyExpense.textContent=money(exp);fyTax.textContent=money(tax);
+  const assets={};for(const t of tx.filter(x=>x.amount<0)){const a=t.asset||"Unassigned";assets[a]=(assets[a]||0)+Math.abs(t.amount)}
+  assetSummary.innerHTML=Object.entries(assets).sort((a,b)=>b[1]-a[1]).map(([a,v])=>`<div><span>${esc(a)}</span><strong>${money(v)}</strong></div>`).join("")||"<p>No asset data.</p>";
+  const breakdown={};
+  for(const t of tx.filter(x=>x.amount<0)){
+    const category=t.category||"Uncategorised",sub=t.subcategory||"Other";
+    breakdown[category]??={total:0,subs:{}};breakdown[category].total+=Math.abs(t.amount);breakdown[category].subs[sub]=(breakdown[category].subs[sub]||0)+Math.abs(t.amount);
+  }
+  const summary=document.getElementById("subcategorySummary");
+  summary.innerHTML=Object.entries(breakdown).sort((a,b)=>b[1].total-a[1].total).map(([category,data])=>`<details class="subcategory-report-card"><summary><span>${esc(category)}</span><strong>${money(data.total)}</strong></summary><div>${Object.entries(data.subs).sort((a,b)=>b[1]-a[1]).map(([sub,value])=>`<p><span>${esc(sub)}</span><strong>${money(value)}</strong></p>`).join("")}</div></details>`).join("")||"<p>No expense data for this financial year.</p>";
+  const large=tx.filter(t=>t.amount<0).sort((a,b)=>a.amount-b.amount).slice(0,10);
+  largestExpenses.innerHTML=`<table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Sub-category</th><th>Amount</th></tr></thead><tbody>${large.map(t=>`<tr><td>${t.date}</td><td>${esc(t.description)}</td><td>${esc(t.category)}</td><td>${esc(t.subcategory||"")}</td><td>${money(Math.abs(t.amount))}</td></tr>`).join("")}</tbody></table>`;
+}
 function renderCategoriesAssets(){const cats=allCategories();categoryList.innerHTML=cats.map(c=>`<option value="${esc(c)}">`).join("");const cv=categoryFilter.value;categoryFilter.innerHTML=`<option value="">All categories</option>`+cats.map(c=>`<option value="${esc(c)}"${c===cv?" selected":""}>${esc(c)}</option>`).join("");assetListData.innerHTML=state.assets.map(a=>`<option value="${esc(a)}">`).join("");const av=assetFilter.value;assetFilter.innerHTML=`<option value="">All assets</option>`+state.assets.map(a=>`<option value="${esc(a)}"${a===av?" selected":""}>${esc(a)}</option>`).join("")}
 function renderAssetSettings(){
   assetList.innerHTML=state.assets.length
@@ -561,6 +599,33 @@ function renderAssetSettings(){
     };
   });
 }
+function updateCategoryReferences(oldName,newName){
+  for(const collection of [state.transactions,state.receipts,state.rules])for(const item of collection)if(item.category===oldName)item.category=newName;
+  for(const q of state.reviewQueue){if(q.category===oldName)q.category=newName;if(q.chosenCategory===oldName)q.chosenCategory=newName;}
+}
+function updateSubcategoryReferences(category,oldName,newName){
+  for(const collection of [state.transactions,state.receipts,state.rules])for(const item of collection)if(item.category===category&&item.subcategory===oldName)item.subcategory=newName;
+  for(const q of state.reviewQueue)if((q.chosenCategory||q.category)===category){if(q.subcategory===oldName)q.subcategory=newName;if(q.chosenSubcategory===oldName)q.chosenSubcategory=newName;}
+}
+function renderCategoryManager(){
+  const list=document.getElementById("categoryManagerList");if(!list)return;
+  list.innerHTML=state.categoryDefinitions.slice().sort((a,b)=>a.name.localeCompare(b.name)).map((category)=>{
+    const originalIndex=state.categoryDefinitions.indexOf(category);
+    return `<article class="category-manager-card" data-category-index="${originalIndex}">
+      <div class="category-manager-head"><div><strong>${esc(category.name)}</strong><span>${category.subcategories.length} sub-categor${category.subcategories.length===1?"y":"ies"}</span></div><div class="category-card-actions"><button type="button" class="secondary rename-category" data-i="${originalIndex}">Rename</button>${category.name!=="Uncategorised"?`<button type="button" class="danger-link delete-category" data-i="${originalIndex}">Delete</button>`:""}</div></div>
+      <div class="subcategory-chip-list">${category.subcategories.length?category.subcategories.map((sub,subIndex)=>`<span class="subcategory-chip"><span>${esc(sub)}</span><button type="button" class="rename-subcategory" data-i="${originalIndex}" data-s="${subIndex}" aria-label="Rename ${esc(sub)}">✎</button><button type="button" class="delete-subcategory" data-i="${originalIndex}" data-s="${subIndex}" aria-label="Delete ${esc(sub)}">×</button></span>`).join(""):"<span class=\"small-note\">No sub-categories yet.</span>"}</div>
+      <form class="subcategory-add-row" data-i="${originalIndex}"><input maxlength="60" placeholder="Add a sub-category" required><button type="submit" class="secondary">Add</button></form>
+    </article>`;
+  }).join("");
+  list.querySelectorAll(".subcategory-add-row").forEach(form=>form.onsubmit=e=>{e.preventDefault();const i=+form.dataset.i,value=norm(form.querySelector("input").value);if(!value)return;if(state.categoryDefinitions[i].subcategories.some(x=>upper(x)===upper(value)))return alert("That sub-category already exists.");state.categoryDefinitions[i].subcategories.push(value);saveState();renderAll();});
+  list.querySelectorAll(".rename-category").forEach(btn=>btn.onclick=()=>{const i=+btn.dataset.i,oldName=state.categoryDefinitions[i].name,newName=norm(prompt("Rename category",oldName));if(!newName||newName===oldName)return;if(state.categoryDefinitions.some((x,j)=>j!==i&&upper(x.name)===upper(newName)))return alert("That category already exists.");state.categoryDefinitions[i].name=newName;updateCategoryReferences(oldName,newName);saveState();renderAll();});
+  list.querySelectorAll(".delete-category").forEach(btn=>btn.onclick=()=>{const i=+btn.dataset.i,name=state.categoryDefinitions[i].name;if(!confirm(`Delete “${name}”? Existing entries will move to Uncategorised.`))return;updateCategoryReferences(name,"Uncategorised");state.categoryDefinitions.splice(i,1);saveState();renderAll();});
+  list.querySelectorAll(".rename-subcategory").forEach(btn=>btn.onclick=()=>{const i=+btn.dataset.i,s=+btn.dataset.s,category=state.categoryDefinitions[i],oldName=category.subcategories[s],newName=norm(prompt("Rename sub-category",oldName));if(!newName||newName===oldName)return;if(category.subcategories.some((x,j)=>j!==s&&upper(x)===upper(newName)))return alert("That sub-category already exists.");category.subcategories[s]=newName;updateSubcategoryReferences(category.name,oldName,newName);saveState();renderAll();});
+  list.querySelectorAll(".delete-subcategory").forEach(btn=>btn.onclick=()=>{const i=+btn.dataset.i,s=+btn.dataset.s,category=state.categoryDefinitions[i],name=category.subcategories[s];if(!confirm(`Delete “${name}”? Existing entries will use Other.`))return;updateSubcategoryReferences(category.name,name,"Other");category.subcategories.splice(s,1);if(!category.subcategories.includes("Other"))category.subcategories.push("Other");saveState();renderAll();});
+}
+const categoryAddForm=document.getElementById("categoryAddForm");
+categoryAddForm.onsubmit=e=>{e.preventDefault();const input=document.getElementById("newCategoryName"),name=norm(input.value);if(!name)return;if(state.categoryDefinitions.some(x=>upper(x.name)===upper(name)))return alert("That category already exists.");state.categoryDefinitions.push({name,subcategories:[]});input.value="";saveState();renderAll();};
+
 function showNotice(t){importSummary.textContent=t;importSummary.classList.remove("hidden");setTimeout(()=>importSummary.classList.add("hidden"),9000)}
 
 document.querySelectorAll(".tab").forEach(button=>{
@@ -2745,8 +2810,8 @@ addRuleBtn.onclick=()=>{ruleForm.reset();fillCategorySelect(ruleCategory,ruleSub
 addAssetBtn.onclick=()=>{const a=norm(newAssetName.value);if(a&&!state.assets.includes(a))state.assets.push(a);newAssetName.value="";saveState();renderAll()};
 exportBtn.onclick=()=>{const a=document.createElement("a"),blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});a.href=URL.createObjectURL(blob);a.download=`balanceiq-backup-${localDateValue()}.json`;a.click();URL.revokeObjectURL(a.href)};
 exportCsvBtn.onclick=()=>{const cols=["date","description","amount","category","subcategory","asset","taxDeductible","tag","notes"],lines=[cols.join(",")];for(const t of state.transactions)lines.push(cols.map(c=>`"${String(t[c]??"").replaceAll('"','""')}"`).join(","));const a=document.createElement("a"),blob=new Blob([lines.join("\n")],{type:"text/csv"});a.href=URL.createObjectURL(blob);a.download="finance-transactions.csv";a.click();URL.revokeObjectURL(a.href)};
-backupInput.onchange=async e=>{const f=e.target.files[0];if(!f)return;try{state=JSON.parse(await f.text());saveState();renderAll();showNotice("Backup restored.")}catch{alert("Could not read backup.")}e.target.value=""};
-clearBtn.onclick=()=>{if(confirm("Delete all local finance data?")){state={transactions:[],receipts:[],rules:[],reviewQueue:[],assets:[],theme:state.theme,currency:state.currency||"AUD",usageMode:state.usageMode||"personal",onboardingComplete:true};saveState();renderAll()}};
+backupInput.onchange=async e=>{const f=e.target.files[0];if(!f)return;try{state=JSON.parse(await f.text());state.categoryDefinitions=normaliseCategoryDefinitions(state.categoryDefinitions);state.transactions||=[];state.receipts||=[];state.rules||=[];state.reviewQueue||=[];state.assets||=[];saveState();renderAll();showNotice("Backup restored.")}catch{alert("Could not read backup.")}e.target.value=""};
+clearBtn.onclick=()=>{if(confirm("Delete all local finance data?")){state={transactions:[],receipts:[],rules:[],reviewQueue:[],assets:[],categoryDefinitions:freshCategoryDefinitions(),theme:state.theme,currency:state.currency||"AUD",usageMode:state.usageMode||"personal",onboardingComplete:true};saveState();renderAll()}};
 usageMode.value=state.usageMode||"personal";
 currencySetting.value=state.currency||"AUD";
 savePreferencesBtn.onclick=()=>{state.usageMode=usageMode.value;state.currency=currencySetting.value;saveState();renderAll();showNotice("Preferences saved.")};

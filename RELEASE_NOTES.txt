@@ -1,9 +1,15 @@
-BalanceIQ v9.4 — Faster Scan Action Access
+BalanceIQ v9.5
+Build 2026.07.22.004
 
-- Moves the “Read scanned receipt” button from the bottom of the receipt form to beside the scanned receipt preview.
-- Keeps the action visible near the image and thumbnail strip, reducing unnecessary scrolling on mobile.
-- Uses a prominent primary-style button while preserving the same fast local Tesseract Quick Scan workflow.
-- Keeps all receipt details editable and retains the “Please check the details before saving” review flow.
-- Updates the central app version to 9.4 and build to 2026.07.22.003.
-- Updates the About page, logo badge, manifest description and service-worker cache from the shared APP_INFO values.
-- No AI API, external processing server or per-receipt cost.
+NEW
+- Added a Categories & Sub-categories manager in Settings.
+- Categories and sub-categories can be added, renamed and deleted.
+- Existing transactions, receipts, review items and merchant rules follow renamed categories.
+- Deleted categories safely move existing entries to Uncategorised.
+- Added financial-year category and sub-category breakdown reporting.
+
+INCLUDED
+- Merchant learning stores category, sub-category and optional asset.
+- Read Receipt remains beside the scanned image for mobile convenience.
+- Fast local receipt scan and manual confirmation workflow.
+- No AI, external processing server or per-receipt cost.

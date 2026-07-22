@@ -1,17 +1,14 @@
-BalanceIQ v9.4 — Faster Scan Action Access
+BalanceIQ v9.5 — Categories & Sub-categories
 
-The receipt-reading button now appears beside the scanned receipt preview, so mobile users can start the quick local scan without scrolling to the bottom of the form.
+A private, browser-based finance app with fast assisted receipt entry.
 
-BalanceIQ v9.3 — Version Synchronisation & Cleanup
+Version 9.5 adds:
+- User-created categories and unlimited sub-categories
+- Rename and delete controls with safe migration of existing entries
+- Merchant rules that remember category, sub-category and asset
+- Category and sub-category reporting
+- Read Receipt action beside the scanned image
+- Local-only quick OCR with no AI API or processing server
 
-Deploy every file in this folder together.
-
-Receipt workflow:
-1. Photograph or select the receipt.
-2. Select Quick Scan.
-3. BalanceIQ performs one fast local OCR pass and fills likely values.
-4. Check the highlighted fields, correct anything inaccurate, then save.
-
-Version information is now controlled from APP_INFO in app.js. The header badge, About page, build label and browser title read from that shared source, preventing stale visible version numbers in future releases.
-
-Quick Scan remains intentionally assistive rather than exhaustive. All OCR runs locally in the browser. No AI or external receipt-processing server is required.
+Deployment:
+Replace all files in the GitHub Pages repository with this release.

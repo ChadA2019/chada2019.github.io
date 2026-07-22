@@ -1,3 +1,6 @@
+BalanceIQ v9.5 — Categories & Sub-categories
+- Editable category hierarchy, merchant-learning integration and reporting.
+
 BalanceIQ v9.4 — 22 July 2026
 - Moved “Read scanned receipt” beside the receipt preview.
 - Improved mobile scan workflow by eliminating the scroll to the bottom action bar.

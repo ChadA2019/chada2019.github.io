@@ -1,10 +1,17 @@
 {
-  "name": "BalanceIQ",
+  "name": "BalanceIQ v9.5",
   "short_name": "BalanceIQ",
-  "description": "BalanceIQ 9.4 — fast local assisted receipt entry with the scan action beside the receipt preview.",
+  "description": "Private personal finance management with fast assisted receipt entry and editable categories.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#071d3b",
   "theme_color": "#0b3c68",
-  "icons": [{"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
 }
