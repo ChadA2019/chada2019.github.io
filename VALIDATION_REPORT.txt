@@ -1,7 +1,10 @@
-BalanceIQ v9.0 validation
-- JavaScript syntax: pending
+BalanceIQ v9.2 validation
+- JavaScript syntax: passed
 - Required app files: present
+- Receipt scan debug HTML: removed
+- OCR diagnostic JavaScript handlers: removed
+- Diagnostic-only CSS: removed
+- Fast local Tesseract Quick Scan: retained
+- Review and manual-correction workflow: retained
 - Service-worker cache version: updated
-- PaddleOCR: client-side dynamic module with graceful fallback
-- Tesseract.js: retained
 - External paid API/backend: none

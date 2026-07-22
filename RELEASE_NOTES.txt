@@ -1,10 +1,8 @@
-BalanceIQ v9.1 — Fast Assisted Receipt Entry
+BalanceIQ v9.2 — Streamlined Assisted Receipt Entry
 
-- Replaces the slow dual-engine receipt workflow with one fast local Tesseract pass per receipt section.
-- PaddleOCR is no longer run during Quick Scan, greatly reducing processing time and memory use.
-- Quick Scan pre-fills plausible receipt details immediately.
-- A prominent review message reminds users to verify and correct details before saving.
-- High-confidence fields receive a subtle green indication. Other or missing fields are highlighted amber with “Please check”.
-- Scan failure no longer blocks receipt entry; users can continue manually.
-- OCR diagnostics remain available for troubleshooting.
+- Removes the receipt scan debug and OCR diagnostics section from the receipt entry screen.
+- Keeps the fast single-pass local Tesseract Quick Scan introduced in v9.1.
+- Keeps the clear “Please check the details before saving” review message.
+- High-confidence fields remain marked in green; uncertain or missing fields remain marked in amber.
+- Manual correction and manual-only entry remain available.
 - No AI API, external processing server, or per-receipt cost.

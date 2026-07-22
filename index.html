@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#17365d">
-  <title>BalanceIQ v9.1</title>
+  <title>BalanceIQ v9.0</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -12,7 +12,7 @@
 <header class="app-header">
   <div class="brand-lockup">
     <div class="brand-mark" aria-hidden="true"><span></span></div>
-    <div><div class="brand-title-row"><h1>Balance<span>IQ</span></h1><small class="app-version">v9.1</small></div><p>Smarter money clarity, without losing control of your data.</p></div>
+    <div><div class="brand-title-row"><h1>Balance<span>IQ</span></h1><small class="app-version">v9.0</small></div><p>Smarter money clarity, without losing control of your data.</p></div>
   </div>
   <div class="header-actions">
     <button id="themeBtn" class="secondary" title="Toggle dark mode">🌙</button>
@@ -297,8 +297,7 @@
 
 <dialog id="receiptDialog">
 <form method="dialog" id="receiptForm">
-  <div class="dialog-title-row"><div><span class="eyebrow">ASSISTED ENTRY</span><h2>New receipt</h2></div><span id="ocrStatus" class="status pending">Ready</span></div>
-  <div id="receiptReviewBanner" class="receipt-review-banner hidden" role="status"></div>
+  <div class="dialog-title-row"><div><span class="eyebrow">SMART CAPTURE</span><h2>New receipt</h2></div><span id="ocrStatus" class="status pending">Ready</span></div>
   <div class="receipt-capture-grid">
     <div class="scanner-pane">
       <div class="receipt-preview-wrap"><img id="receiptPreview" alt="Scanned receipt preview"><div id="receiptPreviewEmpty">Scan the receipt in one or more sections</div></div>
@@ -309,7 +308,7 @@
         <button id="removeScanBtn" type="button" class="secondary">Remove last</button>
       </div>
       <label class="scanner-option"><input id="enhanceScan" type="checkbox" checked> Enhance like a document scanner</label>
-      <p class="small-note">Quick Scan makes one fast local reading and pre-fills likely details. Always check and correct the fields before saving.</p>
+      <p class="small-note">For long receipts, photograph overlapping sections from top to bottom. BalanceIQ enhances and joins them before reading.</p>
     </div>
     <div class="form-grid">
       <label class="wide">Merchant<input id="receiptMerchant" required placeholder="e.g. Bunnings Belmont"></label>
@@ -325,36 +324,7 @@
     </div>
   </div>
 
-  <details id="ocrDiagnosticPanel" class="ocr-diagnostic">
-    <summary>OCR diagnostics</summary>
-    <p class="small-note">Quick Scan diagnostic information. Personal receipt text stays in this browser.</p>
-    <div class="diagnostic-toolbar">
-      <button id="copyOcrDebugBtn" type="button" class="secondary">Copy debug report</button>
-      <button id="downloadOcrDebugBtn" type="button" class="secondary">Download JSON</button>
-      <button id="clearOcrDebugBtn" type="button" class="secondary">Clear</button>
-    </div>
-    <div id="ocrDiagnosticSummary" class="diagnostic-summary">Run Quick Scan to see diagnostic results.</div>
-    <div class="diagnostic-grid">
-      <section>
-        <h3>Field decisions</h3>
-        <pre id="ocrFieldDecisions">No data yet.</pre>
-      </section>
-      <section>
-        <h3>Amount candidates</h3>
-        <pre id="ocrAmountCandidates">No data yet.</pre>
-      </section>
-      <section class="wide">
-        <h3>Raw OCR text</h3>
-        <textarea id="ocrRawText" rows="14" readonly placeholder="Raw OCR text will appear here"></textarea>
-      </section>
-      <section class="wide">
-        <h3>Per-section OCR</h3>
-        <pre id="ocrSectionResults">No data yet.</pre>
-      </section>
-    </div>
-  </details>
-
-  <div class="dialog-actions"><button value="cancel" class="secondary">Cancel</button><button id="runOcrBtn" type="button" class="secondary">Quick Scan</button><button id="saveReceiptBtn" value="default">Save expense</button></div>
+  <div class="dialog-actions"><button value="cancel" class="secondary">Cancel</button><button id="runOcrBtn" type="button" class="secondary">Read scanned receipt</button><button id="saveReceiptBtn" value="default">Save expense</button></div>
 </form>
 </dialog>
 

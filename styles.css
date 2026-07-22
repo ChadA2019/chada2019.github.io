@@ -69,41 +69,20 @@ body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-ser
 
 .app-version{letter-spacing:.02em}
 
-.ocr-diagnostic{margin-top:1rem;border:1px solid var(--border);border-radius:14px;background:var(--surface);padding:.8rem}
-.ocr-diagnostic>summary{cursor:pointer;font-weight:800;color:var(--blue)}
-.diagnostic-toolbar{display:flex;gap:.55rem;flex-wrap:wrap;margin:.8rem 0}
-.diagnostic-toolbar button{padding:.55rem .75rem}
-.diagnostic-summary{background:var(--light);border-radius:10px;padding:.8rem;margin:.7rem 0;font-size:.9rem}
-.diagnostic-grid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
-.diagnostic-grid section{min-width:0}
-.diagnostic-grid section.wide{grid-column:1/-1}
-.diagnostic-grid h3{font-size:.9rem;margin:.25rem 0 .45rem}
-.diagnostic-grid pre,.diagnostic-grid textarea{white-space:pre-wrap;overflow:auto;max-height:300px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.78rem;line-height:1.45;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:.7rem;width:100%}
 .field-warning{background:var(--yellow)}
-@media(max-width:700px){.diagnostic-grid{grid-template-columns:1fr}.diagnostic-grid section.wide{grid-column:auto}}
-
-.ocr-diagnostic .diagnostic-summary{font-weight:650}
-
-.ocr-diagnostic pre{tab-size:2}
-
-.ocr-diagnostic .diagnostic-summary{border:1px solid var(--border)}
-
-.ocr-diagnostic .diagnostic-summary{border-left:4px solid var(--blue)}
-
-.ocr-diagnostic .diagnostic-summary{border-left-width:5px}
-
-.ocr-diagnostic .diagnostic-summary{box-shadow:0 1px 0 rgba(0,0,0,.04)}
-
-.ocr-diagnostic .diagnostic-summary{outline:1px solid transparent}
-
-.ocr-diagnostic .diagnostic-summary{overflow-wrap:anywhere}
-
-.ocr-diagnostic .diagnostic-summary{max-width:100%}
-
-.ocr-diagnostic .diagnostic-summary{word-break:break-word}
 
 
-/* BalanceIQ 9.1 fast assisted receipt entry */
+
+
+
+
+
+
+
+
+
+
+/* BalanceIQ 9.2 streamlined assisted receipt entry */
 .receipt-review-banner{display:flex;flex-direction:column;gap:.2rem;padding:.85rem 1rem;border-radius:12px;background:#fff7d6;border:1px solid #f2cf63;border-left:5px solid #d89b00;color:#5f4600}
 .receipt-review-banner strong{font-size:.98rem}.receipt-review-banner span{font-size:.88rem}
 .receipt-review-banner.hidden{display:none}

@@ -149,7 +149,7 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_VERSION="9.1";
+const APP_VERSION="9.2";
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 const defaultCategories=["Alcohol","Bills & Direct Debits","Cafes","Cash","Child Support","Dining Out","Education","Entertainment","Fuel","Groceries","Health & Fitness","Home & Maintenance","Income","Insurance","Loans & Finance","Loans & Mortgages","Medical","Personal Care","Pets","Refunds","Shopping","Subscriptions","Take Away","Transfers","Transport","Travel","Uncategorised","Vehicles"];
 const subcategoriesByCategory={
@@ -1022,7 +1022,7 @@ async function addReceiptFiles(files,reset=false){
 async function openReceiptCapture(fileOrFiles){
   const files=fileOrFiles instanceof FileList||Array.isArray(fileOrFiles)?fileOrFiles:[fileOrFiles];
   await addReceiptFiles(files,true);
-  clearOcrDiagnostic();receiptDate.value="";receiptMerchant.value="";receiptAmount.value="";fillCategorySelect(receiptCategory,receiptSubcategory,"Uncategorised","Review Required");receiptAccount.value="";receiptPaymentMethod.value="Card";receiptNumber.value="";receiptGst.value="";receiptNotes.value="";ocrStatus.textContent=`${pendingReceiptPages.length} section${pendingReceiptPages.length===1?'':'s'} ready`;receiptDialog.showModal();
+  receiptDate.value="";receiptMerchant.value="";receiptAmount.value="";fillCategorySelect(receiptCategory,receiptSubcategory,"Uncategorised","Review Required");receiptAccount.value="";receiptPaymentMethod.value="Card";receiptNumber.value="";receiptGst.value="";receiptNotes.value="";ocrStatus.textContent=`${pendingReceiptPages.length} section${pendingReceiptPages.length===1?'':'s'} ready`;receiptDialog.showModal();
 }
 receiptImageInput.onchange=e=>{if(e.target.files.length)openReceiptCapture(e.target.files);e.target.value=""};heroScanBtn.onclick=()=>receiptImageInput.click();
 receiptMoreInput.onchange=async e=>{if(e.target.files.length){await addReceiptFiles(e.target.files);ocrStatus.textContent=`${pendingReceiptPages.length} sections ready`}e.target.value=''};
@@ -2624,110 +2624,6 @@ function parseAustralianReceipt(rawText){
 }
 
 
-let lastOcrDiagnostic=null;
-const ocrDiagnosticPanel=document.getElementById("ocrDiagnosticPanel");
-const ocrDiagnosticSummary=document.getElementById("ocrDiagnosticSummary");
-const ocrFieldDecisions=document.getElementById("ocrFieldDecisions");
-const ocrAmountCandidates=document.getElementById("ocrAmountCandidates");
-const ocrRawText=document.getElementById("ocrRawText");
-const ocrSectionResults=document.getElementById("ocrSectionResults");
-const copyOcrDebugBtn=document.getElementById("copyOcrDebugBtn");
-const downloadOcrDebugBtn=document.getElementById("downloadOcrDebugBtn");
-const clearOcrDebugBtn=document.getElementById("clearOcrDebugBtn");
-
-function diagnosticFieldRows(parsed){
-  const confidence=parsed.confidence?.fields||{};
-  return [
-    ["Merchant",parsed.merchant||"(blank)",confidence.merchant||0],
-    ["Date",parsed.date||"(blank)",confidence.date||0],
-    ["Total",parsed.total?`$${parsed.total.toFixed(2)}`:"(blank)",confidence.total||0],
-    ["GST",parsed.gst?`$${parsed.gst.toFixed(2)}`:"(blank)",confidence.gst||0],
-    ["Receipt number",parsed.receiptNumber||"(blank)",confidence.receiptNumber||0],
-    ["Payment method",parsed.paymentMethod||"(blank)",confidence.paymentMethod||0],
-    ["Parser",parsed.parser||"Generic",100],
-    ["Merchant profile",parsed.merchantProfile||"generic",100]
-  ];
-}
-function renderOcrDiagnostic(report){
-  lastOcrDiagnostic=report;
-  const parsed=report.parsed;
-  const lowFields=diagnosticFieldRows(parsed).filter(row=>row[2]<70&&row[2]!==0).map(row=>row[0]);
-  ocrDiagnosticSummary.textContent=
-    `Overall extraction confidence: ${parsed.confidence?.overall||0}% · `+
-    `OCR quality: ${parsed.imageQuality||0}% · `+
-    `Sections: ${report.sections.length}`+
-    (lowFields.length?` · Review: ${lowFields.join(", ")}`:"");
-
-  ocrFieldDecisions.textContent=diagnosticFieldRows(parsed)
-    .map(([field,value,confidence])=>`${field}: ${value}\nConfidence: ${confidence}%`)
-    .join("\n\n");
-
-  const candidates=parsed.amountCandidates||[];
-  const dateLines=(parsed.dateCandidates||[]).map((item,index)=>`Date ${index+1}: ${item.value} · score ${item.score}`);
-  const invoiceLines=(parsed.receiptNumberCandidates||[]).map((item,index)=>`Invoice ${index+1}: ${item.value} · score ${item.score}`);
-  const gstLines=(parsed.gstCandidates||[]).map((item,index)=>`GST ${index+1}: $${Number(item.value).toFixed(2)} · score ${item.score}`);
-  const amountLines=candidates.map((item,index)=>
-    `${index+1}. $${Number(item.value).toFixed(2)} · score ${item.score} · seen ${item.count} time${item.count===1?"":"s"}`
-  );
-  ocrAmountCandidates.textContent=[
-    ...amountLines,
-    ...(dateLines.length?["",...dateLines]:[]),
-    ...(invoiceLines.length?["",...invoiceLines]:[]),
-    ...(gstLines.length?["",...gstLines]:[])
-  ].join("\n")||"No scored candidates.";
-
-  ocrRawText.value=report.rawText||"";
-  ocrSectionResults.textContent=report.sections.map(section=>
-    `Section ${section.section} · ${section.pass||"full"} pass\nOCR confidence: ${section.confidence}%\nCharacters: ${section.characters}\n\n${section.text}`
-  ).join("\n\n==============================\n\n");
-  ocrDiagnosticPanel.open=true;
-}
-function clearOcrDiagnostic(){
-  lastOcrDiagnostic=null;
-  ocrDiagnosticSummary.textContent="Run OCR to see diagnostic results.";
-  ocrFieldDecisions.textContent="No data yet.";
-  ocrAmountCandidates.textContent="No data yet.";
-  ocrRawText.value="";
-  ocrSectionResults.textContent="No data yet.";
-}
-function debugReportText(report){
-  return [
-    `BalanceIQ ${APP_VERSION} OCR diagnostic`,
-    `Created: ${report.createdAt}`,
-    `Sections: ${report.sections.length}`,
-    "",
-    "PARSED RESULT",
-    JSON.stringify(report.parsed,null,2),
-    "",
-    "PER-SECTION OCR",
-    report.sections.map(section=>
-      `--- Section ${section.section} · ${section.pass||"full"} | confidence ${section.confidence}% ---\n${section.text}`
-    ).join("\n\n"),
-    "",
-    "COMBINED RAW OCR",
-    report.rawText
-  ].join("\n");
-}
-copyOcrDebugBtn.onclick=async()=>{
-  if(!lastOcrDiagnostic)return alert("Run OCR first.");
-  try{
-    await navigator.clipboard.writeText(debugReportText(lastOcrDiagnostic));
-    showNotice("OCR diagnostic copied.");
-  }catch{
-    alert("Copy was blocked by the browser. Use Download JSON instead.");
-  }
-};
-downloadOcrDebugBtn.onclick=()=>{
-  if(!lastOcrDiagnostic)return alert("Run OCR first.");
-  const blob=new Blob([JSON.stringify(lastOcrDiagnostic,null,2)],{type:"application/json"});
-  const link=document.createElement("a");
-  link.href=URL.createObjectURL(blob);
-  link.download=`balanceiq-ocr-debug-${new Date().toISOString().replace(/[:.]/g,"-")}.json`;
-  link.click();
-  setTimeout(()=>URL.revokeObjectURL(link.href),1000);
-};
-clearOcrDebugBtn.onclick=clearOcrDiagnostic;
-
 function shouldAutofillField(confidence,minimum=70){
   return Number(confidence||0)>=minimum;
 }
@@ -2803,15 +2699,6 @@ runOcrBtn.onclick=async()=>{
     setReviewState("gst",fc.gst,Number(receiptGst.value)>0);
     setReviewState("receiptNumber",fc.receiptNumber,!!receiptNumber.value);
     setReviewState("paymentMethod",fc.paymentMethod,!!receiptPaymentMethod.value);
-
-    renderOcrDiagnostic({
-      version:APP_VERSION,
-      mode:"quick-assisted-entry",
-      createdAt:new Date().toISOString(),
-      sections:sectionReports.map(({image,...rest})=>rest),
-      rawText:combined.trim(),
-      parsed
-    });
 
     const notes=[
       `Quick-scanned from ${pendingReceiptPages.length} section${pendingReceiptPages.length===1?"":"s"}.`,

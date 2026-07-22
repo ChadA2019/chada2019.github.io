@@ -34,3 +34,9 @@ Bunnings degraded payment-label total consensus and focused-pass invoice voting.
 - Single-pass local Quick Scan.
 - Review-first workflow with confidence highlighting.
 - Manual entry remains available after uncertain or failed scans.
+
+9.2 — Streamlined Assisted Receipt Entry
+- Removed the receipt scan debug and diagnostics interface.
+- Retained the fast review-first Quick Scan workflow from v9.1.
+- Updated the application and service-worker release versions.
+
