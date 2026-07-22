@@ -1,12 +1,11 @@
-BalanceIQ v9.6.1 — Smart Data Management
+BalanceIQ v9.7 — Scalable Category Management
 Build 2026.07.23.001
 
-- Added + and edit controls beside Asset, Category and Sub-category in manual transaction entry.
-- Added the same controls during receipt review.
-- Added Asset selection to receipt capture and receipt-created transactions.
-- Added in-context Asset creation during merchant review.
-- Replaced browser prompt dialogs with polished BalanceIQ name-management dialogs.
-- Asset, category and sub-category renames safely update existing transactions, receipts, rules and review items.
-- Asset deletion now asks for confirmation and safely moves existing entries to Unassigned.
-- Prevents case-insensitive duplicate names and sorts new values alphabetically.
-- Updated PWA metadata and service-worker cache for v9.6.1.
+- Replaced the long category list in Settings with a compact Manage Categories card.
+- Added a dedicated category manager that opens without leaving Settings.
+- Added search across category and sub-category names.
+- Added a scalable category browser with a focused detail pane.
+- Category rename, delete and sub-category controls now appear only for the selected category.
+- Added category and sub-category totals to the compact Settings card.
+- Preserved all v9.6.1 in-context Asset, Category and Sub-category controls.
+- Added a responsive mobile layout that separates browsing from editing and avoids an endlessly growing Settings page.

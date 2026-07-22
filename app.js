@@ -170,7 +170,7 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_INFO=Object.freeze({version:"9.6.1",build:"2026.07.23.001",release:"Version 9.6.1 adds in-context create and rename controls for assets, categories and sub-categories across transaction entry, receipt review and merchant review."});
+const APP_INFO=Object.freeze({version:"9.7",build:"2026.07.23.001",release:"Version 9.7 moves category management into a dedicated searchable screen so Settings stays compact as categories grow."});
 const APP_VERSION=APP_INFO.version;
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 function applyAppInfo(){
@@ -663,27 +663,43 @@ function updateSubcategoryReferences(category,oldName,newName){
   for(const collection of [state.transactions,state.receipts,state.rules])for(const item of collection)if(item.category===category&&item.subcategory===oldName)item.subcategory=newName;
   for(const q of state.reviewQueue)if((q.chosenCategory||q.category)===category){if(q.subcategory===oldName)q.subcategory=newName;if(q.chosenSubcategory===oldName)q.chosenSubcategory=newName;}
 }
-function renderSelectedSubcategories(){
-  const parent=document.getElementById("subcategoryParent"),box=document.getElementById("selectedSubcategoryList");if(!parent||!box)return;
-  const current=parent.value||allCategories()[0]||"Uncategorised";
-  parent.innerHTML=allCategories().map(c=>`<option value="${esc(c)}"${c===current?" selected":""}>${esc(c)}</option>`).join("");
-  const def=categoryDefinition(parent.value);
-  box.innerHTML=def&&def.subcategories.length?`<strong>${esc(def.name)} sub-categories</strong><div class="subcategory-chip-list">${def.subcategories.slice().sort((a,b)=>a.localeCompare(b)).map(sub=>`<span class="subcategory-chip">${esc(sub)}</span>`).join("")}</div>`:`<span class="subcategory-empty">No sub-categories for this category yet.</span>`;
+let selectedCategoryManagerName="";
+function categoryManagerMatches(category,query){
+  const q=upper(query);if(!q)return true;
+  return upper(category.name).includes(q)||category.subcategories.some(sub=>upper(sub).includes(q));
+}
+function selectCategoryManager(name){
+  selectedCategoryManagerName=name||"";
+  renderCategoryManager();
+}
+function renderCategoryManagerDetail(category){
+  const detail=document.getElementById("categoryManagerDetail");if(!detail)return;
+  if(!category){detail.innerHTML=`<div class="category-detail-empty"><div>▦</div><h3>Select a category</h3><p>Choose a category from the list to rename it or manage its sub-categories.</p></div>`;return;}
+  const originalIndex=state.categoryDefinitions.indexOf(category);
+  detail.innerHTML=`<div class="category-detail-header"><div><span class="eyebrow">CATEGORY</span><h3>${esc(category.name)}</h3><p>${category.subcategories.length} sub-categor${category.subcategories.length===1?"y":"ies"}</p></div><div class="category-detail-actions"><button type="button" class="secondary detail-rename-category">Rename</button>${category.name!=="Uncategorised"?`<button type="button" class="danger detail-delete-category">Delete</button>`:""}</div></div><form id="managerSubcategoryAddForm" class="manager-subcategory-add"><input id="managerNewSubcategoryName" maxlength="60" placeholder="New sub-category name" required><button type="submit">＋ Add Sub-category</button></form><div class="manager-subcategory-list">${category.subcategories.length?category.subcategories.slice().sort((a,b)=>a.localeCompare(b)).map(sub=>{const subIndex=category.subcategories.indexOf(sub);return `<div class="manager-subcategory-row"><span>${esc(sub)}</span><div><button type="button" class="secondary manager-rename-subcategory" data-s="${subIndex}" aria-label="Rename ${esc(sub)}">Rename</button><button type="button" class="link-btn danger-link manager-delete-subcategory" data-s="${subIndex}" aria-label="Delete ${esc(sub)}">Delete</button></div></div>`}).join(""):`<div class="subcategory-empty">No sub-categories yet.</div>`}</div>`;
+  detail.querySelector(".detail-rename-category")?.addEventListener("click",()=>{const categoryEl=document.createElement("select"),subEl=document.createElement("select");fillCategorySelect(categoryEl,subEl,category.name,category.subcategories[0]||"");renameCategoryInteractive(categoryEl,subEl);});
+  detail.querySelector(".detail-delete-category")?.addEventListener("click",()=>{if(!confirm(`Delete “${category.name}”? Existing entries will move to Uncategorised.`))return;updateCategoryReferences(category.name,"Uncategorised");state.categoryDefinitions.splice(originalIndex,1);selectedCategoryManagerName="Uncategorised";saveState();renderAll();});
+  detail.querySelector("#managerSubcategoryAddForm")?.addEventListener("submit",event=>{event.preventDefault();const input=detail.querySelector("#managerNewSubcategoryName"),name=norm(input.value);if(!name)return;if(category.subcategories.some(x=>upper(x)===upper(name)))return alert("That sub-category already exists in this category.");category.subcategories.push(name);category.subcategories.sort((a,b)=>a.localeCompare(b));input.value="";saveState();renderAll();showNotice(`Added ${name} under ${category.name}.`);});
+  detail.querySelectorAll(".manager-rename-subcategory").forEach(btn=>btn.onclick=()=>{const oldName=category.subcategories[+btn.dataset.s],categoryEl=document.createElement("select"),subEl=document.createElement("select");fillCategorySelect(categoryEl,subEl,category.name,oldName);renameSubcategoryInteractive(categoryEl,subEl);});
+  detail.querySelectorAll(".manager-delete-subcategory").forEach(btn=>btn.onclick=()=>{const i=+btn.dataset.s,name=category.subcategories[i];if(!confirm(`Delete “${name}”? Existing entries will use Other.`))return;updateSubcategoryReferences(category.name,name,"Other");category.subcategories.splice(i,1);if(!category.subcategories.includes("Other"))category.subcategories.push("Other");saveState();renderAll();});
 }
 function renderCategoryManager(){
-  const list=document.getElementById("categoryManagerList");if(!list)return;
-  renderSelectedSubcategories();
-  list.innerHTML=state.categoryDefinitions.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(category=>{const originalIndex=state.categoryDefinitions.indexOf(category);return `<article class="category-manager-card" data-category-index="${originalIndex}"><div class="category-manager-head"><div><strong>${esc(category.name)}</strong><span>${category.subcategories.length} sub-categor${category.subcategories.length===1?"y":"ies"}</span></div><div class="category-card-actions"><button type="button" class="secondary rename-category" data-i="${originalIndex}">Rename</button>${category.name!=="Uncategorised"?`<button type="button" class="danger-link delete-category" data-i="${originalIndex}">Delete</button>`:""}</div></div><div class="subcategory-chip-list">${category.subcategories.length?category.subcategories.slice().sort((a,b)=>a.localeCompare(b)).map(sub=>{const subIndex=category.subcategories.indexOf(sub);return `<span class="subcategory-chip"><span>${esc(sub)}</span><button type="button" class="rename-subcategory" data-i="${originalIndex}" data-s="${subIndex}" aria-label="Rename ${esc(sub)}">✎</button><button type="button" class="delete-subcategory" data-i="${originalIndex}" data-s="${subIndex}" aria-label="Delete ${esc(sub)}">×</button></span>`}).join(""):"<span class=\"subcategory-empty\">No sub-categories yet. Use the Create a sub-category form above.</span>"}</div></article>`}).join("");
-  list.querySelectorAll(".rename-category").forEach(btn=>btn.onclick=()=>{const category=state.categoryDefinitions[+btn.dataset.i],categoryEl=document.createElement("select"),subEl=document.createElement("select");fillCategorySelect(categoryEl,subEl,category.name,category.subcategories[0]||"");renameCategoryInteractive(categoryEl,subEl);});
-  list.querySelectorAll(".delete-category").forEach(btn=>btn.onclick=()=>{const i=+btn.dataset.i,name=state.categoryDefinitions[i].name;if(!confirm(`Delete “${name}”? Existing entries will move to Uncategorised.`))return;updateCategoryReferences(name,"Uncategorised");state.categoryDefinitions.splice(i,1);saveState();renderAll();});
-  list.querySelectorAll(".rename-subcategory").forEach(btn=>btn.onclick=()=>{const category=state.categoryDefinitions[+btn.dataset.i],oldName=category.subcategories[+btn.dataset.s],categoryEl=document.createElement("select"),subEl=document.createElement("select");fillCategorySelect(categoryEl,subEl,category.name,oldName);renameSubcategoryInteractive(categoryEl,subEl);});
-  list.querySelectorAll(".delete-subcategory").forEach(btn=>btn.onclick=()=>{const i=+btn.dataset.i,s=+btn.dataset.s,category=state.categoryDefinitions[i],name=category.subcategories[s];if(!confirm(`Delete “${name}”? Existing entries will use Other.`))return;updateSubcategoryReferences(category.name,name,"Other");category.subcategories.splice(s,1);if(!category.subcategories.includes("Other"))category.subcategories.push("Other");saveState();renderAll();});
+  const list=document.getElementById("categoryManagerList"),summary=document.getElementById("categoryManagerSummary");
+  const totalSubs=state.categoryDefinitions.reduce((sum,item)=>sum+item.subcategories.length,0);
+  if(summary)summary.textContent=`${state.categoryDefinitions.length} categories · ${totalSubs} sub-categories`;
+  if(!list)return;
+  const search=document.getElementById("categoryManagerSearch"),query=search?.value||"";
+  const categories=state.categoryDefinitions.slice().sort((a,b)=>a.name.localeCompare(b.name)).filter(category=>categoryManagerMatches(category,query));
+  if(!selectedCategoryManagerName||!state.categoryDefinitions.some(category=>category.name===selectedCategoryManagerName))selectedCategoryManagerName=categories[0]?.name||state.categoryDefinitions[0]?.name||"";
+  list.innerHTML=categories.length?categories.map(category=>`<button type="button" class="category-browser-item${category.name===selectedCategoryManagerName?" active":""}" data-name="${esc(category.name)}"><span><strong>${esc(category.name)}</strong><small>${category.subcategories.length} sub-categor${category.subcategories.length===1?"y":"ies"}</small></span><span aria-hidden="true">›</span></button>`).join(""):`<div class="category-search-empty"><strong>No matches</strong><span>Try a different search term.</span></div>`;
+  list.querySelectorAll(".category-browser-item").forEach(button=>button.onclick=()=>selectCategoryManager(button.dataset.name));
+  renderCategoryManagerDetail(state.categoryDefinitions.find(category=>category.name===selectedCategoryManagerName));
 }
-const categoryAddForm=document.getElementById("categoryAddForm");
-categoryAddForm.onsubmit=e=>{e.preventDefault();const input=document.getElementById("newCategoryName"),name=norm(input.value);if(!name)return;if(state.categoryDefinitions.some(x=>upper(x.name)===upper(name)))return alert("That category already exists.");state.categoryDefinitions.push({name,subcategories:[]});input.value="";saveState();renderAll();};
-const subcategoryAddForm=document.getElementById("subcategoryAddForm"),subcategoryParent=document.getElementById("subcategoryParent");
-subcategoryParent.onchange=renderSelectedSubcategories;
-subcategoryAddForm.onsubmit=e=>{e.preventDefault();const category=categoryDefinition(subcategoryParent.value),input=document.getElementById("newSubcategoryName"),name=norm(input.value);if(!category||!name)return;if(category.subcategories.some(x=>upper(x)===upper(name)))return alert("That sub-category already exists in this category.");category.subcategories.push(name);category.subcategories.sort((a,b)=>a.localeCompare(b));input.value="";saveState();renderAll();showNotice(`Added ${name} under ${category.name}.`);};
+const categoryManagerDialog=document.getElementById("categoryManagerDialog");
+document.getElementById("openCategoryManagerBtn")?.addEventListener("click",()=>{selectedCategoryManagerName=selectedCategoryManagerName||state.categoryDefinitions.slice().sort((a,b)=>a.name.localeCompare(b.name))[0]?.name||"";document.getElementById("categoryManagerSearch").value="";renderCategoryManager();categoryManagerDialog.showModal();});
+document.getElementById("closeCategoryManagerBtn")?.addEventListener("click",()=>categoryManagerDialog.close());
+document.getElementById("categoryManagerSearch")?.addEventListener("input",renderCategoryManager);
+document.getElementById("newCategoryManagerBtn")?.addEventListener("click",async()=>{const tempCategory=document.createElement("select"),tempSub=document.createElement("select");const created=await createCategoryInteractive(tempCategory,tempSub);if(created){selectedCategoryManagerName=created;renderCategoryManager();}});
 
 function showNotice(t){importSummary.textContent=t;importSummary.classList.remove("hidden");setTimeout(()=>importSummary.classList.add("hidden"),9000)}
 

@@ -1,18 +1,24 @@
-BalanceIQ v9.6.1 Validation Report
+BalanceIQ v9.7 Validation Report
 Build 2026.07.23.001
 
-Completed checks:
-- JavaScript syntax checked successfully for app.js and cloud-sync.js using Node.
-- Manifest JSON parsed successfully.
-- HTML parsed successfully with no duplicate element IDs.
-- Every startup element referenced by app.js exists in index.html.
-- Required v9.6.1 Asset, Category and Sub-category create/edit controls are present.
-- Receipt Asset selection is wired into saved receipts and receipt-created transactions.
-- Asset rename migration covers transactions, receipts, merchant rules and review items.
-- Category and sub-category rename migration remains connected to existing references.
-- Duplicate-name safeguards and alphabetical sorting are present.
-- PWA manifest and service-worker cache were updated to v9.6.1.
-- Release documentation was updated.
+PASS - app version 9 7
+PASS - build 2026 07 23 001
+PASS - compact settings card
+PASS - dedicated manager dialog
+PASS - manager search
+PASS - category detail pane
+PASS - old long settings forms removed
+PASS - no duplicate html ids
+PASS - all startup ids present
+PASS - manifest valid
+PASS - service worker cache updated
 
-Verification scope:
-Static integration and package validation passed. A Chromium smoke-test was attempted, but the container's headless Chromium process did not complete reliably, so interactive device/browser testing is still recommended after deployment, especially on iPhone Safari/PWA.
+Verification performed:
+- JavaScript syntax checked with Node.js.
+- Web manifest parsed as JSON.
+- Required startup element IDs compared with index.html.
+- Duplicate HTML IDs checked.
+- Version and service-worker cache identifiers checked.
+- Release files packaged and ZIP integrity tested.
+
+Note: device-specific visual testing on Android Chrome and iPhone Safari is still recommended after deployment.

@@ -56,3 +56,9 @@ Version 9.5.1 (Build 2026.07.22.005)
 
 9.6 - Smart category management in Settings, transactions, receipts and reviews.
 9.6.1 - Smart in-context management for assets, categories and sub-categories, including receipt asset assignment.
+
+BalanceIQ v9.7 — Scalable Category Management
+Build 2026.07.23.001
+- Compact Settings entry for category management.
+- Dedicated searchable category manager with selected-category detail pane.
+- Responsive mobile management workflow.

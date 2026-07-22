@@ -187,32 +187,16 @@
     <div id="assetList" class="chips"></div>
   </section>
 
-  <section class="panel category-manager-panel">
-    <div class="section-heading compact-heading">
+  <section class="panel settings-manager-card">
+    <div class="settings-manager-copy">
+      <div class="settings-manager-icon" aria-hidden="true">▦</div>
       <div>
         <h2>Categories &amp; Sub-categories</h2>
-        <p>Create the labels that suit your household, assets or business. Merchant rules remember both levels.</p>
+        <p>Keep Settings tidy by managing categories in a dedicated searchable screen.</p>
+        <span id="categoryManagerSummary" class="small-note">0 categories · 0 sub-categories</span>
       </div>
     </div>
-    <div class="category-settings-grid">
-      <section class="category-settings-block">
-        <h3>Create a category</h3>
-        <form id="categoryAddForm" class="category-add-row">
-          <input id="newCategoryName" maxlength="60" placeholder="New category name" required>
-          <button id="addCategoryBtn" type="submit">Add Category</button>
-        </form>
-      </section>
-      <section class="category-settings-block">
-        <h3>Create a sub-category</h3>
-        <form id="subcategoryAddForm" class="subcategory-add-row">
-          <select id="subcategoryParent" aria-label="Parent category" required></select>
-          <input id="newSubcategoryName" maxlength="60" placeholder="New sub-category name" required>
-          <button id="addSubcategoryBtn" type="submit">Add Sub-category</button>
-        </form>
-        <div id="selectedSubcategoryList" class="selected-subcategory-list"></div>
-      </section>
-    </div>
-    <div id="categoryManagerList" class="category-manager-list"></div>
+    <button id="openCategoryManagerBtn" type="button">Manage Categories</button>
   </section>
 
   <section class="panel">
@@ -365,6 +349,30 @@
 </form>
 </dialog>
 
+
+
+<dialog id="categoryManagerDialog" class="category-manager-dialog">
+  <div class="category-manager-shell">
+    <header class="category-manager-toolbar">
+      <div>
+        <span class="eyebrow">SETTINGS</span>
+        <h2>Categories</h2>
+        <p>Search, create and manage categories without making the main Settings page longer.</p>
+      </div>
+      <button id="closeCategoryManagerBtn" type="button" class="secondary">Close</button>
+    </header>
+    <div class="category-manager-layout">
+      <aside class="category-browser-pane">
+        <div class="category-manager-search-row">
+          <input id="categoryManagerSearch" type="search" placeholder="Search categories or sub-categories" aria-label="Search categories or sub-categories">
+          <button id="newCategoryManagerBtn" type="button">＋ New</button>
+        </div>
+        <div id="categoryManagerList" class="category-browser-list"></div>
+      </aside>
+      <section id="categoryManagerDetail" class="category-detail-pane" aria-live="polite"></section>
+    </div>
+  </div>
+</dialog>
 
 <dialog id="nameManagerDialog" class="name-manager-dialog">
 <form method="dialog" id="nameManagerForm">
