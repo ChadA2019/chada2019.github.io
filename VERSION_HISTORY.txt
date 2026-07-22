@@ -1,3 +1,4 @@
+9.3  2026-07-22  Unified visible version/build source, corrected header and About labels, refreshed cache and release summary.
 BALANCEIQ VERSION HISTORY
 
 v6.0

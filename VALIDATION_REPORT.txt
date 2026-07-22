@@ -1,10 +1,14 @@
-BalanceIQ v9.2 validation
-- JavaScript syntax: passed
-- Required app files: present
-- Receipt scan debug HTML: removed
-- OCR diagnostic JavaScript handlers: removed
-- Diagnostic-only CSS: removed
-- Fast local Tesseract Quick Scan: retained
-- Review and manual-correction workflow: retained
-- Service-worker cache version: updated
-- External paid API/backend: none
+BalanceIQ v9.3 Validation Report
+
+- Header version badge: reads APP_INFO.version
+- About version: reads APP_INFO.version
+- About build: reads APP_INFO.build
+- Browser title: generated from APP_INFO.version
+- Stale visible v9.0 and 8.0 strings: removed from active HTML/JavaScript
+- Receipt scan debug HTML: absent
+- OCR diagnostic handlers: absent
+- Service-worker cache: balanceiq-v9-3-20260722-002
+- Quick Scan workflow: retained
+- External AI/server requirement: none
+- JavaScript syntax: checked
+- ZIP integrity: checked

@@ -1,8 +1,10 @@
-BalanceIQ v9.2 — Streamlined Assisted Receipt Entry
+BalanceIQ v9.3 — Version Synchronisation & Cleanup
 
-- Removes the receipt scan debug and OCR diagnostics section from the receipt entry screen.
-- Keeps the fast single-pass local Tesseract Quick Scan introduced in v9.1.
-- Keeps the clear “Please check the details before saving” review message.
-- High-confidence fields remain marked in green; uncertain or missing fields remain marked in amber.
-- Manual correction and manual-only entry remain available.
-- No AI API, external processing server, or per-receipt cost.
+- Fixes the version beside the BalanceIQ logo so it now shows v9.3.
+- Fixes the About page so Version and Build show 9.3 and 2026.07.22.002.
+- Introduces one APP_INFO source for all visible in-app version and build labels.
+- Updates the browser title, manifest description and service-worker cache.
+- Replaces the stale About release description with the current release summary.
+- Keeps the fast single-pass local Tesseract Quick Scan and assisted manual review workflow.
+- Keeps the receipt scan debug and diagnostics interface removed.
+- No AI API, external processing server or per-receipt cost.

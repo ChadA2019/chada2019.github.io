@@ -149,8 +149,21 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_VERSION="9.2";
+const APP_INFO=Object.freeze({version:"9.3",build:"2026.07.22.002",release:"Version 9.3 centralises version information, keeps Quick Scan fast, and removes stale release labels."});
+const APP_VERSION=APP_INFO.version;
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
+function applyAppInfo(){
+  document.title=`BalanceIQ v${APP_INFO.version}`;
+  const badge=document.getElementById("appVersionBadge");
+  const version=document.getElementById("aboutVersion");
+  const build=document.getElementById("aboutBuild");
+  const summary=document.getElementById("aboutReleaseSummary");
+  if(badge)badge.textContent=`v${APP_INFO.version}`;
+  if(version)version.textContent=APP_INFO.version;
+  if(build)build.textContent=APP_INFO.build;
+  if(summary)summary.textContent=APP_INFO.release;
+}
+
 const defaultCategories=["Alcohol","Bills & Direct Debits","Cafes","Cash","Child Support","Dining Out","Education","Entertainment","Fuel","Groceries","Health & Fitness","Home & Maintenance","Income","Insurance","Loans & Finance","Loans & Mortgages","Medical","Personal Care","Pets","Refunds","Shopping","Subscriptions","Take Away","Transfers","Transport","Travel","Uncategorised","Vehicles"];
 const subcategoriesByCategory={
   "Alcohol":["Bottle Shop / Winery","Bar / Pub","Other Alcohol"],
@@ -2742,6 +2755,7 @@ function openSetup(){onboardingUsage.value=state.usageMode||"personal";onboardin
 runSetupBtn.onclick=openSetup;
 finishOnboardingBtn.onclick=()=>{state.usageMode=onboardingUsage.value;state.currency=onboardingCurrency.value;state.theme=onboardingTheme.value;const asset=norm(onboardingAsset.value);if(asset&&!state.assets.includes(asset))state.assets.push(asset);if(onboardingSample.checked&&!state.transactions.some(t=>t.source==="Sample"))state.transactions.push(...sampleTransactions());state.onboardingComplete=true;document.body.classList.toggle("dark",state.theme==="dark");themeBtn.textContent=state.theme==="dark"?"☀️":"🌙";updateGreeting();usageMode.value=state.usageMode;currencySetting.value=state.currency;saveState();onboardingDialog.close();renderAll()};
 themeBtn.onclick=()=>{state.theme=state.theme==="dark"?"light":"dark";document.body.classList.toggle("dark",state.theme==="dark");themeBtn.textContent=state.theme==="dark"?"☀️":"🌙";updateGreeting();saveState();drawCashflow()};
+applyAppInfo();
 document.body.classList.toggle("dark",state.theme==="dark");themeBtn.textContent=state.theme==="dark"?"☀️":"🌙";updateGreeting();setInterval(updateGreeting,60000);
 window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferredPrompt=e;installBtn.classList.remove("hidden")});installBtn.onclick=async()=>{if(deferredPrompt){deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null}};
 if("serviceWorker"in navigator&&location.protocol.startsWith("http"))navigator.serviceWorker.register("service-worker.js");

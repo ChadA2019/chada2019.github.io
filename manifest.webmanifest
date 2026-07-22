@@ -1,17 +1,10 @@
 {
   "name": "BalanceIQ",
   "short_name": "BalanceIQ",
-  "description": "BalanceIQ 9.2 — fast local assisted receipt entry with streamlined review.",
+  "description": "BalanceIQ 9.3 — fast local assisted receipt entry with unified version information.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#071d3b",
   "theme_color": "#0b3c68",
-  "icons": [
-    {
-      "src": "icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    }
-  ]
+  "icons": [{"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
 }
