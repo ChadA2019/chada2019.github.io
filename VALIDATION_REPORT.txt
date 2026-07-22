@@ -1,5 +1,7 @@
-BalanceIQ v8.0 validation
-- JavaScript syntax: PASS
-- Release files present: PASS
-- Service-worker cache version updated: PASS
-- ZIP integrity: pending packaging
+BalanceIQ v9.0 validation
+- JavaScript syntax: pending
+- Required app files: present
+- Service-worker cache version: updated
+- PaddleOCR: client-side dynamic module with graceful fallback
+- Tesseract.js: retained
+- External paid API/backend: none

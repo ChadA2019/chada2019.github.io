@@ -1,10 +1,9 @@
-BalanceIQ v8.0 — Receipt Reliability Release
+BalanceIQ v9.0 — Dual Local OCR Release
 
-Fixes and improvements:
-- Recovers damaged Bunnings totals such as $136 5g as $136.55.
-- Uses a precise subtotal when a one-decimal tender amount is within six cents.
-- Promotes repeated subtotal evidence when GST-included summary structure is present.
-- Detects GST values shifted onto an EFT line and validates them against Total / 11.
-- Strongly prefers complete Bunnings receipt numbers in ####/######## format.
-- Adds dedicated lower-summary OCR crops covering Total, GST, EFT, CARD and Change rows.
-- Retains all v7.9 date, total, GST and footer-recovery safeguards.
+- Added official PaddleOCR.js PP-OCRv5 as the primary full-receipt reader.
+- Retained Tesseract.js multi-pass OCR for focused date, totals, GST and amount verification.
+- PaddleOCR word coordinates are reconstructed into visual rows before parsing.
+- Added dynamic PaddleOCR summary-row detection around Total, GST, EFT, Card, Change and related labels.
+- PaddleOCR and Tesseract evidence are merged into the existing receipt parser.
+- Graceful fallback: if PaddleOCR cannot load, Tesseract continues to work.
+- All inference occurs on the user's device. There is no paid API and no receipt-processing backend.

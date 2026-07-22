@@ -149,7 +149,7 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_VERSION="8.0";
+const APP_VERSION="9.0";
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 const defaultCategories=["Alcohol","Bills & Direct Debits","Cafes","Cash","Child Support","Dining Out","Education","Entertainment","Fuel","Groceries","Health & Fitness","Home & Maintenance","Income","Insurance","Loans & Finance","Loans & Mortgages","Medical","Personal Care","Pets","Refunds","Shopping","Subscriptions","Take Away","Transfers","Transport","Travel","Uncategorised","Vehicles"];
 const subcategoriesByCategory={
@@ -870,6 +870,96 @@ async function cropScanRegion(dataUrl,startRatio,endRatio,{threshold=false}={}){
   ctx.putImageData(image,0,0);
   return canvas.toDataURL("image/png");
 }
+
+const PADDLE_OCR_MODULE_URL="https://cdn.jsdelivr.net/npm/@paddleocr/paddleocr-js/+esm";
+let paddleOcrInstance=null;
+let paddleOcrUnavailableReason="";
+
+async function getPaddleOcr(){
+  if(paddleOcrInstance)return paddleOcrInstance;
+  if(paddleOcrUnavailableReason)throw new Error(paddleOcrUnavailableReason);
+  try{
+    const mod=await import(PADDLE_OCR_MODULE_URL);
+    if(!mod?.PaddleOCR)throw new Error("PaddleOCR export was not found");
+    paddleOcrInstance=await mod.PaddleOCR.create({
+      lang:"en",
+      ocrVersion:"PP-OCRv5",
+      worker:false,
+      ortOptions:{
+        backend:"wasm",
+        wasmPaths:"https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/",
+        numThreads:1,
+        simd:true
+      }
+    });
+    return paddleOcrInstance;
+  }catch(error){
+    paddleOcrUnavailableReason=String(error?.message||error||"PaddleOCR failed to load");
+    throw error;
+  }
+}
+
+async function dataUrlToBlob(dataUrl){
+  const response=await fetch(dataUrl);
+  return response.blob();
+}
+
+function normalisePaddleItems(items=[]){
+  return items.map((item,index)=>{
+    const poly=item.poly||item.box||item.points||[];
+    const points=Array.isArray(poly)?poly.flatMap(p=>Array.isArray(p)?[p]:[]):[];
+    const xs=points.map(p=>Number(p?.[0])).filter(Number.isFinite);
+    const ys=points.map(p=>Number(p?.[1])).filter(Number.isFinite);
+    const x=xs.length?Math.min(...xs):0;
+    const y=ys.length?Math.min(...ys):index*20;
+    const x2=xs.length?Math.max(...xs):x;
+    const y2=ys.length?Math.max(...ys):y;
+    return {text:String(item.text||item.recText||"").trim(),score:Number(item.score??item.confidence??0),x,y,x2,y2,poly};
+  }).filter(item=>item.text);
+}
+
+function paddleItemsToRows(items=[]){
+  const sorted=[...items].sort((a,b)=>a.y-b.y||a.x-b.x);
+  const rows=[];
+  for(const item of sorted){
+    const h=Math.max(8,item.y2-item.y);
+    const cy=(item.y+item.y2)/2;
+    let row=rows.find(r=>Math.abs(r.cy-cy)<=Math.max(9,Math.min(24,(r.h+h)*.45)));
+    if(!row){row={cy,h,items:[]};rows.push(row)}
+    row.items.push(item);
+    row.cy=(row.cy*(row.items.length-1)+cy)/row.items.length;
+    row.h=Math.max(row.h,h);
+  }
+  return rows.sort((a,b)=>a.cy-b.cy).map(row=>row.items.sort((a,b)=>a.x-b.x).map(i=>i.text).join(" ").replace(/\s+/g," ").trim()).filter(Boolean);
+}
+
+function paddleSummaryRows(items=[]){
+  const rows=paddleItemsToRows(items);
+  const keys=/sub\s*total|\btotal\b|gst|tax|eft|power\s*pass|card|credit|rounding|change|savings/i;
+  const selected=new Set();
+  rows.forEach((row,index)=>{if(keys.test(row)){for(let i=Math.max(0,index-2);i<=Math.min(rows.length-1,index+5);i++)selected.add(i)}});
+  if(!selected.size){
+    const start=Math.floor(rows.length*.50);
+    for(let i=start;i<Math.min(rows.length,start+Math.ceil(rows.length*.30));i++)selected.add(i);
+  }
+  return [...selected].sort((a,b)=>a-b).map(i=>rows[i]);
+}
+
+async function recognisePaddlePass(image,label,section){
+  const ocr=await getPaddleOcr();
+  const blob=await dataUrlToBlob(image);
+  const results=await ocr.predict(blob,{textRecScoreThresh:.35,textDetBoxThresh:.35,textDetThresh:.25});
+  const result=results?.[0]||{};
+  const items=normalisePaddleItems(result.items||[]);
+  const rows=label.includes("summary")?paddleSummaryRows(items):paddleItemsToRows(items);
+  const average=items.length?items.reduce((sum,item)=>sum+item.score,0)/items.length:0;
+  return {
+    section,pass:label,engine:"PaddleOCR",confidence:Math.round(average*100),characters:rows.join("\n").length,
+    text:rows.join("\n"),summaryText:paddleSummaryRows(items).join("\n"),items:items.map(({text,score,x,y,x2,y2})=>({text,score,x,y,x2,y2})),
+    metrics:result.metrics||null,image
+  };
+}
+
 async function recogniseScanPass(image,label,section,logger){
   const result=await Tesseract.recognize(image,"eng",{logger});
   return {
@@ -2673,6 +2763,21 @@ runOcrBtn.onclick=async()=>{
       const tenderLower=await cropReceiptBox(full,.38,.64,.99,.83,{threshold:true,scale:4.0});
       const dateVariants=await makeDateStripVariants(full);
 
+      // v9.0 dual-engine OCR: PaddleOCR reads the corrected full receipt with
+      // word coordinates. Tesseract remains the detailed multi-crop verifier.
+      try{
+        ocrStatus.textContent=`Section ${section}: loading PaddleOCR`;
+        const paddleFull=await recognisePaddlePass(full,"paddle-full",section);
+        paddleFull.geometry={detected:geometry.detected,confidence:geometry.confidence,bounds:geometry.bounds};
+        sectionReports.push(paddleFull);
+        const paddleSummary={...paddleFull,pass:"paddle-summary",text:paddleFull.summaryText||""};
+        paddleSummary.characters=paddleSummary.text.length;
+        sectionReports.push(paddleSummary);
+      }catch(error){
+        console.warn("PaddleOCR unavailable; continuing with Tesseract",error);
+        sectionReports.push({section,pass:"paddle-status",engine:"PaddleOCR",confidence:0,characters:0,text:`PaddleOCR unavailable: ${String(error?.message||error)}`,geometry:{detected:geometry.detected,confidence:geometry.confidence,bounds:geometry.bounds}});
+      }
+
       for(const [label,image] of [["full",full],["header",header],["totals",totals],["footer",footer],["gst",gst],["totals-right",totalsRight],["totals-right-threshold",totalsRightThreshold],["gst-right",gstRight],["totals-lower",totalsLower],["totals-lower-threshold",totalsLowerThreshold],["tender-lower",tenderLower]]){
         const report=await recogniseScanPass(image,label,section,m=>{
           if(m.status==="recognizing text")ocrStatus.textContent=`Section ${section} ${label}: ${Math.round(m.progress*100)}%`;
@@ -2704,22 +2809,23 @@ runOcrBtn.onclick=async()=>{
         };
         sectionReports.push(report);
       }
-      for(const label of ["header","totals","full"]){
+      for(const label of ["paddle-full","paddle-summary","header","totals","full"]){
         const text=sectionReports.find(r=>r.section===section&&r.pass===label)?.text||"";
         combined+=`\n--- ${label.toUpperCase()} PASS ---\n${text}`;
       }
     }
     const channels={
-      header:sectionReports.filter(r=>r.pass==="header").map(r=>r.text).join("\n"),
-      totals:sectionReports.filter(r=>r.pass==="totals"||r.pass.startsWith("totals-lower")).map(r=>r.text).join("\n"),
-      full:sectionReports.filter(r=>r.pass==="full").map(r=>r.text).join("\n"),
-      date:sectionReports.filter(r=>r.pass.startsWith("date-")).map(r=>r.text).join("\n"),
-      footer:sectionReports.filter(r=>r.pass==="footer").map(r=>r.text).join("\n"),
-      gst:sectionReports.filter(r=>r.pass==="gst"||r.pass==="gst-right"||r.pass==="tender-lower").map(r=>r.text).join("\n"),
-      totalsRight:sectionReports.filter(r=>r.pass.startsWith("totals-right")||r.pass.startsWith("amount-column")||r.pass.startsWith("totals-lower")||r.pass==="tender-lower").map(r=>r.text).join("\n")
+      header:sectionReports.filter(r=>r.pass==="header"||r.pass==="paddle-full").map(r=>r.text).join("\n"),
+      totals:sectionReports.filter(r=>r.pass==="totals"||r.pass.startsWith("totals-lower")||r.pass==="paddle-summary").map(r=>r.text).join("\n"),
+      full:sectionReports.filter(r=>r.pass==="full"||r.pass==="paddle-full").map(r=>r.text).join("\n"),
+      date:sectionReports.filter(r=>r.pass.startsWith("date-")||r.pass==="paddle-full").map(r=>r.text).join("\n"),
+      footer:sectionReports.filter(r=>r.pass==="footer"||r.pass==="paddle-full").map(r=>r.text).join("\n"),
+      gst:sectionReports.filter(r=>r.pass==="gst"||r.pass==="gst-right"||r.pass==="tender-lower"||r.pass==="paddle-summary").map(r=>r.text).join("\n"),
+      totalsRight:sectionReports.filter(r=>r.pass.startsWith("totals-right")||r.pass.startsWith("amount-column")||r.pass.startsWith("totals-lower")||r.pass==="tender-lower"||r.pass==="paddle-summary").map(r=>r.text).join("\n")
     };
     const parsed=parseReceiptChannels(channels);
-    const ocrAverage=Math.round(sectionReports.reduce((s,r)=>s+r.confidence,0)/Math.max(1,sectionReports.length));
+    const scoredReports=sectionReports.filter(r=>r.pass!=="paddle-status");
+    const ocrAverage=Math.round(scoredReports.reduce((s,r)=>s+r.confidence,0)/Math.max(1,scoredReports.length));
     parsed.ocrConfidence=ocrAverage;
     if(parsed.confidence){
       parsed.confidence.parserOverall=parsed.confidence.overall;
@@ -2748,6 +2854,7 @@ runOcrBtn.onclick=async()=>{
       parsed.parser?`Parser: ${parsed.parser}.`:"",
       parsed.merchantProfile?`Merchant profile: ${parsed.merchantProfile}.`:"",
       `OCR confidence: ${ocrAverage}%.`,
+      sectionReports.some(r=>r.engine==="PaddleOCR"&&r.confidence>0)?"OCR engines: PaddleOCR + Tesseract.":"OCR engine: Tesseract (PaddleOCR unavailable).",
       parsed.confidence?`Combined confidence: ${parsed.confidence.overall}%.`:""
     ].filter(Boolean).join(" ");
     receiptNotes.value=(receiptNotes.value?receiptNotes.value+"\n":"")+notes;
