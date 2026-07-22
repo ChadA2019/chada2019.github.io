@@ -1,10 +1,10 @@
-BalanceIQ v9.5.1 Validation Report
-Build: 2026.07.22.005
+BalanceIQ v9.6 Validation Report
 
-PASS - JavaScript syntax validated with Node.js.
-PASS - Every category renders a visible Add sub-category button.
-PASS - Empty categories display clear guidance.
-PASS - Sub-category duplicate protection remains active.
-PASS - Rename and delete handlers remain connected.
-PASS - App version, manifest and service-worker cache updated.
-PASS - Release ZIP integrity verified.
+Static validation completed:
+- Required v9.6 controls present.
+- JavaScript syntax checked with Node.
+- Manifest JSON parsed.
+- Service-worker cache version updated.
+- ZIP integrity checked.
+
+Functional browser/device testing is still recommended after deployment, especially on iPhone Safari/PWA.

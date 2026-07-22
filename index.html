@@ -194,10 +194,24 @@
         <p>Create the labels that suit your household, assets or business. Merchant rules remember both levels.</p>
       </div>
     </div>
-    <form id="categoryAddForm" class="category-add-row">
-      <input id="newCategoryName" maxlength="60" placeholder="New category name" required>
-      <button id="addCategoryBtn" type="submit">Add Category</button>
-    </form>
+    <div class="category-settings-grid">
+      <section class="category-settings-block">
+        <h3>Create a category</h3>
+        <form id="categoryAddForm" class="category-add-row">
+          <input id="newCategoryName" maxlength="60" placeholder="New category name" required>
+          <button id="addCategoryBtn" type="submit">Add Category</button>
+        </form>
+      </section>
+      <section class="category-settings-block">
+        <h3>Create a sub-category</h3>
+        <form id="subcategoryAddForm" class="subcategory-add-row">
+          <select id="subcategoryParent" aria-label="Parent category" required></select>
+          <input id="newSubcategoryName" maxlength="60" placeholder="New sub-category name" required>
+          <button id="addSubcategoryBtn" type="submit">Add Sub-category</button>
+        </form>
+        <div id="selectedSubcategoryList" class="selected-subcategory-list"></div>
+      </section>
+    </div>
     <div id="categoryManagerList" class="category-manager-list"></div>
   </section>
 
@@ -291,8 +305,8 @@
     <label>Date<input id="txDate" type="date" required></label>
     <label>Amount<input id="txAmount" type="number" step="0.01" required></label>
     <label class="wide">Description<input id="txDescription" required></label>
-    <label>Category<select id="txCategory" required></select></label>
-    <label>Subcategory<select id="txSubcategory"></select></label>
+    <label>Category<div class="select-create-row"><select id="txCategory" required></select><button id="txAddCategoryBtn" type="button" class="inline-add-btn" aria-label="Create category">＋</button></div></label>
+    <label>Subcategory<div class="select-create-row"><select id="txSubcategory"></select><button id="txAddSubcategoryBtn" type="button" class="inline-add-btn" aria-label="Create sub-category">＋</button></div></label>
     <label>Asset<select id="txAsset"></select></label>
     <label>Tax deductible<select id="txTax"><option value="false">No</option><option value="true">Yes</option></select></label>
     <label>Tag<input id="txTag" placeholder="e.g. Work, Holiday"></label>
@@ -336,8 +350,8 @@
       <label class="wide">Merchant<input id="receiptMerchant" required placeholder="e.g. Bunnings Belmont"></label>
       <label>Receipt date<input id="receiptDate" type="date" required></label>
       <label>Total paid<input id="receiptAmount" type="number" step="0.01" min="0" required></label>
-      <label>Category<select id="receiptCategory"></select></label>
-      <label>Subcategory<select id="receiptSubcategory"></select></label>
+      <label>Category<div class="select-create-row"><select id="receiptCategory"></select><button id="receiptAddCategoryBtn" type="button" class="inline-add-btn" aria-label="Create category">＋</button></div></label>
+      <label>Subcategory<div class="select-create-row"><select id="receiptSubcategory"></select><button id="receiptAddSubcategoryBtn" type="button" class="inline-add-btn" aria-label="Create sub-category">＋</button></div></label>
       <label>Paid from<input id="receiptAccount" placeholder="e.g. Suncorp Everyday"></label>
       <label>Payment method<select id="receiptPaymentMethod"><option>Card</option><option>Cash</option><option>Bank transfer</option><option>Other</option></select></label>
       <label>Receipt number<input id="receiptNumber"></label>

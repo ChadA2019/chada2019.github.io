@@ -83,6 +83,8 @@ const {
   previewDialog,
   previewMeta,
   receiptAccount,
+  receiptAddCategoryBtn,
+  receiptAddSubcategoryBtn,
   receiptAmount,
   receiptAwaiting,
   receiptCategory,
@@ -134,6 +136,8 @@ const {
   transactions,
   transactionsBody,
   txAmount,
+  txAddCategoryBtn,
+  txAddSubcategoryBtn,
   txAsset,
   txCategory,
   txDate,
@@ -145,11 +149,11 @@ const {
   txTax,
   usageMode
 }=Object.fromEntries(
-  ["addAssetBtn","addRuleBtn","addTransactionBtn","applyReviewsBtn","assetFilter","assetList","assetListData","assetSummary","autoRate","backupInput","cashflowChart","categoryBars","categoryFilter","categoryList","clearBtn","cloudAnonKey","cloudEmail","cloudPassphrase","cloudSaveConfigBtn","cloudSignInBtn","cloudSignOutBtn","cloudStatus","cloudSyncBtn","cloudUrl","confirmPdfImportBtn","csvInput","currencySetting","dashFrom","dashTo","dashboard","enhanceScan","exportBtn","exportCsvBtn","finishOnboardingBtn","fyExpense","fyIncome","fySelect","fyTax","greeting","heroScanBtn","importSummary","installBtn","kpiExpense","kpiIncome","kpiNet","kpiReceiptMatch","kpiReview","largestExpenses","loadSampleDataBtn","newAssetName","ocrStatus","onboardingAsset","onboardingCurrency","onboardingDialog","onboardingForm","onboardingSample","onboardingTheme","onboardingUsage","pdfInput","periodExpense","periodIncome","periodNet","previewBody","previewDialog","previewMeta","receiptAccount","receiptAmount","receiptAwaiting","receiptCategory","receiptDate","receiptDialog","receiptForm","receiptGst","receiptImageInput","receiptList","receiptMatched","receiptMerchant","receiptMoreInput","receiptNotes","receiptNumber","receiptPaymentMethod","receiptPreview","receiptPreviewEmpty","receiptSubcategory","receiptSuggested","receipts","removeScanBtn","reports","review","reviewList","rotateScanBtn","ruleAsset","ruleCategory","ruleCount","ruleDialog","ruleForm","rulePattern","ruleSubcategory","rules","rulesBody","runOcrBtn","runSetupBtn","savePreferencesBtn","saveReceiptBtn","saveRuleBtn","saveTransactionBtn","scanPageStrip","settings","themeBtn","transactionCount","transactionDialog","transactionDialogTitle","transactionForm","transactionSearch","transactions","transactionsBody","txAmount","txAsset","txCategory","txDate","txDescription","txIndex","txNotes","txSubcategory","txTag","txTax","usageMode"].map(id=>[id,byId(id)])
+  ["addAssetBtn","addRuleBtn","addTransactionBtn","applyReviewsBtn","assetFilter","assetList","assetListData","assetSummary","autoRate","backupInput","cashflowChart","categoryBars","categoryFilter","categoryList","clearBtn","cloudAnonKey","cloudEmail","cloudPassphrase","cloudSaveConfigBtn","cloudSignInBtn","cloudSignOutBtn","cloudStatus","cloudSyncBtn","cloudUrl","confirmPdfImportBtn","csvInput","currencySetting","dashFrom","dashTo","dashboard","enhanceScan","exportBtn","exportCsvBtn","finishOnboardingBtn","fyExpense","fyIncome","fySelect","fyTax","greeting","heroScanBtn","importSummary","installBtn","kpiExpense","kpiIncome","kpiNet","kpiReceiptMatch","kpiReview","largestExpenses","loadSampleDataBtn","newAssetName","ocrStatus","onboardingAsset","onboardingCurrency","onboardingDialog","onboardingForm","onboardingSample","onboardingTheme","onboardingUsage","pdfInput","periodExpense","periodIncome","periodNet","previewBody","previewDialog","previewMeta","receiptAccount","receiptAddCategoryBtn","receiptAddSubcategoryBtn","receiptAmount","receiptAwaiting","receiptCategory","receiptDate","receiptDialog","receiptForm","receiptGst","receiptImageInput","receiptList","receiptMatched","receiptMerchant","receiptMoreInput","receiptNotes","receiptNumber","receiptPaymentMethod","receiptPreview","receiptPreviewEmpty","receiptSubcategory","receiptSuggested","receipts","removeScanBtn","reports","review","reviewList","rotateScanBtn","ruleAsset","ruleCategory","ruleCount","ruleDialog","ruleForm","rulePattern","ruleSubcategory","rules","rulesBody","runOcrBtn","runSetupBtn","savePreferencesBtn","saveReceiptBtn","saveRuleBtn","saveTransactionBtn","scanPageStrip","settings","themeBtn","transactionCount","transactionDialog","transactionDialogTitle","transactionForm","transactionSearch","transactions","transactionsBody","txAmount","txAddCategoryBtn","txAddSubcategoryBtn","txAsset","txCategory","txDate","txDescription","txIndex","txNotes","txSubcategory","txTag","txTax","usageMode"].map(id=>[id,byId(id)])
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_INFO=Object.freeze({version:"9.5.1",build:"2026.07.22.005",release:"Version 9.5.1 makes sub-category creation clearly visible beneath every category."});
+const APP_INFO=Object.freeze({version:"9.6",build:"2026.07.22.006",release:"Version 9.6 adds category and sub-category creation in Settings, transaction entry, receipt review and merchant review."});
 const APP_VERSION=APP_INFO.version;
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 function applyAppInfo(){
@@ -214,7 +218,7 @@ function categoryDefinition(name){return state.categoryDefinitions.find(x=>Strin
 function getSubcategories(category,current=""){
   const list=[...(categoryDefinition(category)?.subcategories||[])];
   if(current&&!list.includes(current))list.unshift(current);
-  return [...new Set(list)];
+  return [...new Set(list)].sort((a,b)=>a.localeCompare(b));
 }
 function allCategories(){
   const used=[...state.transactions.map(t=>t.category),...state.receipts.map(r=>r.category),...state.rules.map(r=>r.category)];
@@ -231,6 +235,28 @@ function fillCategorySelect(categoryEl,subcategoryEl,selected="Uncategorised",se
   categoryEl.innerHTML=categories.map(c=>`<option value="${esc(c)}"${c===selected?" selected":""}>${esc(c)}</option>`).join("");
   categoryEl.value=categories.includes(selected)?selected:"Uncategorised";
   fillSubcategorySelect(categoryEl,subcategoryEl,selectedSub);
+}
+function createCategoryInteractive(categoryEl,subcategoryEl){
+  const name=norm(prompt("New category name",""));
+  if(!name)return null;
+  const existing=state.categoryDefinitions.find(x=>upper(x.name)===upper(name));
+  if(existing){alert("That category already exists. It has been selected.");fillCategorySelect(categoryEl,subcategoryEl,existing.name,"");return existing.name;}
+  state.categoryDefinitions.push({name,subcategories:[]});
+  state.categoryDefinitions.sort((a,b)=>a.name.localeCompare(b.name));
+  saveState();fillCategorySelect(categoryEl,subcategoryEl,name,"");renderCategoryManager();renderCategoriesAssets();
+  showNotice(`Created category ${name}.`);return name;
+}
+function createSubcategoryInteractive(categoryEl,subcategoryEl){
+  const category=categoryEl.value||"Uncategorised";
+  const definition=categoryDefinition(category);
+  if(!definition){alert("Select or create a category first.");return null;}
+  const name=norm(prompt(`New sub-category for ${category}`,""));
+  if(!name)return null;
+  const existing=definition.subcategories.find(x=>upper(x)===upper(name));
+  if(existing){alert("That sub-category already exists. It has been selected.");fillSubcategorySelect(categoryEl,subcategoryEl,existing);return existing;}
+  definition.subcategories.push(name);definition.subcategories.sort((a,b)=>a.localeCompare(b));
+  saveState();fillSubcategorySelect(categoryEl,subcategoryEl,name);renderCategoryManager();
+  showNotice(`Created ${name} under ${category}.`);return name;
 }
 function fillAssetSelect(el,selected=""){
   const assets=[...state.assets];
@@ -493,77 +519,25 @@ function renderReceipts(){
 function confirmReceiptMatch(id){const r=state.receipts.find(x=>x.id===id);if(!r?.suggestedBankTransaction)return;const tx=r.suggestedBankTransaction;r.status='matched';r.matchConfidence=tx.score;r.bankDate=tx.date;r.bankDescription=tx.description;const existing=state.transactions.find(t=>t.receiptId===r.id);if(existing)Object.assign(existing,{date:tx.date,bankDate:tx.date,amount:tx.amount,bankDescription:tx.description,source:tx.source,sourceAccount:tx.sourceAccount,reconciliationStatus:'matched',matchConfidence:tx.score});const duplicateIndex=state.transactions.findIndex(t=>!t.receiptId&&idFor(t)===idFor(tx));if(duplicateIndex>=0)state.transactions.splice(duplicateIndex,1);delete r.suggestedBankTransaction;saveState();renderAll();showNotice('Receipt and bank transaction reconciled.')}
 function deleteReceipt(id){if(!confirm('Delete this receipt and its receipt-created expense?'))return;state.receipts=state.receipts.filter(r=>r.id!==id);state.transactions=state.transactions.filter(t=>t.receiptId!==id);saveState();renderAll()}
 function renderReview(){
-  const allCategories=[...new Set([
-    ...defaultCategories,
-    ...state.rules.map(r=>r.category),
-    ...Object.keys(subcategoriesByCategory)
-  ])].sort();
-
+  const categories=allCategories();
   reviewList.innerHTML=state.reviewQueue.length?state.reviewQueue.map((q,i)=>{
     const chosenCategory=q.chosenCategory||q.category||"Uncategorised";
     const chosenSubcategory=q.chosenSubcategory||q.subcategory||"";
-
-    const categoryOptions=allCategories
-      .map(c=>`<option value="${esc(c)}"${c===chosenCategory?" selected":""}>${esc(c)}</option>`)
-      .join("");
-
-    const subOptions=getSubcategories(chosenCategory,chosenSubcategory)
-      .map(s=>`<option value="${esc(s)}"${s===chosenSubcategory?" selected":""}>${esc(s)}</option>`)
-      .join("");
-
+    const categoryOptions=categories.map(c=>`<option value="${esc(c)}"${c===chosenCategory?" selected":""}>${esc(c)}</option>`).join("");
+    const subOptions=getSubcategories(chosenCategory,chosenSubcategory).map(s=>`<option value="${esc(s)}"${s===chosenSubcategory?" selected":""}>${esc(s)}</option>`).join("");
     return `<article class="review-card">
-      <header>
-        <div><strong>${esc(q.pattern)}</strong><div>${esc(q.description)}</div></div>
-        <div><strong>${money(q.total)}</strong><div>${q.count} transactions</div></div>
-      </header>
+      <header><div><strong>${esc(q.pattern)}</strong><div>${esc(q.description)}</div></div><div><strong>${money(q.total)}</strong><div>${q.count} transactions</div></div></header>
       <div class="review-grid">
-        <label>Suggested<input value="${esc(q.category)}" disabled></label>
-        <label>Confidence<input value="${pct(q.confidence)}" disabled></label>
-
-        <label>Chosen category
-          <select data-i="${i}" data-k="chosenCategory">
-            ${categoryOptions}
-          </select>
-        </label>
-
-        <label>Subcategory
-          <select data-i="${i}" data-k="chosenSubcategory">
-            ${subOptions}
-          </select>
-        </label>
-
-        <label>Asset
-          <select data-i="${i}" data-k="asset">
-            <option value="">Unassigned</option>
-            ${state.assets.map(a=>`<option value="${esc(a)}"${a===(q.asset||"")?" selected":""}>${esc(a)}</option>`).join("")}
-          </select>
-        </label>
-
-        <label>Accept
-          <select data-i="${i}" data-k="accept">
-            <option value="false"${!q.accept?" selected":""}>No</option>
-            <option value="true"${q.accept?" selected":""}>Yes</option>
-          </select>
-        </label>
-      </div>
-    </article>`;
+        <label>Suggested<input value="${esc(q.category)}" disabled></label><label>Confidence<input value="${pct(q.confidence)}" disabled></label>
+        <label>Chosen category<div class="select-create-row"><select data-i="${i}" data-k="chosenCategory">${categoryOptions}</select><button type="button" class="inline-add-btn review-add-category" data-i="${i}" aria-label="Create category">＋</button></div></label>
+        <label>Subcategory<div class="select-create-row"><select data-i="${i}" data-k="chosenSubcategory">${subOptions}</select><button type="button" class="inline-add-btn review-add-subcategory" data-i="${i}" aria-label="Create sub-category">＋</button></div></label>
+        <label>Asset<select data-i="${i}" data-k="asset"><option value="">Unassigned</option>${state.assets.map(a=>`<option value="${esc(a)}"${a===(q.asset||"")?" selected":""}>${esc(a)}</option>`).join("")}</select></label>
+        <label>Accept<select data-i="${i}" data-k="accept"><option value="false"${!q.accept?" selected":""}>No</option><option value="true"${q.accept?" selected":""}>Yes</option></select></label>
+      </div></article>`;
   }).join(""):"<div class='panel'><p>No merchants need review.</p></div>";
-
-  document.querySelectorAll("#reviewList [data-i]").forEach(el=>el.onchange=e=>{
-    const q=state.reviewQueue[+e.target.dataset.i];
-    const k=e.target.dataset.k;
-    q[k]=k==="accept"?e.target.value==="true":e.target.value;
-
-    if(k==="chosenCategory"){
-      const available=getSubcategories(q.chosenCategory);
-      q.chosenSubcategory=available[0]||"";
-      saveState();
-      renderReview();
-      return;
-    }
-
-    saveState();
-  });
+  document.querySelectorAll("#reviewList select[data-i]").forEach(el=>el.onchange=e=>{const q=state.reviewQueue[+e.target.dataset.i],k=e.target.dataset.k;q[k]=k==="accept"?e.target.value==="true":e.target.value;if(k==="chosenCategory"){const available=getSubcategories(q.chosenCategory);q.chosenSubcategory=available[0]||"";saveState();renderReview();return;}saveState();});
+  document.querySelectorAll(".review-add-category").forEach(btn=>btn.onclick=()=>{const i=+btn.dataset.i,q=state.reviewQueue[i],name=norm(prompt("New category name",""));if(!name)return;let def=state.categoryDefinitions.find(x=>upper(x.name)===upper(name));if(!def){def={name,subcategories:[]};state.categoryDefinitions.push(def);}q.chosenCategory=def.name;q.chosenSubcategory=def.subcategories[0]||"";saveState();renderAll();});
+  document.querySelectorAll(".review-add-subcategory").forEach(btn=>btn.onclick=()=>{const i=+btn.dataset.i,q=state.reviewQueue[i],category=q.chosenCategory||q.category||"Uncategorised",def=categoryDefinition(category);if(!def)return alert("Select or create a category first.");const name=norm(prompt(`New sub-category for ${category}`,""));if(!name)return;const existing=def.subcategories.find(x=>upper(x)===upper(name));if(!existing)def.subcategories.push(name);q.chosenSubcategory=existing||name;saveState();renderAll();});
 }
 function renderRules(){rulesBody.innerHTML=state.rules.map((r,i)=>`<tr><td>${esc(r.pattern)}</td><td>${esc(r.category)}</td><td>${esc(r.subcategory||"")}</td><td>${esc(r.asset||"")}</td><td><button class="link-btn danger-link del-rule" data-i="${i}">Delete</button></td></tr>`).join("");document.querySelectorAll(".del-rule").forEach(b=>b.onclick=()=>{state.rules.splice(+b.dataset.i,1);saveState();renderAll()})}
 function renderReports(){
@@ -607,17 +581,17 @@ function updateSubcategoryReferences(category,oldName,newName){
   for(const collection of [state.transactions,state.receipts,state.rules])for(const item of collection)if(item.category===category&&item.subcategory===oldName)item.subcategory=newName;
   for(const q of state.reviewQueue)if((q.chosenCategory||q.category)===category){if(q.subcategory===oldName)q.subcategory=newName;if(q.chosenSubcategory===oldName)q.chosenSubcategory=newName;}
 }
+function renderSelectedSubcategories(){
+  const parent=document.getElementById("subcategoryParent"),box=document.getElementById("selectedSubcategoryList");if(!parent||!box)return;
+  const current=parent.value||allCategories()[0]||"Uncategorised";
+  parent.innerHTML=allCategories().map(c=>`<option value="${esc(c)}"${c===current?" selected":""}>${esc(c)}</option>`).join("");
+  const def=categoryDefinition(parent.value);
+  box.innerHTML=def&&def.subcategories.length?`<strong>${esc(def.name)} sub-categories</strong><div class="subcategory-chip-list">${def.subcategories.slice().sort((a,b)=>a.localeCompare(b)).map(sub=>`<span class="subcategory-chip">${esc(sub)}</span>`).join("")}</div>`:`<span class="subcategory-empty">No sub-categories for this category yet.</span>`;
+}
 function renderCategoryManager(){
   const list=document.getElementById("categoryManagerList");if(!list)return;
-  list.innerHTML=state.categoryDefinitions.slice().sort((a,b)=>a.name.localeCompare(b.name)).map((category)=>{
-    const originalIndex=state.categoryDefinitions.indexOf(category);
-    return `<article class="category-manager-card" data-category-index="${originalIndex}">
-      <div class="category-manager-head"><div><strong>${esc(category.name)}</strong><span>${category.subcategories.length} sub-categor${category.subcategories.length===1?"y":"ies"}</span></div><div class="category-card-actions"><button type="button" class="secondary rename-category" data-i="${originalIndex}">Rename</button>${category.name!=="Uncategorised"?`<button type="button" class="danger-link delete-category" data-i="${originalIndex}">Delete</button>`:""}</div></div>
-      <div class="subcategory-chip-list">${category.subcategories.length?category.subcategories.map((sub,subIndex)=>`<span class="subcategory-chip"><span>${esc(sub)}</span><button type="button" class="rename-subcategory" data-i="${originalIndex}" data-s="${subIndex}" aria-label="Rename ${esc(sub)}">✎</button><button type="button" class="delete-subcategory" data-i="${originalIndex}" data-s="${subIndex}" aria-label="Delete ${esc(sub)}">×</button></span>`).join(""):"<span class=\"subcategory-empty\">No sub-categories yet. Add one below.</span>"}</div>
-      <button type="button" class="add-subcategory-btn" data-i="${originalIndex}">＋ Add sub-category to ${esc(category.name)}</button>
-    </article>`;
-  }).join("");
-  list.querySelectorAll(".add-subcategory-btn").forEach(btn=>btn.onclick=()=>{const i=+btn.dataset.i,category=state.categoryDefinitions[i],value=norm(prompt(`Add a sub-category to ${category.name}`,""));if(!value)return;if(category.subcategories.some(x=>upper(x)===upper(value)))return alert("That sub-category already exists.");category.subcategories.push(value);saveState();renderAll();showNotice(`Added ${value} under ${category.name}.`);});
+  renderSelectedSubcategories();
+  list.innerHTML=state.categoryDefinitions.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(category=>{const originalIndex=state.categoryDefinitions.indexOf(category);return `<article class="category-manager-card" data-category-index="${originalIndex}"><div class="category-manager-head"><div><strong>${esc(category.name)}</strong><span>${category.subcategories.length} sub-categor${category.subcategories.length===1?"y":"ies"}</span></div><div class="category-card-actions"><button type="button" class="secondary rename-category" data-i="${originalIndex}">Rename</button>${category.name!=="Uncategorised"?`<button type="button" class="danger-link delete-category" data-i="${originalIndex}">Delete</button>`:""}</div></div><div class="subcategory-chip-list">${category.subcategories.length?category.subcategories.slice().sort((a,b)=>a.localeCompare(b)).map(sub=>{const subIndex=category.subcategories.indexOf(sub);return `<span class="subcategory-chip"><span>${esc(sub)}</span><button type="button" class="rename-subcategory" data-i="${originalIndex}" data-s="${subIndex}" aria-label="Rename ${esc(sub)}">✎</button><button type="button" class="delete-subcategory" data-i="${originalIndex}" data-s="${subIndex}" aria-label="Delete ${esc(sub)}">×</button></span>`}).join(""):"<span class=\"subcategory-empty\">No sub-categories yet. Use the Create a sub-category form above.</span>"}</div></article>`}).join("");
   list.querySelectorAll(".rename-category").forEach(btn=>btn.onclick=()=>{const i=+btn.dataset.i,oldName=state.categoryDefinitions[i].name,newName=norm(prompt("Rename category",oldName));if(!newName||newName===oldName)return;if(state.categoryDefinitions.some((x,j)=>j!==i&&upper(x.name)===upper(newName)))return alert("That category already exists.");state.categoryDefinitions[i].name=newName;updateCategoryReferences(oldName,newName);saveState();renderAll();});
   list.querySelectorAll(".delete-category").forEach(btn=>btn.onclick=()=>{const i=+btn.dataset.i,name=state.categoryDefinitions[i].name;if(!confirm(`Delete “${name}”? Existing entries will move to Uncategorised.`))return;updateCategoryReferences(name,"Uncategorised");state.categoryDefinitions.splice(i,1);saveState();renderAll();});
   list.querySelectorAll(".rename-subcategory").forEach(btn=>btn.onclick=()=>{const i=+btn.dataset.i,s=+btn.dataset.s,category=state.categoryDefinitions[i],oldName=category.subcategories[s],newName=norm(prompt("Rename sub-category",oldName));if(!newName||newName===oldName)return;if(category.subcategories.some((x,j)=>j!==s&&upper(x)===upper(newName)))return alert("That sub-category already exists.");category.subcategories[s]=newName;updateSubcategoryReferences(category.name,oldName,newName);saveState();renderAll();});
@@ -625,6 +599,9 @@ function renderCategoryManager(){
 }
 const categoryAddForm=document.getElementById("categoryAddForm");
 categoryAddForm.onsubmit=e=>{e.preventDefault();const input=document.getElementById("newCategoryName"),name=norm(input.value);if(!name)return;if(state.categoryDefinitions.some(x=>upper(x.name)===upper(name)))return alert("That category already exists.");state.categoryDefinitions.push({name,subcategories:[]});input.value="";saveState();renderAll();};
+const subcategoryAddForm=document.getElementById("subcategoryAddForm"),subcategoryParent=document.getElementById("subcategoryParent");
+subcategoryParent.onchange=renderSelectedSubcategories;
+subcategoryAddForm.onsubmit=e=>{e.preventDefault();const category=categoryDefinition(subcategoryParent.value),input=document.getElementById("newSubcategoryName"),name=norm(input.value);if(!category||!name)return;if(category.subcategories.some(x=>upper(x)===upper(name)))return alert("That sub-category already exists in this category.");category.subcategories.push(name);category.subcategories.sort((a,b)=>a.localeCompare(b));input.value="";saveState();renderAll();showNotice(`Added ${name} under ${category.name}.`);};
 
 function showNotice(t){importSummary.textContent=t;importSummary.classList.remove("hidden");setTimeout(()=>importSummary.classList.add("hidden"),9000)}
 
@@ -1110,6 +1087,10 @@ enhanceScan.onchange=rebuildReceiptPreview;
 receiptCategory.onchange=()=>fillSubcategorySelect(receiptCategory,receiptSubcategory,"");
 txCategory.onchange=()=>fillSubcategorySelect(txCategory,txSubcategory,"");
 ruleCategory.onchange=()=>fillSubcategorySelect(ruleCategory,ruleSubcategory,"");
+txAddCategoryBtn.onclick=()=>createCategoryInteractive(txCategory,txSubcategory);
+txAddSubcategoryBtn.onclick=()=>createSubcategoryInteractive(txCategory,txSubcategory);
+receiptAddCategoryBtn.onclick=()=>createCategoryInteractive(receiptCategory,receiptSubcategory);
+receiptAddSubcategoryBtn.onclick=()=>createSubcategoryInteractive(receiptCategory,receiptSubcategory);
 
 function normaliseOcrText(text){
   return String(text||"")

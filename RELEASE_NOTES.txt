@@ -1,9 +1,12 @@
-BalanceIQ v9.5.1 — Visible Sub-category Controls
-Build 2026.07.22.005
+BalanceIQ v9.6 — Smart Category Management
+Build 2026.07.22.006
 
-Changes
-- Adds a prominent “+ Add sub-category” button beneath every category.
-- Shows a clearer empty-state message when a category has no sub-categories.
-- Uses a simple name prompt so sub-categories can be added without hunting for a hidden field.
-- Keeps rename, delete, merchant learning, reporting and existing data migration behaviour.
-- Updates the service-worker cache and all visible version information.
+- Added a dedicated Create a sub-category form in Settings.
+- Added category selector, sub-category name field and visible existing sub-category list.
+- Added + buttons beside Category and Subcategory during manual transaction entry.
+- Added the same + buttons during receipt review.
+- Added contextual category and sub-category creation during merchant review.
+- Newly created values are immediately selected.
+- Prevents duplicate category and sub-category names.
+- Categories and sub-categories are sorted alphabetically.
+- Preserves rename/delete reference handling and reporting.

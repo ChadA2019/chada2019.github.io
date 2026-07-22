@@ -53,3 +53,5 @@ Bunnings degraded payment-label total consensus and focused-pass invoice voting.
 Version 9.5.1 (Build 2026.07.22.005)
 - Added a prominent Add sub-category control beneath every category.
 - Improved empty-category guidance and mobile discoverability.
+
+9.6 - Smart category management in Settings, transactions, receipts and reviews.
