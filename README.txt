@@ -1,10 +1,3 @@
-BalanceIQ v9.8.5 — Bank Statement Import Choice
+BalanceIQ v9.8.6 — PWA Installability & Stability Release
 
-This release makes bank-statement import clearer and more reliable on phones.
-
-Changes:
-- Step 1 now opens a PDF-or-CSV statement chooser instead of forcing CSV.
-- PDF and CSV quick actions still open their matching file pickers directly.
-- Broadened Android CSV MIME compatibility.
-- Added friendly file-type validation before parsing.
-- Updated app version, build, manifest and service-worker cache.
+This release restores a clear Install App control and strengthens installability across Android Chrome, desktop Chromium browsers and iOS Safari. It includes complete manifest scope/id metadata, standard 192px and 512px PNG icons, a maskable icon, resilient service-worker updates, and platform-specific installation guidance when a browser does not expose a native prompt.

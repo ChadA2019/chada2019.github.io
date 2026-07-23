@@ -1,10 +1,15 @@
-BalanceIQ v9.8.4 Validation Report
+BalanceIQ v9.8.6 Validation Report
 
-- JavaScript syntax check: PASS
-- Manifest JSON validation: PASS
-- Duplicate HTML ID check: PASS
-- Required startup element ID check: PASS
-- Dashboard strict-mode regression check: PASS
-- ZIP integrity check: PASS
+PASS — JavaScript syntax (app.js)
+PASS — JavaScript syntax (service-worker.js)
+PASS — Manifest JSON parsing
+PASS — Manifest id/start_url/scope alignment
+PASS — 192×192 PNG icon present
+PASS — 512×512 PNG icon present
+PASS — 512×512 maskable PNG icon present
+PASS — No duplicate HTML IDs
+PASS — Install prompt, installed-state and fallback guidance wiring
+PASS — PDF and CSV import MIME handling retained
+PASS — Service-worker cache version and icon precache updated
 
-Root cause fixed: app.js is loaded as a JavaScript module, so assigning to undeclared variables inc and exp threw a ReferenceError and stopped renderDashboard().
+Note: Browser install prompts remain controlled by the browser and require HTTPS (or localhost). The in-app Install App button now provides platform guidance when the native prompt is unavailable.

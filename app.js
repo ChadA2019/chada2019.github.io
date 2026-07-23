@@ -177,7 +177,7 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_INFO=Object.freeze({version:"9.8.5",build:"2026.07.23.007",release:"Version 9.8.5 adds a clear PDF-or-CSV bank-statement chooser and improves mobile file compatibility across every import path."});
+const APP_INFO=Object.freeze({version:"9.8.6",build:"2026.07.23.008",release:"Version 9.8.6 restores reliable PWA installation with standards-based PNG icons, a complete manifest, service-worker update handling and clear fallback installation guidance."});
 const APP_VERSION=APP_INFO.version;
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 function applyAppInfo(){
@@ -3008,8 +3008,53 @@ finishOnboardingBtn.onclick=()=>{state.usageMode=onboardingUsage.value;state.cur
 themeBtn.onclick=()=>{state.theme=state.theme==="dark"?"light":"dark";document.body.classList.toggle("dark",state.theme==="dark");themeBtn.textContent=state.theme==="dark"?"☀️":"🌙";updateGreeting();saveState();drawCashflow()};
 applyAppInfo();
 document.body.classList.toggle("dark",state.theme==="dark");themeBtn.textContent=state.theme==="dark"?"☀️":"🌙";updateGreeting();setInterval(updateGreeting,60000);
-window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferredPrompt=e;installBtn.classList.remove("hidden")});installBtn.onclick=async()=>{if(deferredPrompt){deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null}};
-if("serviceWorker"in navigator&&location.protocol.startsWith("http"))navigator.serviceWorker.register("service-worker.js");
+function isStandaloneApp(){
+  return window.matchMedia?.("(display-mode: standalone)").matches||window.navigator.standalone===true;
+}
+function updateInstallButton(){
+  if(!installBtn)return;
+  const installed=isStandaloneApp();
+  installBtn.classList.toggle("hidden",installed);
+  installBtn.textContent=deferredPrompt?"Install App":"Install App";
+  installBtn.title=deferredPrompt?"Install BalanceIQ on this device":"Show installation instructions";
+}
+window.addEventListener("beforeinstallprompt",event=>{
+  event.preventDefault();
+  deferredPrompt=event;
+  updateInstallButton();
+});
+window.addEventListener("appinstalled",()=>{
+  deferredPrompt=null;
+  updateInstallButton();
+  showNotice("BalanceIQ was installed successfully.");
+});
+installBtn.onclick=async()=>{
+  if(isStandaloneApp())return;
+  if(deferredPrompt){
+    const promptEvent=deferredPrompt;
+    deferredPrompt=null;
+    promptEvent.prompt();
+    const choice=await promptEvent.userChoice;
+    if(choice?.outcome!=="accepted")updateInstallButton();
+    return;
+  }
+  const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  const message=ios
+    ?"To install BalanceIQ, tap the Share button in Safari, then choose ‘Add to Home Screen’."
+    :"To install BalanceIQ, open your browser menu and choose ‘Install app’ or ‘Add to Home screen’. Installation requires the app to be opened from a secure HTTPS address.";
+  alert(message);
+};
+updateInstallButton();
+if("serviceWorker"in navigator&&location.protocol.startsWith("http")){
+  window.addEventListener("load",async()=>{
+    try{
+      const registration=await navigator.serviceWorker.register("service-worker.js",{scope:"./"});
+      await registration.update();
+    }catch(error){
+      console.error("BalanceIQ service worker registration failed",error);
+    }
+  });
+}
 renderAll();
 updateDemoDataStatus();
 if(!state.onboardingComplete)setTimeout(openSetup,250);
