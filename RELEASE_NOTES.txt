@@ -1,10 +1,11 @@
-BalanceIQ v9.8 — Task-first Home Experience
-Build 2026.07.23.002
+BalanceIQ v9.8.1 — Clear Demo Mode
+Build 2026.07.23.003
 
-- Rebuilt the Home screen around clear user tasks instead of technical file actions.
-- Added Quick Actions for CSV bank statements, PDF bank statements, receipt scanning, manual transactions and data backups.
-- Added a Getting Started panel for new users that disappears after their first transaction or receipt.
-- Improved first-run onboarding with plain-language explanations of bank imports, receipt capture and privacy.
-- Added visual icons to Assets and the dedicated Category Manager for faster recognition.
-- Preserved the scalable category management, in-context create/edit controls and all v9.7.1 data workflows.
+- Replaced the unclear “Load Sample Data” button with a clearly explained Demo Mode card.
+- Added confirmation before demo records are created.
+- Demo Mode now adds 3 sample accounts, 4 merchant rules and 18 transactions.
+- Added an in-place success message in Settings so users immediately see what changed.
+- Added a Demo Data Loaded state and a Remove Demo Data action.
+- Demo transactions are clearly tagged and appear in Home, Transactions and Reports.
+- Existing user data is never replaced.
 - Updated version metadata, manifest and service-worker cache.

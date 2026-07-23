@@ -1,4 +1,4 @@
-BalanceIQ v9.8 — Task-first Home Experience
+BalanceIQ v9.8.1 — Task-first Home Experience
 
 A private, browser-based finance app with bank statement import, assisted receipt entry, manual transactions, scalable category management and optional encrypted cloud sync.
 
@@ -6,3 +6,8 @@ Version 9.8 makes the Home screen easier for new users by organising actions aro
 
 Deployment:
 Replace all files in the GitHub Pages repository with the contents of this release.
+
+
+Demo Mode
+---------
+Settings now includes a clearly explained Demo Mode. It adds sample accounts, merchant rules and transactions without replacing existing data. Demo transactions can be removed again from the same Settings card.

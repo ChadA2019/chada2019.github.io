@@ -176,7 +176,7 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_INFO=Object.freeze({version:"9.8",build:"2026.07.23.002",release:"Version 9.8 introduces a task-first Home screen, clearer getting-started guidance, friendlier onboarding and visual icons for assets and categories."});
+const APP_INFO=Object.freeze({version:"9.8.1",build:"2026.07.23.003",release:"Version 9.8.1 replaces the unclear sample-data button with a visible Demo Mode that explains what will be added, confirms success in Settings and can remove demo records again."});
 const APP_VERSION=APP_INFO.version;
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 function applyAppInfo(){
@@ -356,11 +356,53 @@ function fillAssetSelect(el,selected=""){
 }
 function sampleTransactions(){
   const day=n=>{const d=new Date();d.setDate(d.getDate()-n);return localDateValue(d)};
-  return[
-    {date:day(1),description:"Sample Salary",amount:2500,category:"Income",subcategory:"Salary / Wages",asset:"",reviewed:true,auto:false,source:"Sample",taxDeductible:false,tag:"",notes:""},
-    {date:day(2),description:"Sample Supermarket",amount:-142.35,category:"Groceries",subcategory:"Supermarket",asset:"",reviewed:true,auto:false,source:"Sample",taxDeductible:false,tag:"",notes:""},
-    {date:day(4),description:"Sample Fuel",amount:-86.20,category:"Fuel",subcategory:"Fuel & Convenience",asset:"",reviewed:true,auto:false,source:"Sample",taxDeductible:false,tag:"",notes:""}
+  const rows=[
+    [1,"Demo Salary",2850,"Income","Salary / Wages","Everyday Account"],
+    [2,"Demo Supermarket",-142.35,"Groceries","Supermarket","Everyday Account"],
+    [3,"Demo Electricity",-118.40,"Bills","Electricity","Everyday Account"],
+    [4,"Demo Fuel",-86.20,"Fuel","Fuel & Convenience","Everyday Account"],
+    [5,"Demo Coffee",-6.50,"Dining","Cafe","Everyday Account"],
+    [6,"Demo Rent",-620,"Housing","Rent","Everyday Account"],
+    [7,"Demo Pharmacy",-28.75,"Health","Pharmacy","Everyday Account"],
+    [8,"Demo Streaming",-18.99,"Entertainment","Subscriptions","Credit Card"],
+    [9,"Demo Hardware Store",-74.60,"Home","Maintenance","Credit Card"],
+    [10,"Demo Restaurant",-64.80,"Dining","Restaurant","Credit Card"],
+    [12,"Demo Mobile Plan",-49,"Bills","Phone / Internet","Everyday Account"],
+    [14,"Demo Insurance",-132.10,"Insurance","Other","Everyday Account"],
+    [16,"Demo Transfer to Savings",-300,"Transfers","Savings","Everyday Account"],
+    [16,"Demo Transfer from Everyday",300,"Transfers","Savings","Savings Account"],
+    [18,"Demo Public Transport",-42.00,"Transport","Public Transport","Everyday Account"],
+    [21,"Demo Clothing",-95.50,"Shopping","Clothing","Credit Card"],
+    [24,"Demo Interest",4.25,"Income","Interest","Savings Account"],
+    [27,"Demo Groceries",-96.30,"Groceries","Supermarket","Everyday Account"]
   ];
+  return rows.map(([days,description,amount,category,subcategory,asset])=>({date:day(days),description,merchant:description.replace(/^Demo /,""),amount,category,subcategory,asset,reviewed:true,auto:false,source:"Demo",taxDeductible:false,tag:"Demo",notes:"Demo data — safe to remove from Settings."}));
+}
+function demoDataLoaded(){return state.transactions.some(t=>t.source==="Demo"||t.source==="Sample")}
+function updateDemoDataStatus(message=""){
+  const status=document.getElementById("demoDataStatus"),remove=document.getElementById("removeDemoDataBtn");
+  if(!status||!remove)return;
+  const loaded=demoDataLoaded();
+  remove.classList.toggle("hidden",!loaded);
+  loadSampleDataBtn.textContent=loaded?"Demo Data Loaded":"Load Demo Data";
+  loadSampleDataBtn.disabled=loaded;
+  if(message){status.innerHTML=message;status.classList.remove("hidden");}
+  else if(loaded){status.innerHTML="<strong>Demo Mode is active.</strong><br>Sample transactions are included in the dashboard and reports. Use the Home or Transactions tab to see them.";status.classList.remove("hidden");}
+  else status.classList.add("hidden");
+}
+function addDemoData(){
+  const demoAssets=["Everyday Account","Savings Account","Credit Card"];
+  demoAssets.forEach(asset=>{if(!state.assets.some(existing=>upper(existing)===upper(asset)))state.assets.push(asset)});
+  state.assets.sort((x,y)=>x.localeCompare(y));
+  const demoRules=[
+    {pattern:"SUPERMARKET",category:"Groceries",subcategory:"Supermarket",asset:"Everyday Account",demo:true},
+    {pattern:"FUEL",category:"Fuel",subcategory:"Fuel & Convenience",asset:"Everyday Account",demo:true},
+    {pattern:"COFFEE",category:"Dining",subcategory:"Cafe",asset:"Everyday Account",demo:true},
+    {pattern:"PHARMACY",category:"Health",subcategory:"Pharmacy",asset:"Everyday Account",demo:true}
+  ];
+  demoRules.forEach(rule=>{if(!state.rules.some(existing=>existing.demo&&existing.pattern===rule.pattern))state.rules.push(rule)});
+  const transactions=sampleTransactions();state.transactions.push(...transactions);
+  return {assets:demoAssets.length,rules:demoRules.length,transactions:transactions.length};
 }
 
 const defaultAssets=[];
@@ -2910,14 +2952,26 @@ clearBtn.onclick=()=>{if(confirm("Delete all local finance data?")){state={trans
 usageMode.value=state.usageMode||"personal";
 currencySetting.value=state.currency||"AUD";
 savePreferencesBtn.onclick=()=>{state.usageMode=usageMode.value;state.currency=currencySetting.value;saveState();renderAll();showNotice("Preferences saved.")};
-loadSampleDataBtn.onclick=()=>{if(state.transactions.some(t=>t.source==="Sample"))return alert("Sample data is already loaded.");state.transactions.push(...sampleTransactions());saveState();renderAll();showNotice("Optional sample data loaded.")};
+loadSampleDataBtn.onclick=()=>{
+  if(demoDataLoaded())return updateDemoDataStatus();
+  if(!confirm("Load Demo Data?\n\nThis will add sample accounts, merchant rules and transactions. Your existing data will not be replaced."))return;
+  const added=addDemoData();saveState();renderAll();
+  updateDemoDataStatus(`<strong>Demo data loaded successfully.</strong><br>Added ${added.assets} sample accounts, ${added.rules} merchant rules and ${added.transactions} transactions. Open Home or Transactions to explore them.`);
+};
+document.getElementById("removeDemoDataBtn")?.addEventListener("click",()=>{
+  if(!confirm("Remove all demo transactions and demo merchant rules? Your own data will stay in place."))return;
+  state.transactions=state.transactions.filter(t=>t.source!=="Demo"&&t.source!=="Sample");
+  state.rules=state.rules.filter(rule=>!rule.demo);
+  saveState();renderAll();updateDemoDataStatus("<strong>Demo data removed.</strong><br>Your own transactions, assets and settings were not changed.");
+});
 function openSetup(){onboardingUsage.value=state.usageMode||"personal";onboardingCurrency.value=state.currency||"AUD";onboardingTheme.value=state.theme||"light";onboardingAsset.value="";onboardingSample.checked=false;onboardingDialog.showModal()}
 runSetupBtn.onclick=openSetup;
-finishOnboardingBtn.onclick=()=>{state.usageMode=onboardingUsage.value;state.currency=onboardingCurrency.value;state.theme=onboardingTheme.value;const asset=norm(onboardingAsset.value);if(asset&&!state.assets.includes(asset))state.assets.push(asset);if(onboardingSample.checked&&!state.transactions.some(t=>t.source==="Sample"))state.transactions.push(...sampleTransactions());state.onboardingComplete=true;document.body.classList.toggle("dark",state.theme==="dark");themeBtn.textContent=state.theme==="dark"?"☀️":"🌙";updateGreeting();usageMode.value=state.usageMode;currencySetting.value=state.currency;saveState();onboardingDialog.close();renderAll()};
+finishOnboardingBtn.onclick=()=>{state.usageMode=onboardingUsage.value;state.currency=onboardingCurrency.value;state.theme=onboardingTheme.value;const asset=norm(onboardingAsset.value);if(asset&&!state.assets.includes(asset))state.assets.push(asset);if(onboardingSample.checked&&!demoDataLoaded())addDemoData();state.onboardingComplete=true;document.body.classList.toggle("dark",state.theme==="dark");themeBtn.textContent=state.theme==="dark"?"☀️":"🌙";updateGreeting();usageMode.value=state.usageMode;currencySetting.value=state.currency;saveState();onboardingDialog.close();renderAll()};
 themeBtn.onclick=()=>{state.theme=state.theme==="dark"?"light":"dark";document.body.classList.toggle("dark",state.theme==="dark");themeBtn.textContent=state.theme==="dark"?"☀️":"🌙";updateGreeting();saveState();drawCashflow()};
 applyAppInfo();
 document.body.classList.toggle("dark",state.theme==="dark");themeBtn.textContent=state.theme==="dark"?"☀️":"🌙";updateGreeting();setInterval(updateGreeting,60000);
 window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferredPrompt=e;installBtn.classList.remove("hidden")});installBtn.onclick=async()=>{if(deferredPrompt){deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null}};
 if("serviceWorker"in navigator&&location.protocol.startsWith("http"))navigator.serviceWorker.register("service-worker.js");
 renderAll();
+updateDemoDataStatus();
 if(!state.onboardingComplete)setTimeout(openSetup,250);

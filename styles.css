@@ -129,3 +129,7 @@ body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-ser
 @media(max-width:1050px){.quick-action-grid{grid-template-columns:repeat(3,1fr)}.getting-started{grid-template-columns:1fr}.getting-started-steps{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:700px){.quick-action-grid{grid-template-columns:1fr 1fr}.quick-action-card{min-height:135px}.getting-started-steps,.onboarding-benefits{grid-template-columns:1fr}.getting-started-step{grid-template-columns:auto 1fr}.getting-started{padding:.9rem}}
 @media(max-width:430px){.quick-action-grid{grid-template-columns:1fr}.quick-action-card{min-height:auto}.quick-action-card small{max-width:32rem}}
+
+.demo-mode-card{margin-top:1rem;padding:1rem;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
+.demo-mode-card h3{margin:0 0 .35rem}.demo-mode-card p{margin:0;color:var(--muted)}
+.demo-actions{justify-content:flex-start;margin-top:1rem}.demo-mode-card .notice{margin:1rem 0 0}

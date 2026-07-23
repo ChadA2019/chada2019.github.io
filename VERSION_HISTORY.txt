@@ -1,3 +1,6 @@
+BalanceIQ v9.8.1 — Clear Demo Mode
+- Reworked sample data into a visible, reversible Demo Mode.
+
 BalanceIQ v9.5 — Categories & Sub-categories
 - Editable category hierarchy, merchant-learning integration and reporting.
 
