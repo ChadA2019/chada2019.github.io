@@ -1,3 +1,4 @@
+9.9.1  Interactive dashboard shortcuts for review, transactions, receipt matching and insights.
 9.9.0  Local-first IndexedDB storage, rolling safety snapshots, recovery controls and storage health.
 9.8.6  PWA installability and stability improvements.
 9.8.5  Clear PDF/CSV bank statement import choice.

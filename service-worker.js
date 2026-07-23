@@ -1,4 +1,4 @@
-const CACHE="balanceiq-v9-9-0-20260723-009";
+const CACHE="balanceiq-v9-9-1-20260724-010";
 const ASSETS=[
   "./","index.html","styles.css","app.js","manifest.webmanifest","cloud-sync.js",
   "icon.svg","icon-192.png","icon-512.png","icon-maskable-512.png"

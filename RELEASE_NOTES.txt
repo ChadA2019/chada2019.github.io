@@ -1,12 +1,9 @@
-BalanceIQ v9.9.0 — Local-First Device Storage
+BalanceIQ v9.9.1 — Interactive Dashboard
 
-- Replaces localStorage-only persistence with IndexedDB as the primary on-device database.
-- Automatically migrates existing BalanceIQ data into the device database.
-- Keeps a lightweight localStorage mirror as a compatibility fallback.
-- Adds configurable automatic rolling safety snapshots with 5, 10 or 20 retained copies.
-- Adds manual snapshot creation and latest-snapshot recovery.
-- Adds storage usage, last-save and recovery status to Settings.
-- Adds a browser persistent-storage request to reduce automatic eviction risk where supported.
-- Retains downloadable JSON backups and encrypted cloud sync for protection beyond one device.
-
-Important: clearing site storage, uninstalling the PWA, device loss or factory reset can still remove local-only data. Downloaded backups or encrypted cloud sync remain recommended.
+- Dashboard KPI cards are now accessible navigation shortcuts.
+- Needs Review opens the Review page and moves to the first outstanding review group.
+- Awaiting Bank Match opens Receipts.
+- Total Income and Total Expenses open Transactions with the matching type filter.
+- Net Cash Flow opens Insights.
+- Added keyboard activation, focus styling, touch feedback and clear action labels.
+- Updated PWA cache and release metadata.

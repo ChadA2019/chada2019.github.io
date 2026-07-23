@@ -146,3 +146,14 @@ body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-ser
 
 /* v9.9 local-first storage */
 .storage-health-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem;margin:1rem 0}.storage-health-item{border:1px solid var(--border);border-radius:14px;padding:.85rem;display:flex;flex-direction:column;gap:.25rem;background:var(--panel-soft,rgba(127,127,127,.05))}.storage-health-item span{font-size:.82rem;color:var(--muted)}.storage-health-item strong{font-size:.95rem}.storage-warning{color:#b45309}.backup-preferences{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:.75rem;align-items:end;margin:1rem 0}.backup-preferences label{display:flex;flex-direction:column;gap:.35rem}.backup-preferences .checkbox-row{flex-direction:row;align-items:center;align-self:center}.backup-preferences input[type="checkbox"]{width:auto}.device-storage-panel .settings-actions{margin-top:1rem}@media(max-width:720px){.storage-health-grid,.backup-preferences{grid-template-columns:1fr}.device-storage-panel .settings-actions>*{width:100%}}
+
+
+/* BalanceIQ 9.9.1 interactive dashboard shortcuts */
+.interactive-kpi{cursor:pointer;position:relative;transition:transform .16s ease,box-shadow .16s ease,filter .16s ease;user-select:none}
+.interactive-kpi:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(15,23,42,.12);filter:saturate(1.04)}
+.interactive-kpi:active{transform:translateY(0) scale(.985)}
+.interactive-kpi:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+.interactive-kpi>span{display:flex;align-items:center;justify-content:space-between;gap:.5rem}
+.interactive-kpi small{display:block;margin-top:.45rem;color:var(--muted);font-weight:650;font-size:.78rem;letter-spacing:0}
+.kpi-arrow{font-size:1.35rem;line-height:1;color:currentColor;opacity:.58}
+@media (prefers-reduced-motion:reduce){.interactive-kpi{transition:none}.interactive-kpi:hover,.interactive-kpi:active{transform:none}}

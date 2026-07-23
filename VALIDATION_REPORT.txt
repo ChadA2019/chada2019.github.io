@@ -1,17 +1,15 @@
-BalanceIQ v9.9.0 Validation Report
+BalanceIQ v9.9.1 Validation Report
 
-PASS JavaScript syntax (node --check)
-PASS Manifest JSON parsing
-PASS Required startup element mapping (155 IDs)
-PASS Duplicate HTML ID check
-PASS IndexedDB primary state store present
-PASS Automatic rolling snapshot store present
-PASS Storage recovery controls wired
-PASS Existing JSON download/restore retained
-PASS Service worker cache updated to v9.9.0
+PASS JavaScript syntax check (node --check)
+PASS Web manifest JSON validation
+PASS No duplicate HTML element IDs
+PASS All startup-mapped element IDs exist
+PASS Dashboard shortcut cards and transaction type filter are present
+PASS Needs Review shortcut is wired to Review and first outstanding review group
+PASS Income and Expense shortcuts apply visible transaction type filters
+PASS Receipt Match and Net Cash Flow shortcuts open their relevant views
+PASS Keyboard activation and focus styles are included
+PASS Service worker cache updated to v9.9.1
+PASS Release metadata updated
 
-Limitations
-- Browser persistent-storage permission is controlled by the browser and may not be granted.
-- Local snapshots are stored in the same site storage and are not protection against clearing site data, uninstalling the PWA, device loss or factory reset.
-- Downloaded backup files are not encrypted; encrypted cloud sync remains available for off-device protection.
-- Full device/browser interactive testing was not performed in this build environment.
+Recommended after deployment: test touch navigation and service-worker update behaviour on Android Chrome and iPhone Safari/PWA.

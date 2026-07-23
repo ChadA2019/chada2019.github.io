@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#17365d">
-  <title>BalanceIQ v9.8.6</title>
+  <title>BalanceIQ v9.9.1</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon-192.png" sizes="192x192" type="image/png">
   <link rel="apple-touch-icon" href="icon-192.png">
@@ -14,7 +14,7 @@
 <header class="app-header">
   <div class="brand-lockup">
     <div class="brand-mark" aria-hidden="true"><span></span></div>
-    <div><div class="brand-title-row"><h1>Balance<span>IQ</span></h1><small id="appVersionBadge" class="app-version">v9.8.6</small></div><p>Smarter money clarity, without losing control of your data.</p></div>
+    <div><div class="brand-title-row"><h1>Balance<span>IQ</span></h1><small id="appVersionBadge" class="app-version">v9.9.1</small></div><p>Smarter money clarity, without losing control of your data.</p></div>
   </div>
   <div class="header-actions">
     <button id="themeBtn" class="secondary" title="Toggle dark mode">🌙</button>
@@ -66,11 +66,21 @@
   <div id="importSummary" class="notice hidden"></div>
 
   <div class="kpi-grid">
-    <article class="card income"><span>Total Income</span><strong id="kpiIncome">$0.00</strong></article>
-    <article class="card expense"><span>Total Expenses</span><strong id="kpiExpense">$0.00</strong></article>
-    <article class="card net"><span>Net Cash Flow</span><strong id="kpiNet">$0.00</strong></article>
-    <article class="card warning"><span>Needs Review</span><strong id="kpiReview">0</strong></article>
-    <article class="card receipt"><span>Awaiting Bank Match</span><strong id="kpiReceiptMatch">0</strong></article>
+    <article id="incomeKpiCard" class="card income interactive-kpi" role="button" tabindex="0" aria-label="View income transactions">
+      <span>Total Income <span class="kpi-arrow" aria-hidden="true">›</span></span><strong id="kpiIncome">$0.00</strong><small>View income transactions</small>
+    </article>
+    <article id="expenseKpiCard" class="card expense interactive-kpi" role="button" tabindex="0" aria-label="View expense transactions">
+      <span>Total Expenses <span class="kpi-arrow" aria-hidden="true">›</span></span><strong id="kpiExpense">$0.00</strong><small>View expense transactions</small>
+    </article>
+    <article id="netKpiCard" class="card net interactive-kpi" role="button" tabindex="0" aria-label="Open cash flow insights">
+      <span>Net Cash Flow <span class="kpi-arrow" aria-hidden="true">›</span></span><strong id="kpiNet">$0.00</strong><small>Open cash flow insights</small>
+    </article>
+    <article id="reviewKpiCard" class="card warning interactive-kpi" role="button" tabindex="0" aria-label="Open transactions needing review">
+      <span>Needs Review <span class="kpi-arrow" aria-hidden="true">›</span></span><strong id="kpiReview">0</strong><small>Tap to review</small>
+    </article>
+    <article id="receiptMatchKpiCard" class="card receipt interactive-kpi" role="button" tabindex="0" aria-label="Open receipts awaiting bank match">
+      <span>Awaiting Bank Match <span class="kpi-arrow" aria-hidden="true">›</span></span><strong id="kpiReceiptMatch">0</strong><small>View unmatched receipts</small>
+    </article>
   </div>
 
   <div class="panel-grid">
@@ -112,6 +122,7 @@
     <input id="transactionSearch" type="search" placeholder="Search description, merchant, tag or note">
     <select id="categoryFilter"><option value="">All categories</option></select>
     <select id="assetFilter"><option value="">All assets</option></select>
+    <select id="transactionTypeFilter" aria-label="Transaction type"><option value="">All transaction types</option><option value="income">Income only</option><option value="expense">Expenses only</option><option value="review">Needs review</option></select>
     <button id="addTransactionBtn">Add Transaction</button>
   </div>
   <div class="table-wrap">
@@ -296,8 +307,8 @@
   <section class="panel about-panel">
     <h2>About BalanceIQ</h2>
     <div class="metric-list">
-      <div><span>Version</span><strong id="aboutVersion">9.9.0</strong></div>
-      <div><span>Build</span><strong id="aboutBuild">2026.07.23.009</strong></div>
+      <div><span>Version</span><strong id="aboutVersion">9.9.1</strong></div>
+      <div><span>Build</span><strong id="aboutBuild">2026.07.24.010</strong></div>
     </div>
     <details class="release-notes">
       <summary>What’s new</summary>
