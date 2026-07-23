@@ -176,7 +176,7 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_INFO=Object.freeze({version:"9.8.1",build:"2026.07.23.003",release:"Version 9.8.1 replaces the unclear sample-data button with a visible Demo Mode that explains what will be added, confirms success in Settings and can remove demo records again."});
+const APP_INFO=Object.freeze({version:"9.8.2",build:"2026.07.23.004",release:"Version 9.8.2 fixes Demo Mode so newly loaded sample transactions immediately refresh and appear on the Home dashboard."});
 const APP_VERSION=APP_INFO.version;
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 function applyAppInfo(){
@@ -389,6 +389,23 @@ function updateDemoDataStatus(message=""){
   if(message){status.innerHTML=message;status.classList.remove("hidden");}
   else if(loaded){status.innerHTML="<strong>Demo Mode is active.</strong><br>Sample transactions are included in the dashboard and reports. Use the Home or Transactions tab to see them.";status.classList.remove("hidden");}
   else status.classList.add("hidden");
+}
+function activateView(viewName){
+  const target=document.getElementById(viewName);
+  const button=document.querySelector(`.tab[data-view="${viewName}"]`);
+  if(!target||!button)return false;
+  document.querySelectorAll(".tab").forEach(item=>{item.classList.remove("active");item.setAttribute("aria-selected","false")});
+  document.querySelectorAll(".view").forEach(view=>view.classList.remove("active"));
+  button.classList.add("active");button.setAttribute("aria-selected","true");target.classList.add("active");
+  if(viewName==="dashboard")requestAnimationFrame(drawCashflow);
+  return true;
+}
+function revealDemoDashboard(){
+  if(dashFrom)dashFrom.value="";
+  if(dashTo)dashTo.value="";
+  renderDashboard();
+  activateView("dashboard");
+  window.scrollTo({top:0,behavior:"smooth"});
 }
 function addDemoData(){
   const demoAssets=["Everyday Account","Savings Account","Credit Card"];
@@ -755,20 +772,7 @@ function showNotice(t){importSummary.textContent=t;importSummary.classList.remov
 
 document.querySelectorAll(".tab").forEach(button=>{
   button.addEventListener("click",()=>{
-    const target=document.getElementById(button.dataset.view);
-    if(!target){
-      console.error(`Navigation target not found: ${button.dataset.view}`);
-      return;
-    }
-    document.querySelectorAll(".tab").forEach(item=>{
-      item.classList.remove("active");
-      item.setAttribute("aria-selected","false");
-    });
-    document.querySelectorAll(".view").forEach(view=>view.classList.remove("active"));
-    button.classList.add("active");
-    button.setAttribute("aria-selected","true");
-    target.classList.add("active");
-    if(button.dataset.view==="dashboard")drawCashflow();
+    if(!activateView(button.dataset.view))console.error(`Navigation target not found: ${button.dataset.view}`);
   });
 });
 csvInput.onchange=e=>{const f=e.target.files[0];if(f)importCSV(f).catch(x=>alert(x.message));e.target.value=""};
@@ -2955,8 +2959,13 @@ savePreferencesBtn.onclick=()=>{state.usageMode=usageMode.value;state.currency=c
 loadSampleDataBtn.onclick=()=>{
   if(demoDataLoaded())return updateDemoDataStatus();
   if(!confirm("Load Demo Data?\n\nThis will add sample accounts, merchant rules and transactions. Your existing data will not be replaced."))return;
-  const added=addDemoData();saveState();renderAll();
-  updateDemoDataStatus(`<strong>Demo data loaded successfully.</strong><br>Added ${added.assets} sample accounts, ${added.rules} merchant rules and ${added.transactions} transactions. Open Home or Transactions to explore them.`);
+  const added=addDemoData();
+  rebuildReviewQueue();
+  saveState();
+  renderAll();
+  updateDemoDataStatus(`<strong>Demo data loaded successfully.</strong><br>Added ${added.assets} sample accounts, ${added.rules} merchant rules and ${added.transactions} transactions. The Home dashboard has been refreshed.`);
+  revealDemoDashboard();
+  showNotice(`Demo data loaded: ${added.transactions} transactions are now shown on the dashboard.`);
 };
 document.getElementById("removeDemoDataBtn")?.addEventListener("click",()=>{
   if(!confirm("Remove all demo transactions and demo merchant rules? Your own data will stay in place."))return;

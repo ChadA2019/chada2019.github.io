@@ -1,4 +1,9 @@
-BalanceIQ v9.8.1 — Clear Demo Mode
+BalanceIQ v9.8.2
+- Fixed Demo Mode dashboard refresh and visibility.
+- Automatically opens Home and clears stale dashboard date filters after loading sample data.
+- Refreshes totals, charts, categories, reports and transaction counts.
+
+BalanceIQ v9.8.2 — Clear Demo Mode
 - Reworked sample data into a visible, reversible Demo Mode.
 
 BalanceIQ v9.5 — Categories & Sub-categories
