@@ -1,11 +1,10 @@
-BalanceIQ v9.8.4 — Demo Dashboard & PWA Cache Fix
+BalanceIQ v9.8.5 — Bank Statement Import Choice
 
-This release fixes Demo Mode transactions not appearing on the dashboard in installed/PWA copies.
+This release makes bank-statement import clearer and more reliable on phones.
 
-Key changes:
-- Replaced the stale v9.8.1 service-worker cache with a v9.8.4 network-first cache.
-- Added skipWaiting and clients.claim so updates activate immediately.
-- Demo transactions now include stable demo IDs and explicit demo markers.
-- Demo Mode verifies data was saved before showing success.
-- Dashboard date filters are cleared before the demo dashboard is displayed.
-- The Settings confirmation now reports demo income and expenses.
+Changes:
+- Step 1 now opens a PDF-or-CSV statement chooser instead of forcing CSV.
+- PDF and CSV quick actions still open their matching file pickers directly.
+- Broadened Android CSV MIME compatibility.
+- Added friendly file-type validation before parsing.
+- Updated app version, build, manifest and service-worker cache.

@@ -1,4 +1,4 @@
-const CACHE="balanceiq-v9-8-3-20260723-005";
+const CACHE="balanceiq-v9-8-5-20260723-007";
 const ASSETS=["./","index.html","styles.css","app.js","manifest.webmanifest","cloud-sync.js","icon.svg"];
 
 self.addEventListener("install",event=>{

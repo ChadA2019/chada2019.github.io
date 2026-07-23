@@ -12,7 +12,7 @@
 <header class="app-header">
   <div class="brand-lockup">
     <div class="brand-mark" aria-hidden="true"><span></span></div>
-    <div><div class="brand-title-row"><h1>Balance<span>IQ</span></h1><small id="appVersionBadge" class="app-version">v9.6.1</small></div><p>Smarter money clarity, without losing control of your data.</p></div>
+    <div><div class="brand-title-row"><h1>Balance<span>IQ</span></h1><small id="appVersionBadge" class="app-version">v9.8.5</small></div><p>Smarter money clarity, without losing control of your data.</p></div>
   </div>
   <div class="header-actions">
     <button id="themeBtn" class="secondary" title="Toggle dark mode">🌙</button>
@@ -54,8 +54,8 @@
       <div><span class="eyebrow">QUICK ACTIONS</span><h2>What would you like to do?</h2><p>Choose a task — BalanceIQ will handle the file type and workflow.</p></div>
     </div>
     <div class="quick-action-grid">
-      <label class="quick-action-card quick-action-primary"><span class="quick-action-icon" aria-hidden="true">🏦</span><strong>Import CSV bank statement</strong><small>Use the CSV file downloaded from your bank</small><input id="csvInput" type="file" accept=".csv,text/csv"></label>
-      <label class="quick-action-card"><span class="quick-action-icon" aria-hidden="true">📄</span><strong>Import PDF bank statement</strong><small>Use a text-based PDF statement from your bank</small><input id="pdfInput" type="file" accept=".pdf,application/pdf"></label>
+      <label class="quick-action-card quick-action-primary"><span class="quick-action-icon" aria-hidden="true">🏦</span><strong>Import CSV bank statement</strong><small>Use the CSV file downloaded from your bank</small><input id="csvInput" type="file" accept=".csv,text/csv,text/comma-separated-values,application/csv,application/vnd.ms-excel"></label>
+      <label class="quick-action-card"><span class="quick-action-icon" aria-hidden="true">📄</span><strong>Import PDF bank statement</strong><small>Use a text-based PDF statement from your bank</small><input id="pdfInput" type="file" accept="application/pdf,.pdf"></label>
       <button id="quickScanBtn" type="button" class="quick-action-card"><span class="quick-action-icon" aria-hidden="true">🧾</span><strong>Scan a receipt</strong><small>Capture an expense before it appears at the bank</small></button>
       <button id="quickAddTransactionBtn" type="button" class="quick-action-card"><span class="quick-action-icon" aria-hidden="true">＋</span><strong>Add a transaction</strong><small>Enter cash, income or another item manually</small></button>
       <button id="exportBtn" type="button" class="quick-action-card"><span class="quick-action-icon" aria-hidden="true">💾</span><strong>Backup my data</strong><small>Download a private copy you can restore later</small></button>
@@ -279,8 +279,8 @@
   <section class="panel about-panel">
     <h2>About BalanceIQ</h2>
     <div class="metric-list">
-      <div><span>Version</span><strong id="aboutVersion">9.8.4</strong></div>
-      <div><span>Build</span><strong id="aboutBuild">2026.07.23.003</strong></div>
+      <div><span>Version</span><strong id="aboutVersion">9.8.5</strong></div>
+      <div><span>Build</span><strong id="aboutBuild">2026.07.23.007</strong></div>
     </div>
     <details class="release-notes">
       <summary>What’s new</summary>
@@ -400,6 +400,18 @@
       <section id="categoryManagerDetail" class="category-detail-pane" aria-live="polite"></section>
     </div>
   </div>
+</dialog>
+
+<dialog id="importChoiceDialog" class="name-manager-dialog import-choice-dialog">
+<form method="dialog">
+  <h2>Choose your statement type</h2>
+  <p class="small-note">Select the format supplied by your bank. PDF statements must contain selectable text.</p>
+  <div class="import-choice-grid">
+    <button id="choosePdfImportBtn" type="button" class="import-choice-option"><span aria-hidden="true">📄</span><strong>PDF Statement</strong><small>Choose a .pdf bank statement</small></button>
+    <button id="chooseCsvImportBtn" type="button" class="import-choice-option"><span aria-hidden="true">📊</span><strong>CSV Statement</strong><small>Choose a .csv bank statement</small></button>
+  </div>
+  <div class="dialog-actions"><button value="cancel" class="secondary">Cancel</button></div>
+</form>
 </dialog>
 
 <dialog id="nameManagerDialog" class="name-manager-dialog">

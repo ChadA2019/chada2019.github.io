@@ -1,9 +1,8 @@
-BalanceIQ v9.8.4 — Dashboard Calculation Fix
+BalanceIQ v9.8.5 — Bank Statement Import Choice
 
-Fixed a JavaScript module error that stopped the Home dashboard from recalculating.
-
-Changes:
-- Declared dashboard income and expense totals correctly inside renderDashboard().
-- Normalised transaction amounts to numbers during dashboard calculations.
-- Demo transactions now update Total Income, Total Expenses, Net Cash Flow, Selected Period totals, category bars and cashflow output.
-- Updated application version, build and service-worker cache.
+- Fixed Getting Started Step 1, which previously opened the CSV picker only.
+- Added a clear choice between PDF Statement and CSV Statement.
+- PDF picker accepts .pdf/application/pdf files.
+- CSV picker supports common Android and banking MIME types.
+- Added clear feedback when the wrong file format is selected.
+- Updated the PWA cache so installed copies receive the fix.

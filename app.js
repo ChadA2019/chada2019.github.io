@@ -64,6 +64,7 @@ const {
   startScanBtn,
   startManualBtn,
   importSummary,
+  importChoiceDialog,
   installBtn,
   kpiExpense,
   kpiIncome,
@@ -172,11 +173,11 @@ const {
   nameManagerError,
   nameManagerSaveBtn
 }=Object.fromEntries(
-  ["addAssetBtn","addRuleBtn","addTransactionBtn","applyReviewsBtn","assetFilter","assetList","assetListData","assetSummary","autoRate","backupInput","cashflowChart","categoryBars","categoryFilter","categoryList","clearBtn","cloudAnonKey","cloudEmail","cloudPassphrase","cloudSaveConfigBtn","cloudSignInBtn","cloudSignOutBtn","cloudStatus","cloudSyncBtn","cloudUrl","confirmPdfImportBtn","csvInput","currencySetting","dashFrom","dashTo","dashboard","enhanceScan","exportBtn","exportCsvBtn","finishOnboardingBtn","fyExpense","fyIncome","fySelect","fyTax","greeting","gettingStartedPanel","heroScanBtn","quickScanBtn","quickAddTransactionBtn","startImportBtn","startScanBtn","startManualBtn","importSummary","installBtn","kpiExpense","kpiIncome","kpiNet","kpiReceiptMatch","kpiReview","largestExpenses","loadSampleDataBtn","newAssetName","ocrStatus","onboardingAsset","onboardingCurrency","onboardingDialog","onboardingForm","onboardingSample","onboardingTheme","onboardingUsage","pdfInput","periodExpense","periodIncome","periodNet","previewBody","previewDialog","previewMeta","receiptAccount","receiptAddAssetBtn","receiptAddCategoryBtn","receiptAddSubcategoryBtn","receiptAmount","receiptAsset","receiptEditAssetBtn","receiptEditCategoryBtn","receiptEditSubcategoryBtn","receiptAwaiting","receiptCategory","receiptDate","receiptDialog","receiptForm","receiptGst","receiptImageInput","receiptList","receiptMatched","receiptMerchant","receiptMoreInput","receiptNotes","receiptNumber","receiptPaymentMethod","receiptPreview","receiptPreviewEmpty","receiptSubcategory","receiptSuggested","receipts","removeScanBtn","reports","review","reviewList","rotateScanBtn","ruleAsset","ruleCategory","ruleCount","ruleDialog","ruleForm","rulePattern","ruleSubcategory","rules","rulesBody","runOcrBtn","runSetupBtn","savePreferencesBtn","saveReceiptBtn","saveRuleBtn","saveTransactionBtn","scanPageStrip","settings","themeBtn","transactionCount","transactionDialog","transactionDialogTitle","transactionForm","transactionSearch","transactions","transactionsBody","txAmount","txAddAssetBtn","txAddCategoryBtn","txAddSubcategoryBtn","txAsset","txEditAssetBtn","txEditCategoryBtn","txEditSubcategoryBtn","txCategory","txDate","txDescription","txIndex","txNotes","txSubcategory","txTag","txTax","usageMode","nameManagerDialog","nameManagerForm","nameManagerTitle","nameManagerDescription","nameManagerInput","nameManagerLabel","nameManagerError","nameManagerSaveBtn"].map(id=>[id,byId(id)])
+  ["addAssetBtn","addRuleBtn","addTransactionBtn","applyReviewsBtn","assetFilter","assetList","assetListData","assetSummary","autoRate","backupInput","cashflowChart","categoryBars","categoryFilter","categoryList","clearBtn","cloudAnonKey","cloudEmail","cloudPassphrase","cloudSaveConfigBtn","cloudSignInBtn","cloudSignOutBtn","cloudStatus","cloudSyncBtn","cloudUrl","confirmPdfImportBtn","csvInput","currencySetting","dashFrom","dashTo","dashboard","enhanceScan","exportBtn","exportCsvBtn","finishOnboardingBtn","fyExpense","fyIncome","fySelect","fyTax","greeting","gettingStartedPanel","heroScanBtn","quickScanBtn","quickAddTransactionBtn","startImportBtn","startScanBtn","startManualBtn","importSummary","importChoiceDialog","installBtn","kpiExpense","kpiIncome","kpiNet","kpiReceiptMatch","kpiReview","largestExpenses","loadSampleDataBtn","newAssetName","ocrStatus","onboardingAsset","onboardingCurrency","onboardingDialog","onboardingForm","onboardingSample","onboardingTheme","onboardingUsage","pdfInput","periodExpense","periodIncome","periodNet","previewBody","previewDialog","previewMeta","receiptAccount","receiptAddAssetBtn","receiptAddCategoryBtn","receiptAddSubcategoryBtn","receiptAmount","receiptAsset","receiptEditAssetBtn","receiptEditCategoryBtn","receiptEditSubcategoryBtn","receiptAwaiting","receiptCategory","receiptDate","receiptDialog","receiptForm","receiptGst","receiptImageInput","receiptList","receiptMatched","receiptMerchant","receiptMoreInput","receiptNotes","receiptNumber","receiptPaymentMethod","receiptPreview","receiptPreviewEmpty","receiptSubcategory","receiptSuggested","receipts","removeScanBtn","reports","review","reviewList","rotateScanBtn","ruleAsset","ruleCategory","ruleCount","ruleDialog","ruleForm","rulePattern","ruleSubcategory","rules","rulesBody","runOcrBtn","runSetupBtn","savePreferencesBtn","saveReceiptBtn","saveRuleBtn","saveTransactionBtn","scanPageStrip","settings","themeBtn","transactionCount","transactionDialog","transactionDialogTitle","transactionForm","transactionSearch","transactions","transactionsBody","txAmount","txAddAssetBtn","txAddCategoryBtn","txAddSubcategoryBtn","txAsset","txEditAssetBtn","txEditCategoryBtn","txEditSubcategoryBtn","txCategory","txDate","txDescription","txIndex","txNotes","txSubcategory","txTag","txTax","usageMode","nameManagerDialog","nameManagerForm","nameManagerTitle","nameManagerDescription","nameManagerInput","nameManagerLabel","nameManagerError","nameManagerSaveBtn"].map(id=>[id,byId(id)])
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_INFO=Object.freeze({version:"9.8.4",build:"2026.07.23.006",release:"Version 9.8.4 fixes stale PWA caching and verifies that Demo Mode transactions are stored and reflected in every dashboard total."});
+const APP_INFO=Object.freeze({version:"9.8.5",build:"2026.07.23.007",release:"Version 9.8.5 adds a clear PDF-or-CSV bank-statement chooser and improves mobile file compatibility across every import path."});
 const APP_VERSION=APP_INFO.version;
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 function applyAppInfo(){
@@ -780,8 +781,18 @@ document.querySelectorAll(".tab").forEach(button=>{
     if(!activateView(button.dataset.view))console.error(`Navigation target not found: ${button.dataset.view}`);
   });
 });
-csvInput.onchange=e=>{const f=e.target.files[0];if(f)importCSV(f).catch(x=>alert(x.message));e.target.value=""};
-pdfInput.onchange=e=>{const f=e.target.files[0];if(f)handlePdf(f).catch(x=>alert(x.message));e.target.value=""};
+function fileExtension(file){return String(file?.name||"").toLowerCase().split(".").pop()}
+function isCsvStatement(file){return fileExtension(file)==="csv"||["text/csv","text/comma-separated-values","application/csv","application/vnd.ms-excel"].includes(String(file?.type||"").toLowerCase())}
+function isPdfStatement(file){return fileExtension(file)==="pdf"||String(file?.type||"").toLowerCase()==="application/pdf"}
+function openStatementChooser(){
+  if(typeof importChoiceDialog.showModal==="function")importChoiceDialog.showModal();
+  else if(confirm("Choose OK for a PDF statement or Cancel for a CSV statement."))pdfInput.click();
+  else csvInput.click();
+}
+csvInput.onchange=e=>{const f=e.target.files[0];if(f){if(!isCsvStatement(f))alert("Please choose a CSV bank statement (.csv).");else importCSV(f).catch(x=>alert(x.message))}e.target.value=""};
+pdfInput.onchange=e=>{const f=e.target.files[0];if(f){if(!isPdfStatement(f))alert("Please choose a PDF bank statement (.pdf).");else handlePdf(f).catch(x=>alert(x.message))}e.target.value=""};
+choosePdfImportBtn.onclick=()=>{importChoiceDialog.close();setTimeout(()=>pdfInput.click(),0)};
+chooseCsvImportBtn.onclick=()=>{importChoiceDialog.close();setTimeout(()=>csvInput.click(),0)};
 confirmPdfImportBtn.onclick=e=>{e.preventDefault();const rows=pendingPdfRows.filter(r=>r.selected).map(({selected,confidence,...r})=>r);previewDialog.close();commitTransactions(rows,"PDF");pendingPdfRows=[]};
 applyReviewsBtn.onclick=learnAccepted;transactionSearch.oninput=renderTransactions;categoryFilter.onchange=renderTransactions;assetFilter.onchange=renderTransactions;dashFrom.onchange=renderDashboard;dashTo.onchange=renderDashboard;fySelect.onchange=renderReports;
 let pendingReceiptPages=[];
@@ -1236,7 +1247,7 @@ async function openReceiptCapture(fileOrFiles){
   await addReceiptFiles(files,true);
   receiptDate.value="";receiptMerchant.value="";receiptAmount.value="";fillCategorySelect(receiptCategory,receiptSubcategory,"Uncategorised","Review Required");fillAssetSelect(receiptAsset,"");receiptAccount.value="";receiptPaymentMethod.value="Card";receiptNumber.value="";receiptGst.value="";receiptNotes.value="";ocrStatus.textContent=`${pendingReceiptPages.length} section${pendingReceiptPages.length===1?'':'s'} ready`;receiptDialog.showModal();
 }
-receiptImageInput.onchange=e=>{if(e.target.files.length)openReceiptCapture(e.target.files);e.target.value=""};heroScanBtn.onclick=()=>receiptImageInput.click();quickScanBtn.onclick=()=>receiptImageInput.click();startScanBtn.onclick=()=>receiptImageInput.click();startImportBtn.onclick=()=>csvInput.click();
+receiptImageInput.onchange=e=>{if(e.target.files.length)openReceiptCapture(e.target.files);e.target.value=""};heroScanBtn.onclick=()=>receiptImageInput.click();quickScanBtn.onclick=()=>receiptImageInput.click();startScanBtn.onclick=()=>receiptImageInput.click();startImportBtn.onclick=openStatementChooser;
 receiptMoreInput.onchange=async e=>{if(e.target.files.length){await addReceiptFiles(e.target.files);ocrStatus.textContent=`${pendingReceiptPages.length} sections ready`}e.target.value=''};
 rotateScanBtn.onclick=async()=>{if(!pendingReceiptPages.length)return;const p=pendingReceiptPages.at(-1);p.rotation=((p.rotation||0)+90)%360;await rebuildReceiptPreview()};
 removeScanBtn.onclick=async()=>{pendingReceiptPages.pop();await rebuildReceiptPreview();ocrStatus.textContent=pendingReceiptPages.length?`${pendingReceiptPages.length} sections ready`:'Add a receipt section'};

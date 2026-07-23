@@ -133,3 +133,13 @@ body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-ser
 .demo-mode-card{margin-top:1rem;padding:1rem;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
 .demo-mode-card h3{margin:0 0 .35rem}.demo-mode-card p{margin:0;color:var(--muted)}
 .demo-actions{justify-content:flex-start;margin-top:1rem}.demo-mode-card .notice{margin:1rem 0 0}
+
+
+/* v9.8.5 statement-format chooser */
+.import-choice-dialog form{max-width:34rem}
+.import-choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem;margin:1.25rem 0}
+.import-choice-option{display:flex;min-height:9rem;flex-direction:column;align-items:flex-start;justify-content:center;gap:.35rem;text-align:left;border-radius:1rem;padding:1.1rem}
+.import-choice-option span{font-size:2rem}
+.import-choice-option strong{font-size:1.1rem}
+.import-choice-option small{font-weight:500;opacity:.85}
+@media(max-width:560px){.import-choice-grid{grid-template-columns:1fr}.import-choice-option{min-height:7.25rem}}
