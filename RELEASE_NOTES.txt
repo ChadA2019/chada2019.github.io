@@ -1,8 +1,11 @@
-BalanceIQ v9.8.2 — Demo Dashboard Refresh Fix
+BalanceIQ v9.8.3 — Demo Dashboard & PWA Cache Fix
 
-- Demo transactions now appear immediately on the Home dashboard after loading.
-- Dashboard date filters are cleared so recent demo records cannot be hidden by an old filter.
-- The app automatically opens Home after demo data is loaded.
-- Dashboard totals, category spending bars, cashflow chart, reports and transaction counts are refreshed.
-- A visible confirmation states how many demo transactions were added.
-- Existing user data remains untouched and Demo Mode can still be removed from Settings.
+Fixed
+- Installed versions could continue serving the older v9.8.1 app.js because the service worker cache name had not been updated in v9.8.2.
+- Demo Mode now verifies that sample transactions are present after saving.
+- Dashboard filters are cleared and all dashboard/report views are recalculated after loading demo data.
+
+Improved
+- Demo transactions have stable IDs, explicit demo markers, and numeric amounts.
+- Demo removal reliably targets only demo records.
+- Storage failures now show a clear error instead of silently leaving the dashboard empty.

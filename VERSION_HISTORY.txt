@@ -1,82 +1,9 @@
+BalanceIQ v9.8.3
+- Fixed stale PWA cache that could keep loading v9.8.1 JavaScript.
+- Added reliable Demo Mode persistence and dashboard verification.
+
 BalanceIQ v9.8.2
-- Fixed Demo Mode dashboard refresh and visibility.
-- Automatically opens Home and clears stale dashboard date filters after loading sample data.
-- Refreshes totals, charts, categories, reports and transaction counts.
+- Attempted Demo Dashboard refresh fix.
 
-BalanceIQ v9.8.2 — Clear Demo Mode
-- Reworked sample data into a visible, reversible Demo Mode.
-
-BalanceIQ v9.5 — Categories & Sub-categories
-- Editable category hierarchy, merchant-learning integration and reporting.
-
-BalanceIQ v9.4 — 22 July 2026
-- Moved “Read scanned receipt” beside the receipt preview.
-- Improved mobile scan workflow by eliminating the scroll to the bottom action bar.
-- Updated version/build to 9.4 / 2026.07.22.003.
-
-9.3  2026-07-22  Unified visible version/build source, corrected header and About labels, refreshed cache and release summary.
-BALANCEIQ VERSION HISTORY
-
-v6.0
-Merchant Intelligence Engine and profile-driven parser architecture.
-
-v5.3.1 Professional
-Bunnings parser, repeated-value consensus, multiline invoice detection and GST recovery.
-
-v5.3 Professional
-Australian receipt intelligence, confidence scoring and professional packaging.
-
-v5.2.2
-Navigation stability, explicit DOM bindings and lazy PDF loading.
-
-v5.1
-Last known-good navigation baseline and smart receipt scanner.
-
-
-7.3 — 2026-07-21
-- Labelled total priority and compact-currency safety.
-- Focused amount-column OCR for damaged cents.
-- Bunnings PowerPass false-payment correction.
-
-7.7 — Separated Total Consensus Release
-Semantic field labels now outrank crop repetition; improved Bunnings footer receipt-number recovery.
-
-7.9 — 2026-07-21
-Bunnings degraded payment-label total consensus and focused-pass invoice voting.
-
-8.0  2026-07-22  Tolerant tender matching, damaged-cents repair, shifted GST recovery, invoice completeness scoring, lower-summary OCR.
-
-
-9.1 — Fast Assisted Receipt Entry
-- Single-pass local Quick Scan.
-- Review-first workflow with confidence highlighting.
-- Manual entry remains available after uncertain or failed scans.
-
-9.2 — Streamlined Assisted Receipt Entry
-- Removed the receipt scan debug and diagnostics interface.
-- Retained the fast review-first Quick Scan workflow from v9.1.
-- Updated the application and service-worker release versions.
-
-
-Version 9.5.1 (Build 2026.07.22.005)
-- Added a prominent Add sub-category control beneath every category.
-- Improved empty-category guidance and mobile discoverability.
-
-9.6 - Smart category management in Settings, transactions, receipts and reviews.
-9.6.1 - Smart in-context management for assets, categories and sub-categories, including receipt asset assignment.
-
-BalanceIQ v9.7 — Scalable Category Management
-Build 2026.07.23.001
-- Compact Settings entry for category management.
-- Dedicated searchable category manager with selected-category detail pane.
-- Responsive mobile management workflow.
-
-BalanceIQ v9.7.1 — User Experience Update
-Build 2026.07.23.001
-- Reworded bank statement import, backup, review and merchant-learning actions in plain language.
-
-BalanceIQ v9.8 — Task-first Home Experience
-Build 2026.07.23.002
-- Added task-based Quick Actions and a new-user Getting Started panel.
-- Improved first-run onboarding and privacy explanations.
-- Added visual recognition icons for assets and categories.
+BalanceIQ v9.8.1
+- Added Clear Demo Mode.

@@ -1,16 +1,11 @@
-BalanceIQ v9.8.2 — Task-first Home Experience
+BalanceIQ v9.8.3 — Demo Dashboard & PWA Cache Fix
 
-A private, browser-based finance app with bank statement import, assisted receipt entry, manual transactions, scalable category management and optional encrypted cloud sync.
+This release fixes Demo Mode transactions not appearing on the dashboard in installed/PWA copies.
 
-Version 9.8 makes the Home screen easier for new users by organising actions around tasks rather than file formats. It also adds a Getting Started guide, improved onboarding and visual icons for assets and categories.
-
-Deployment:
-Replace all files in the GitHub Pages repository with the contents of this release.
-
-
-Demo Mode
----------
-Settings now includes a clearly explained Demo Mode. It adds sample accounts, merchant rules and transactions without replacing existing data. Demo transactions can be removed again from the same Settings card.
-
-
-v9.8.2 note: Loading Demo Mode now immediately clears dashboard date filters, refreshes dashboard calculations and opens the Home view so the sample data is visible.
+Key changes:
+- Replaced the stale v9.8.1 service-worker cache with a v9.8.3 network-first cache.
+- Added skipWaiting and clients.claim so updates activate immediately.
+- Demo transactions now include stable demo IDs and explicit demo markers.
+- Demo Mode verifies data was saved before showing success.
+- Dashboard date filters are cleared before the demo dashboard is displayed.
+- The Settings confirmation now reports demo income and expenses.

@@ -176,7 +176,7 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_INFO=Object.freeze({version:"9.8.2",build:"2026.07.23.004",release:"Version 9.8.2 fixes Demo Mode so newly loaded sample transactions immediately refresh and appear on the Home dashboard."});
+const APP_INFO=Object.freeze({version:"9.8.3",build:"2026.07.23.005",release:"Version 9.8.3 fixes stale PWA caching and verifies that Demo Mode transactions are stored and reflected in every dashboard total."});
 const APP_VERSION=APP_INFO.version;
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 function applyAppInfo(){
@@ -376,9 +376,9 @@ function sampleTransactions(){
     [24,"Demo Interest",4.25,"Income","Interest","Savings Account"],
     [27,"Demo Groceries",-96.30,"Groceries","Supermarket","Everyday Account"]
   ];
-  return rows.map(([days,description,amount,category,subcategory,asset])=>({date:day(days),description,merchant:description.replace(/^Demo /,""),amount,category,subcategory,asset,reviewed:true,auto:false,source:"Demo",taxDeductible:false,tag:"Demo",notes:"Demo data — safe to remove from Settings."}));
+  return rows.map(([days,description,amount,category,subcategory,asset],index)=>({id:`demo-${localDateValue()}-${index+1}`,date:day(days),description,merchant:description.replace(/^Demo /,""),amount:Number(amount),category,subcategory,asset,reviewed:true,auto:false,source:"Demo",demo:true,createdAt:new Date().toISOString(),taxDeductible:false,tag:"Demo",notes:"Demo data — safe to remove from Settings."}));
 }
-function demoDataLoaded(){return state.transactions.some(t=>t.source==="Demo"||t.source==="Sample")}
+function demoDataLoaded(){return state.transactions.some(t=>t.demo===true||t.source==="Demo"||t.source==="Sample")}
 function updateDemoDataStatus(message=""){
   const status=document.getElementById("demoDataStatus"),remove=document.getElementById("removeDemoDataBtn");
   if(!status||!remove)return;
@@ -418,7 +418,9 @@ function addDemoData(){
     {pattern:"PHARMACY",category:"Health",subcategory:"Pharmacy",asset:"Everyday Account",demo:true}
   ];
   demoRules.forEach(rule=>{if(!state.rules.some(existing=>existing.demo&&existing.pattern===rule.pattern))state.rules.push(rule)});
-  const transactions=sampleTransactions();state.transactions.push(...transactions);
+  const existingIds=new Set(state.transactions.map(t=>t.id).filter(Boolean));
+  const transactions=sampleTransactions().filter(t=>!existingIds.has(t.id));
+  state.transactions.push(...transactions);
   return {assets:demoAssets.length,rules:demoRules.length,transactions:transactions.length};
 }
 
@@ -457,7 +459,10 @@ function loadState(){
     onboardingComplete:false
   };
 }
-function saveState(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}
+function saveState(){
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));return true}
+  catch(error){console.error("BalanceIQ could not save local data.",error);return false}
+}
 
 function localDateValue(date=new Date()){
   const local=new Date(date.getTime()-date.getTimezoneOffset()*60000);
@@ -2959,17 +2964,30 @@ savePreferencesBtn.onclick=()=>{state.usageMode=usageMode.value;state.currency=c
 loadSampleDataBtn.onclick=()=>{
   if(demoDataLoaded())return updateDemoDataStatus();
   if(!confirm("Load Demo Data?\n\nThis will add sample accounts, merchant rules and transactions. Your existing data will not be replaced."))return;
+  const before=state.transactions.length;
   const added=addDemoData();
   rebuildReviewQueue();
-  saveState();
+  if(!saveState()){
+    state.transactions.splice(before);
+    rebuildReviewQueue();
+    updateDemoDataStatus("<strong>Demo data could not be saved.</strong><br>Your browser may be out of storage. Remove large receipt images or clear some site data, then try again.");
+    return;
+  }
+  const stored=state.transactions.filter(t=>t.demo===true||t.source==="Demo"||t.source==="Sample");
+  if(!stored.length){
+    updateDemoDataStatus("<strong>Demo data was not added.</strong><br>No sample transactions were found after saving. Please reload the app and try again.");
+    return;
+  }
+  if(dashFrom)dashFrom.value="";
+  if(dashTo)dashTo.value="";
   renderAll();
-  updateDemoDataStatus(`<strong>Demo data loaded successfully.</strong><br>Added ${added.assets} sample accounts, ${added.rules} merchant rules and ${added.transactions} transactions. The Home dashboard has been refreshed.`);
+  updateDemoDataStatus(`<strong>Demo data loaded successfully.</strong><br>Added ${added.assets} sample accounts, ${added.rules} merchant rules and ${stored.length} transactions. Total demo income is ${money(stored.filter(t=>t.amount>0).reduce((sum,t)=>sum+t.amount,0))}; total demo expenses are ${money(stored.filter(t=>t.amount<0).reduce((sum,t)=>sum+Math.abs(t.amount),0))}.`);
   revealDemoDashboard();
-  showNotice(`Demo data loaded: ${added.transactions} transactions are now shown on the dashboard.`);
+  showNotice(`Demo data loaded: ${stored.length} transactions are now included in the dashboard.`);
 };
 document.getElementById("removeDemoDataBtn")?.addEventListener("click",()=>{
   if(!confirm("Remove all demo transactions and demo merchant rules? Your own data will stay in place."))return;
-  state.transactions=state.transactions.filter(t=>t.source!=="Demo"&&t.source!=="Sample");
+  state.transactions=state.transactions.filter(t=>t.demo!==true&&t.source!=="Demo"&&t.source!=="Sample");
   state.rules=state.rules.filter(rule=>!rule.demo);
   saveState();renderAll();updateDemoDataStatus("<strong>Demo data removed.</strong><br>Your own transactions, assets and settings were not changed.");
 });
