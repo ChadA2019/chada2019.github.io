@@ -1,13 +1,10 @@
-BalanceIQ v9.8.3 Validation Report
+BalanceIQ v9.8.4 Validation Report
 
-PASS — app.js JavaScript syntax check (Node.js)
-PASS — manifest.webmanifest JSON parsing
-PASS — no duplicate HTML element IDs
-PASS — application version updated to 9.8.3
-PASS — service-worker cache updated to balanceiq-v9-8-3-20260723-005
-PASS — service worker uses skipWaiting and clients.claim
-PASS — demo transactions use explicit demo markers and stable IDs
-PASS — Demo Mode verifies browser storage before reporting success
-PASS — dashboard date filters clear before Demo Mode is displayed
+- JavaScript syntax check: PASS
+- Manifest JSON validation: PASS
+- Duplicate HTML ID check: PASS
+- Required startup element ID check: PASS
+- Dashboard strict-mode regression check: PASS
+- ZIP integrity check: PASS
 
-Note: Static validation was completed. Final device testing is recommended in installed/PWA mode because browser service-worker update timing varies by platform.
+Root cause fixed: app.js is loaded as a JavaScript module, so assigning to undeclared variables inc and exp threw a ReferenceError and stopped renderDashboard().

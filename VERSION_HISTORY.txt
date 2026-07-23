@@ -1,4 +1,4 @@
-BalanceIQ v9.8.3
+BalanceIQ v9.8.4
 - Fixed stale PWA cache that could keep loading v9.8.1 JavaScript.
 - Added reliable Demo Mode persistence and dashboard verification.
 

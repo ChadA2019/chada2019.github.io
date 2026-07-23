@@ -1,11 +1,9 @@
-BalanceIQ v9.8.3 — Demo Dashboard & PWA Cache Fix
+BalanceIQ v9.8.4 — Dashboard Calculation Fix
 
-Fixed
-- Installed versions could continue serving the older v9.8.1 app.js because the service worker cache name had not been updated in v9.8.2.
-- Demo Mode now verifies that sample transactions are present after saving.
-- Dashboard filters are cleared and all dashboard/report views are recalculated after loading demo data.
+Fixed a JavaScript module error that stopped the Home dashboard from recalculating.
 
-Improved
-- Demo transactions have stable IDs, explicit demo markers, and numeric amounts.
-- Demo removal reliably targets only demo records.
-- Storage failures now show a clear error instead of silently leaving the dashboard empty.
+Changes:
+- Declared dashboard income and expense totals correctly inside renderDashboard().
+- Normalised transaction amounts to numbers during dashboard calculations.
+- Demo transactions now update Total Income, Total Expenses, Net Cash Flow, Selected Period totals, category bars and cashflow output.
+- Updated application version, build and service-worker cache.
