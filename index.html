@@ -191,13 +191,28 @@
 </section>
 
 <section id="settings" class="view">
-  <section class="panel">
-    <h2>Data & Privacy</h2>
-    <p>All imported transactions stay in this browser unless you export a backup.</p>
+  <section class="panel device-storage-panel">
+    <div class="settings-title-with-icon"><span aria-hidden="true">💾</span><div><h2>Device Storage &amp; Backups</h2><p>Your transactions, receipts, categories and settings are saved automatically in a private database on this device.</p></div></div>
+    <div class="storage-health-grid">
+      <div class="storage-health-item"><span>Status</span><strong id="storageStatus">Preparing device storage…</strong></div>
+      <div class="storage-health-item"><span>Last saved</span><strong id="storageLastSaved">Not saved yet</strong></div>
+      <div class="storage-health-item"><span>Browser storage</span><strong id="storageUsage">Calculating…</strong></div>
+      <div class="storage-health-item"><span>Recovery</span><strong id="storageSnapshotStatus">Checking snapshots…</strong></div>
+    </div>
+    <div class="backup-preferences">
+      <label class="checkbox-row"><input id="autoBackupEnabled" type="checkbox" checked> Create automatic local safety snapshots</label>
+      <label>Snapshot frequency<select id="autoBackupFrequency"><option value="1">Daily</option><option value="7" selected>Weekly</option><option value="14">Every 2 weeks</option><option value="30">Monthly</option></select></label>
+      <label>Keep snapshots<select id="autoBackupRetention"><option value="5">Last 5</option><option value="10" selected>Last 10</option><option value="20">Last 20</option></select></label>
+    </div>
     <div class="settings-actions">
-      <label class="file-btn secondary">Restore Backup<input id="backupInput" type="file" accept=".json,application/json"></label>
+      <button id="requestPersistentStorageBtn" type="button">Protect Device Storage</button>
+      <button id="createSnapshotBtn" class="secondary" type="button">Create Safety Snapshot</button>
+      <button id="restoreSnapshotBtn" class="secondary" type="button">Restore Latest Snapshot</button>
+      <button id="downloadBackupBtn" class="secondary" type="button">Download Backup File</button>
+      <label class="file-btn secondary">Restore Backup File<input id="backupInput" type="file" accept=".json,application/json"></label>
       <button id="clearBtn" class="danger">Clear All Data</button>
     </div>
+    <p class="small-note"><strong>Important:</strong> Clearing ordinary browser history or cached files should not remove this database. Clearing this site's storage, uninstalling the PWA, factory-resetting the device, or losing the device can still remove local data. Keep downloaded backups or enable encrypted cloud sync for full protection.</p>
   </section>
   <section class="panel asset-settings-panel">
     <div class="settings-title-with-icon"><span aria-hidden="true">🏠</span><div><h2>Assets</h2><p>Add properties, vehicles, businesses or other things you want to track.</p></div></div>
@@ -281,8 +296,8 @@
   <section class="panel about-panel">
     <h2>About BalanceIQ</h2>
     <div class="metric-list">
-      <div><span>Version</span><strong id="aboutVersion">9.8.6</strong></div>
-      <div><span>Build</span><strong id="aboutBuild">2026.07.23.007</strong></div>
+      <div><span>Version</span><strong id="aboutVersion">9.9.0</strong></div>
+      <div><span>Build</span><strong id="aboutBuild">2026.07.23.009</strong></div>
     </div>
     <details class="release-notes">
       <summary>What’s new</summary>

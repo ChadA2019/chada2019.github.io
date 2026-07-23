@@ -1,3 +1,5 @@
-BalanceIQ v9.8.6 — PWA Installability & Stability Release
+BalanceIQ v9.9.0
 
-This release restores a clear Install App control and strengthens installability across Android Chrome, desktop Chromium browsers and iOS Safari. It includes complete manifest scope/id metadata, standard 192px and 512px PNG icons, a maskable icon, resilient service-worker updates, and platform-specific installation guidance when a browser does not expose a native prompt.
+BalanceIQ is a local-first personal finance PWA. Finance data is saved automatically to IndexedDB on the current device, with a compatibility mirror in localStorage and configurable rolling safety snapshots.
+
+For disaster recovery, users should also download backup files or configure encrypted cloud sync. Browser site-data deletion, PWA uninstall, device loss and factory reset can remove local data.

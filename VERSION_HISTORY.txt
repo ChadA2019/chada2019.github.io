@@ -1,8 +1,4 @@
-BalanceIQ v9.8.6
-- PWA installability and stability release.
-- Complete manifest metadata and PNG/maskable icons.
-- Visible install control with Android, desktop and iOS guidance.
-- Updated service-worker cache and offline navigation handling.
-
-BalanceIQ v9.8.5
-- Added PDF-or-CSV bank-statement choice and mobile file compatibility.
+9.9.0  Local-first IndexedDB storage, rolling safety snapshots, recovery controls and storage health.
+9.8.6  PWA installability and stability improvements.
+9.8.5  Clear PDF/CSV bank statement import choice.
+9.8.4  Dashboard calculation fix.

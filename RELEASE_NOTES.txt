@@ -1,9 +1,12 @@
-BalanceIQ v9.8.6 — PWA Installability & Stability
+BalanceIQ v9.9.0 — Local-First Device Storage
 
-• Added standards-based 192×192 and 512×512 PNG app icons.
-• Added a dedicated 512×512 maskable icon for Android launchers.
-• Added manifest id, scope, display fallback and app categories.
-• Restored a visible Install App control with browser-specific fallback guidance.
-• Hides the control automatically when BalanceIQ is running as an installed app.
-• Improved service-worker registration, update checks, cache cleanup and offline navigation.
-• Retains all v9.8.5 PDF/CSV bank-statement import improvements.
+- Replaces localStorage-only persistence with IndexedDB as the primary on-device database.
+- Automatically migrates existing BalanceIQ data into the device database.
+- Keeps a lightweight localStorage mirror as a compatibility fallback.
+- Adds configurable automatic rolling safety snapshots with 5, 10 or 20 retained copies.
+- Adds manual snapshot creation and latest-snapshot recovery.
+- Adds storage usage, last-save and recovery status to Settings.
+- Adds a browser persistent-storage request to reduce automatic eviction risk where supported.
+- Retains downloadable JSON backups and encrypted cloud sync for protection beyond one device.
+
+Important: clearing site storage, uninstalling the PWA, device loss or factory reset can still remove local-only data. Downloaded backups or encrypted cloud sync remain recommended.

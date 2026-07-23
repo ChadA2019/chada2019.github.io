@@ -1,15 +1,17 @@
-BalanceIQ v9.8.6 Validation Report
+BalanceIQ v9.9.0 Validation Report
 
-PASS — JavaScript syntax (app.js)
-PASS — JavaScript syntax (service-worker.js)
-PASS — Manifest JSON parsing
-PASS — Manifest id/start_url/scope alignment
-PASS — 192×192 PNG icon present
-PASS — 512×512 PNG icon present
-PASS — 512×512 maskable PNG icon present
-PASS — No duplicate HTML IDs
-PASS — Install prompt, installed-state and fallback guidance wiring
-PASS — PDF and CSV import MIME handling retained
-PASS — Service-worker cache version and icon precache updated
+PASS JavaScript syntax (node --check)
+PASS Manifest JSON parsing
+PASS Required startup element mapping (155 IDs)
+PASS Duplicate HTML ID check
+PASS IndexedDB primary state store present
+PASS Automatic rolling snapshot store present
+PASS Storage recovery controls wired
+PASS Existing JSON download/restore retained
+PASS Service worker cache updated to v9.9.0
 
-Note: Browser install prompts remain controlled by the browser and require HTTPS (or localhost). The in-app Install App button now provides platform guidance when the native prompt is unavailable.
+Limitations
+- Browser persistent-storage permission is controlled by the browser and may not be granted.
+- Local snapshots are stored in the same site storage and are not protection against clearing site data, uninstalling the PWA, device loss or factory reset.
+- Downloaded backup files are not encrypted; encrypted cloud sync remains available for off-device protection.
+- Full device/browser interactive testing was not performed in this build environment.

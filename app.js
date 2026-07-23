@@ -177,7 +177,7 @@ const {
 );
 
 const STORAGE_KEY="balanceIQV5";
-const APP_INFO=Object.freeze({version:"9.8.6",build:"2026.07.23.008",release:"Version 9.8.6 restores reliable PWA installation with standards-based PNG icons, a complete manifest, service-worker update handling and clear fallback installation guidance."});
+const APP_INFO=Object.freeze({version:"9.9.0",build:"2026.07.23.009",release:"Version 9.9 introduces local-first IndexedDB storage, automatic rolling safety snapshots, storage health information and recovery controls."});
 const APP_VERSION=APP_INFO.version;
 const LEGACY_STORAGE_KEYS=["chadFinanceV3","chadFinanceV4"];
 function applyAppInfo(){
@@ -428,42 +428,95 @@ function addDemoData(){
 const defaultAssets=[];
 const defaultRules=[];
 
-let state=loadState(),pendingPdfRows=[],pendingReceiptImage="",deferredPrompt=null;
+const DEVICE_DB_NAME="BalanceIQDeviceData";
+const DEVICE_DB_VERSION=1;
+const DEVICE_STATE_KEY="primary";
+let deviceDbPromise=null,deviceSaveTimer=null,deviceStorageReady=false,lastDeviceSaveAt=null;
+
+function emptyState(){return{
+  transactions:[],receipts:[],rules:[],reviewQueue:[],assets:[],
+  categoryDefinitions:freshCategoryDefinitions(),theme:"light",currency:"AUD",
+  usageMode:"personal",onboardingComplete:false,
+  autoBackupEnabled:true,autoBackupDays:7,autoBackupRetention:10
+}}
+function normaliseState(s){const base=emptyState();return{
+  ...base,...(s||{}),
+  transactions:s?.transactions||[],receipts:s?.receipts||[],rules:s?.rules||[],
+  reviewQueue:s?.reviewQueue||[],assets:s?.assets||[],
+  categoryDefinitions:normaliseCategoryDefinitions(s?.categoryDefinitions),
+  theme:s?.theme||"light",currency:s?.currency||"AUD",usageMode:s?.usageMode||"personal",
+  onboardingComplete:s?.onboardingComplete ?? true,
+  autoBackupEnabled:s?.autoBackupEnabled ?? true,
+  autoBackupDays:Number(s?.autoBackupDays)||7,
+  autoBackupRetention:Number(s?.autoBackupRetention)||10
+}}
 function loadState(){
   let raw=localStorage.getItem(STORAGE_KEY);
   if(!raw){for(const key of LEGACY_STORAGE_KEYS){if(localStorage.getItem(key)){raw=localStorage.getItem(key);break}}}
-  try{
-    const s=JSON.parse(raw);
-    if(s)return{
-      transactions:s.transactions||[],
-      receipts:s.receipts||[],
-      rules:s.rules||[],
-      reviewQueue:s.reviewQueue||[],
-      assets:s.assets||[],
-      categoryDefinitions:normaliseCategoryDefinitions(s.categoryDefinitions),
-      theme:s.theme||"light",
-      currency:s.currency||"AUD",
-      usageMode:s.usageMode||"personal",
-      onboardingComplete:s.onboardingComplete ?? true
+  try{const parsed=JSON.parse(raw);if(parsed)return normaliseState(parsed)}catch{}
+  return emptyState();
+}
+function openDeviceDb(){
+  if(deviceDbPromise)return deviceDbPromise;
+  deviceDbPromise=new Promise((resolve,reject)=>{
+    if(!('indexedDB'in window))return reject(new Error('IndexedDB is unavailable'));
+    const request=indexedDB.open(DEVICE_DB_NAME,DEVICE_DB_VERSION);
+    request.onupgradeneeded=()=>{
+      const db=request.result;
+      if(!db.objectStoreNames.contains('appState'))db.createObjectStore('appState');
+      if(!db.objectStoreNames.contains('snapshots')){
+        const store=db.createObjectStore('snapshots',{keyPath:'id',autoIncrement:true});
+        store.createIndex('createdAt','createdAt');
+      }
     };
-  }catch{}
-  return{
-    transactions:[],
-    receipts:[],
-    rules:[],
-    reviewQueue:[],
-    assets:[],
-    categoryDefinitions:freshCategoryDefinitions(),
-    theme:"light",
-    currency:"AUD",
-    usageMode:"personal",
-    onboardingComplete:false
-  };
+    request.onsuccess=()=>resolve(request.result);
+    request.onerror=()=>reject(request.error||new Error('Could not open device database'));
+  });
+  return deviceDbPromise;
+}
+async function idbGet(storeName,key){const db=await openDeviceDb();return new Promise((resolve,reject)=>{const tx=db.transaction(storeName,'readonly'),request=tx.objectStore(storeName).get(key);request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error)})}
+async function idbPut(storeName,value,key){const db=await openDeviceDb();return new Promise((resolve,reject)=>{const tx=db.transaction(storeName,'readwrite'),store=tx.objectStore(storeName),request=key===undefined?store.put(value):store.put(value,key);request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error)})}
+async function idbAll(storeName){const db=await openDeviceDb();return new Promise((resolve,reject)=>{const tx=db.transaction(storeName,'readonly'),request=tx.objectStore(storeName).getAll();request.onsuccess=()=>resolve(request.result||[]);request.onerror=()=>reject(request.error)})}
+async function idbDelete(storeName,key){const db=await openDeviceDb();return new Promise((resolve,reject)=>{const tx=db.transaction(storeName,'readwrite'),request=tx.objectStore(storeName).delete(key);request.onsuccess=()=>resolve();request.onerror=()=>reject(request.error)})}
+function stateEnvelope(){return{savedAt:new Date().toISOString(),version:APP_VERSION,data:typeof structuredClone==="function"?structuredClone(state):JSON.parse(JSON.stringify(state))}}
+async function writeDeviceState(){
+  try{const envelope=stateEnvelope();await idbPut('appState',envelope,DEVICE_STATE_KEY);deviceStorageReady=true;lastDeviceSaveAt=envelope.savedAt;await maybeCreateAutomaticSnapshot(envelope);updateStoragePanel();return true}
+  catch(error){console.error('BalanceIQ could not save to IndexedDB.',error);updateStoragePanel(error);return false}
+}
+function queueDeviceSave(){clearTimeout(deviceSaveTimer);deviceSaveTimer=setTimeout(writeDeviceState,120)}
+async function createSafetySnapshot(reason='manual'){
+  const envelope=stateEnvelope();
+  await idbPut('snapshots',{createdAt:envelope.savedAt,reason,version:APP_VERSION,data:envelope.data});
+  const snapshots=(await idbAll('snapshots')).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  const keep=Math.max(1,Number(state.autoBackupRetention)||10);
+  await Promise.all(snapshots.slice(keep).map(item=>idbDelete('snapshots',item.id)));
+  updateStoragePanel();return envelope.savedAt;
+}
+async function maybeCreateAutomaticSnapshot(envelope){
+  if(state.autoBackupEnabled===false)return;
+  const snapshots=(await idbAll('snapshots')).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  const latest=snapshots[0];
+  const dueMs=Math.max(1,Number(state.autoBackupDays)||7)*86400000;
+  if(!latest||Date.now()-new Date(latest.createdAt).getTime()>=dueMs)await createSafetySnapshot('automatic');
+}
+async function initialiseDeviceStorage(){
+  try{
+    const stored=await idbGet('appState',DEVICE_STATE_KEY);
+    if(stored?.data){state=normaliseState(stored.data);lastDeviceSaveAt=stored.savedAt||null}
+    else await writeDeviceState();
+    deviceStorageReady=true;
+    renderAll();updateDemoDataStatus();updateStoragePanel();
+  }catch(error){console.warn('IndexedDB unavailable; using localStorage fallback.',error);updateStoragePanel(error)}
 }
 function saveState(){
-  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));return true}
-  catch(error){console.error("BalanceIQ could not save local data.",error);return false}
+  let mirrorSaved=true;
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}
+  catch(error){mirrorSaved=false;console.warn('BalanceIQ localStorage mirror could not be saved.',error)}
+  queueDeviceSave();
+  return mirrorSaved||('indexedDB'in window);
 }
+
+let state=loadState(),pendingPdfRows=[],pendingReceiptImage="",deferredPrompt=null;
 
 function localDateValue(date=new Date()){
   const local=new Date(date.getTime()-date.getTimezoneOffset()*60000);
@@ -3006,6 +3059,48 @@ function openSetup(){onboardingUsage.value=state.usageMode||"personal";onboardin
 runSetupBtn.onclick=openSetup;
 finishOnboardingBtn.onclick=()=>{state.usageMode=onboardingUsage.value;state.currency=onboardingCurrency.value;state.theme=onboardingTheme.value;const asset=norm(onboardingAsset.value);if(asset&&!state.assets.includes(asset))state.assets.push(asset);if(onboardingSample.checked&&!demoDataLoaded())addDemoData();state.onboardingComplete=true;document.body.classList.toggle("dark",state.theme==="dark");themeBtn.textContent=state.theme==="dark"?"☀️":"🌙";updateGreeting();usageMode.value=state.usageMode;currencySetting.value=state.currency;saveState();onboardingDialog.close();renderAll()};
 themeBtn.onclick=()=>{state.theme=state.theme==="dark"?"light":"dark";document.body.classList.toggle("dark",state.theme==="dark");themeBtn.textContent=state.theme==="dark"?"☀️":"🌙";updateGreeting();saveState();drawCashflow()};
+
+const storageStatus=document.getElementById('storageStatus');
+const storageUsage=document.getElementById('storageUsage');
+const storageLastSaved=document.getElementById('storageLastSaved');
+const storageSnapshotStatus=document.getElementById('storageSnapshotStatus');
+const downloadBackupBtn=document.getElementById('downloadBackupBtn');
+const requestPersistentStorageBtn=document.getElementById('requestPersistentStorageBtn');
+const createSnapshotBtn=document.getElementById('createSnapshotBtn');
+const restoreSnapshotBtn=document.getElementById('restoreSnapshotBtn');
+const autoBackupEnabled=document.getElementById('autoBackupEnabled');
+const autoBackupFrequency=document.getElementById('autoBackupFrequency');
+const autoBackupRetention=document.getElementById('autoBackupRetention');
+function formatBytes(bytes){if(!Number.isFinite(bytes))return 'Unavailable';const units=['B','KB','MB','GB'];let value=bytes,i=0;while(value>=1024&&i<units.length-1){value/=1024;i++}return `${value.toFixed(i?1:0)} ${units[i]}`}
+async function updateStoragePanel(error=null){
+  if(!storageStatus)return;
+  storageStatus.textContent=error?'Fallback storage active':deviceStorageReady?'Saved automatically on this device':'Preparing device storage…';
+  storageStatus.classList.toggle('storage-warning',!!error);
+  if(storageLastSaved)storageLastSaved.textContent=lastDeviceSaveAt?new Date(lastDeviceSaveAt).toLocaleString():'Not saved yet';
+  if(autoBackupEnabled)autoBackupEnabled.checked=state.autoBackupEnabled!==false;
+  if(autoBackupFrequency)autoBackupFrequency.value=String(state.autoBackupDays||7);
+  if(autoBackupRetention)autoBackupRetention.value=String(state.autoBackupRetention||10);
+  try{
+    if(navigator.storage?.estimate){const estimate=await navigator.storage.estimate();storageUsage.textContent=`${formatBytes(estimate.usage||0)} used of approximately ${formatBytes(estimate.quota||0)}`}
+    const snapshots=(await idbAll('snapshots')).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+    storageSnapshotStatus.textContent=snapshots.length?`${snapshots.length} safety snapshot${snapshots.length===1?'':'s'} · latest ${new Date(snapshots[0].createdAt).toLocaleString()}`:'No safety snapshots yet';
+    if(restoreSnapshotBtn)restoreSnapshotBtn.disabled=!snapshots.length;
+  }catch{if(storageSnapshotStatus)storageSnapshotStatus.textContent='Safety snapshots unavailable in this browser'}
+}
+downloadBackupBtn?.addEventListener('click',()=>exportBtn.click());
+requestPersistentStorageBtn?.addEventListener('click',async()=>{
+  if(!navigator.storage?.persist)return alert('Persistent storage is not supported by this browser. BalanceIQ will still save automatically, but regular backups are recommended.');
+  const granted=await navigator.storage.persist();
+  showNotice(granted?'Extra storage protection was granted by your browser.':'The browser did not grant extra storage protection. Your data is still saved locally; keep regular downloaded backups.');
+  updateStoragePanel();
+});
+createSnapshotBtn?.addEventListener('click',async()=>{try{await createSafetySnapshot('manual');showNotice('A local safety snapshot was created.')}catch(error){console.error(error);alert('Could not create a safety snapshot.')}});
+restoreSnapshotBtn?.addEventListener('click',async()=>{try{const snapshots=(await idbAll('snapshots')).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));if(!snapshots.length)return;if(!confirm(`Restore the latest safety snapshot from ${new Date(snapshots[0].createdAt).toLocaleString()}? Current data will be replaced.`))return;state=normaliseState(snapshots[0].data);saveState();renderAll();showNotice('Latest safety snapshot restored.')}catch(error){console.error(error);alert('Could not restore the safety snapshot.')}});
+function saveBackupSettings(){state.autoBackupEnabled=autoBackupEnabled?.checked!==false;state.autoBackupDays=Number(autoBackupFrequency?.value)||7;state.autoBackupRetention=Number(autoBackupRetention?.value)||10;saveState();updateStoragePanel()}
+autoBackupEnabled?.addEventListener('change',saveBackupSettings);
+autoBackupFrequency?.addEventListener('change',saveBackupSettings);
+autoBackupRetention?.addEventListener('change',saveBackupSettings);
+
 applyAppInfo();
 document.body.classList.toggle("dark",state.theme==="dark");themeBtn.textContent=state.theme==="dark"?"☀️":"🌙";updateGreeting();setInterval(updateGreeting,60000);
 function isStandaloneApp(){
@@ -3057,4 +3152,6 @@ if("serviceWorker"in navigator&&location.protocol.startsWith("http")){
 }
 renderAll();
 updateDemoDataStatus();
+updateStoragePanel();
+initialiseDeviceStorage();
 if(!state.onboardingComplete)setTimeout(openSetup,250);
