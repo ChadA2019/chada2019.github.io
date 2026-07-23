@@ -1,9 +1,8 @@
-BalanceIQ v9.9.1 — Interactive Dashboard
+BalanceIQ v9.9.2
 
-- Dashboard KPI cards are now accessible navigation shortcuts.
-- Needs Review opens the Review page and moves to the first outstanding review group.
-- Awaiting Bank Match opens Receipts.
-- Total Income and Total Expenses open Transactions with the matching type filter.
-- Net Cash Flow opens Insights.
-- Added keyboard activation, focus styling, touch feedback and clear action labels.
-- Updated PWA cache and release metadata.
+• Fixed Cancel buttons being treated as form submissions.
+• Cancel no longer triggers “Please fill in this field”.
+• Added unsaved-change confirmation after genuine user edits.
+• Escape closes supported dialogs safely.
+• Tapping/clicking outside supported dialogs closes them safely.
+• Save and confirmation actions continue to use normal validation.

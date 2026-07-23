@@ -3,3 +3,4 @@
 9.8.6  PWA installability and stability improvements.
 9.8.5  Clear PDF/CSV bank statement import choice.
 9.8.4  Dashboard calculation fix.
+9.9.2 — Dialog cancellation, unsaved-change protection, Escape and backdrop close behaviour.
