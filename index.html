@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#17365d">
-  <title>BalanceIQ</title>
+  <title>BalanceIQ v9.8</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -25,7 +25,7 @@
   <button class="tab" data-view="transactions">▤ Transactions</button>
   <button class="tab" data-view="receipts">▧ Receipts</button>
   <button class="tab" data-view="review">✓ Review</button>
-  <button class="tab" data-view="rules">⌁ Merchant Rules</button>
+  <button class="tab" data-view="rules">⌁ Smart Merchant Learning</button>
   <button class="tab" data-view="reports">◫ Insights</button>
   <button class="tab" data-view="settings">⚙ Settings</button>
 </nav>
@@ -36,11 +36,31 @@
     <div><span class="eyebrow">BALANCEIQ OVERVIEW</span><h2 id="greeting">Good evening</h2><p>Your transactions, receipts and bank imports working together.</p></div>
     <button id="heroScanBtn" class="scan-cta">▧ Scan receipt</button>
   </section>
-  <div class="toolbar">
-    <label class="file-btn">Import CSV<input id="csvInput" type="file" accept=".csv,text/csv"></label>
-    <label class="file-btn">Import PDF<input id="pdfInput" type="file" accept=".pdf,application/pdf"></label>
-    <button id="exportBtn" class="secondary">Export Backup</button>
-  </div>
+  <section id="gettingStartedPanel" class="getting-started panel">
+    <div class="getting-started-copy">
+      <span class="eyebrow">GETTING STARTED</span>
+      <h2>Build your first money picture</h2>
+      <p>Start with a bank statement, scan a receipt, or add a transaction yourself. Your data stays in this browser unless you choose cloud sync.</p>
+    </div>
+    <div class="getting-started-steps">
+      <button id="startImportBtn" type="button" class="getting-started-step"><span>1</span><strong>Import a bank statement</strong><small>Best for adding many transactions</small></button>
+      <button id="startScanBtn" type="button" class="getting-started-step"><span>2</span><strong>Scan a receipt</strong><small>Record an expense straight away</small></button>
+      <button id="startManualBtn" type="button" class="getting-started-step"><span>3</span><strong>Add one transaction</strong><small>Ideal for cash or quick entries</small></button>
+    </div>
+  </section>
+
+  <section class="quick-actions-section">
+    <div class="section-heading quick-actions-heading">
+      <div><span class="eyebrow">QUICK ACTIONS</span><h2>What would you like to do?</h2><p>Choose a task — BalanceIQ will handle the file type and workflow.</p></div>
+    </div>
+    <div class="quick-action-grid">
+      <label class="quick-action-card quick-action-primary"><span class="quick-action-icon" aria-hidden="true">🏦</span><strong>Import CSV bank statement</strong><small>Use the CSV file downloaded from your bank</small><input id="csvInput" type="file" accept=".csv,text/csv"></label>
+      <label class="quick-action-card"><span class="quick-action-icon" aria-hidden="true">📄</span><strong>Import PDF bank statement</strong><small>Use a text-based PDF statement from your bank</small><input id="pdfInput" type="file" accept=".pdf,application/pdf"></label>
+      <button id="quickScanBtn" type="button" class="quick-action-card"><span class="quick-action-icon" aria-hidden="true">🧾</span><strong>Scan a receipt</strong><small>Capture an expense before it appears at the bank</small></button>
+      <button id="quickAddTransactionBtn" type="button" class="quick-action-card"><span class="quick-action-icon" aria-hidden="true">＋</span><strong>Add a transaction</strong><small>Enter cash, income or another item manually</small></button>
+      <button id="exportBtn" type="button" class="quick-action-card"><span class="quick-action-icon" aria-hidden="true">💾</span><strong>Backup my data</strong><small>Download a private copy you can restore later</small></button>
+    </div>
+  </section>
   <div id="importSummary" class="notice hidden"></div>
 
   <div class="kpi-grid">
@@ -116,7 +136,7 @@
 
 <section id="review" class="view">
   <div class="section-heading">
-    <div><h2>Review Queue</h2><p>Approve unfamiliar merchants and turn them into permanent rules.</p></div>
+    <div><h2>Review New Transactions</h2><p>Approve unfamiliar merchants and turn them into permanent rules.</p></div>
     <button id="applyReviewsBtn">Learn Accepted Rules</button>
   </div>
   <div id="reviewList" class="review-list"></div>
@@ -124,7 +144,7 @@
 
 <section id="rules" class="view">
   <div class="section-heading">
-    <div><h2>Merchant Rules</h2><p>Rules match when a bank description contains the pattern.</p></div>
+    <div><h2>Smart Merchant Learning</h2><p>Rules match when a bank description contains the pattern.</p></div>
     <button id="addRuleBtn">Add Rule</button>
   </div>
   <div class="table-wrap">
@@ -177,9 +197,8 @@
       <button id="clearBtn" class="danger">Clear All Data</button>
     </div>
   </section>
-  <section class="panel">
-    <h2>Assets</h2>
-    <p>Add the properties, vehicles, businesses or other assets you want to track.</p>
+  <section class="panel asset-settings-panel">
+    <div class="settings-title-with-icon"><span aria-hidden="true">🏠</span><div><h2>Assets</h2><p>Add properties, vehicles, businesses or other things you want to track.</p></div></div>
     <div class="toolbar">
       <input id="newAssetName" placeholder="New asset name">
       <button id="addAssetBtn">Add Asset</button>
@@ -189,7 +208,7 @@
 
   <section class="panel settings-manager-card">
     <div class="settings-manager-copy">
-      <div class="settings-manager-icon" aria-hidden="true">▦</div>
+      <div class="settings-manager-icon" aria-hidden="true">🗂️</div>
       <div>
         <h2>Categories &amp; Sub-categories</h2>
         <p>Keep Settings tidy by managing categories in a dedicated searchable screen.</p>
@@ -251,8 +270,8 @@
   <section class="panel about-panel">
     <h2>About BalanceIQ</h2>
     <div class="metric-list">
-      <div><span>Version</span><strong id="aboutVersion">9.3</strong></div>
-      <div><span>Build</span><strong id="aboutBuild">2026.07.22.002</strong></div>
+      <div><span>Version</span><strong id="aboutVersion">9.8</strong></div>
+      <div><span>Build</span><strong id="aboutBuild">2026.07.23.002</strong></div>
     </div>
     <details class="release-notes">
       <summary>What’s new</summary>
@@ -390,7 +409,13 @@
     <div class="brand-mark" aria-hidden="true"><span></span></div>
     <div><span class="eyebrow">WELCOME TO</span><h2>Balance<span>IQ</span></h2></div>
   </div>
-  <p>Choose a few starting preferences. These can be changed later in Settings.</p>
+  <p>BalanceIQ helps you turn bank statements and receipts into a clear, organised view of your money.</p>
+  <div class="onboarding-benefits" aria-label="What BalanceIQ can do">
+    <div><span aria-hidden="true">🏦</span><strong>Import bank statements</strong><small>Add many transactions at once</small></div>
+    <div><span aria-hidden="true">🧾</span><strong>Scan receipts</strong><small>Capture expenses as they happen</small></div>
+    <div><span aria-hidden="true">🔒</span><strong>Keep control</strong><small>Your data stays private by default</small></div>
+  </div>
+  <p class="small-note">Choose a few starting preferences. You can change them later in Settings.</p>
   <div class="form-grid">
     <label>How will you use BalanceIQ?
       <select id="onboardingUsage">

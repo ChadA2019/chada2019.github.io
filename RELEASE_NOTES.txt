@@ -1,11 +1,10 @@
-BalanceIQ v9.7 — Scalable Category Management
-Build 2026.07.23.001
+BalanceIQ v9.8 — Task-first Home Experience
+Build 2026.07.23.002
 
-- Replaced the long category list in Settings with a compact Manage Categories card.
-- Added a dedicated category manager that opens without leaving Settings.
-- Added search across category and sub-category names.
-- Added a scalable category browser with a focused detail pane.
-- Category rename, delete and sub-category controls now appear only for the selected category.
-- Added category and sub-category totals to the compact Settings card.
-- Preserved all v9.6.1 in-context Asset, Category and Sub-category controls.
-- Added a responsive mobile layout that separates browsing from editing and avoids an endlessly growing Settings page.
+- Rebuilt the Home screen around clear user tasks instead of technical file actions.
+- Added Quick Actions for CSV bank statements, PDF bank statements, receipt scanning, manual transactions and data backups.
+- Added a Getting Started panel for new users that disappears after their first transaction or receipt.
+- Improved first-run onboarding with plain-language explanations of bank imports, receipt capture and privacy.
+- Added visual icons to Assets and the dedicated Category Manager for faster recognition.
+- Preserved the scalable category management, in-context create/edit controls and all v9.7.1 data workflows.
+- Updated version metadata, manifest and service-worker cache.

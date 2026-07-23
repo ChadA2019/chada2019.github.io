@@ -1,24 +1,16 @@
-BalanceIQ v9.7 Validation Report
-Build 2026.07.23.001
+BalanceIQ v9.8 Validation Report
+Build 2026.07.23.002
 
-PASS - app version 9 7
-PASS - build 2026 07 23 001
-PASS - compact settings card
-PASS - dedicated manager dialog
-PASS - manager search
-PASS - category detail pane
-PASS - old long settings forms removed
-PASS - no duplicate html ids
-PASS - all startup ids present
-PASS - manifest valid
-PASS - service worker cache updated
+PASS — app.js JavaScript syntax (Node.js --check)
+PASS — cloud-sync.js JavaScript syntax (Node.js --check)
+PASS — manifest.webmanifest JSON parsing and v9.8 metadata
+PASS — all 154 startup element references match HTML elements
+PASS — no duplicate HTML IDs across 168 controls
+PASS — Quick Actions wiring for CSV, PDF, receipt scan, manual entry and backup
+PASS — Getting Started controls and automatic hide condition are present
+PASS — asset/category icon helpers and manager rendering are present
+PASS — service-worker cache updated to balanceiq-v9-8-20260723-002
+PASS — release notes, README and version history updated
+PASS — ZIP integrity test
 
-Verification performed:
-- JavaScript syntax checked with Node.js.
-- Web manifest parsed as JSON.
-- Required startup element IDs compared with index.html.
-- Duplicate HTML IDs checked.
-- Version and service-worker cache identifiers checked.
-- Release files packaged and ZIP integrity tested.
-
-Note: device-specific visual testing on Android Chrome and iPhone Safari is still recommended after deployment.
+LIMITATION — Full interactive browser/device testing was not available in the build container. Test the deployed release on the intended browsers, especially iPhone Safari/PWA and Android Chrome.

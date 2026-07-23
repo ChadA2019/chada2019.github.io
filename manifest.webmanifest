@@ -1,7 +1,7 @@
 {
-  "name": "BalanceIQ v9.7",
+  "name": "BalanceIQ v9.8",
   "short_name": "BalanceIQ",
-  "description": "Private personal finance management with fast assisted receipt entry and in-context asset, category and sub-category management.",
+  "description": "Private finance management with task-first bank statement import, receipt scanning, smart categorisation and local-first data control.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#071d3b",

@@ -62,3 +62,13 @@ Build 2026.07.23.001
 - Compact Settings entry for category management.
 - Dedicated searchable category manager with selected-category detail pane.
 - Responsive mobile management workflow.
+
+BalanceIQ v9.7.1 — User Experience Update
+Build 2026.07.23.001
+- Reworded bank statement import, backup, review and merchant-learning actions in plain language.
+
+BalanceIQ v9.8 — Task-first Home Experience
+Build 2026.07.23.002
+- Added task-based Quick Actions and a new-user Getting Started panel.
+- Improved first-run onboarding and privacy explanations.
+- Added visual recognition icons for assets and categories.
